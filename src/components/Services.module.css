@@ -29,7 +29,7 @@
   background: #111111;
   display: grid;
   grid-template-columns: 1fr 1.2fr;
-  height: 480px;
+  height: 560px;
   border-radius: var(--border-radius-standard);
   overflow: hidden;
   position: sticky;
@@ -130,7 +130,7 @@
     border-radius: var(--border-radius-standard);
     position: sticky;
     height: auto;
-    min-height: 480px;
+    min-height: 560px;
   }
   
   /* Update sticky tops for smaller screens */
