@@ -25,8 +25,9 @@ export default function AnalogClock() {
   const minutesDeg = (minutes / 60) * 360 + (seconds / 60) * 6
   const hoursDeg = ((hours % 12) / 12) * 360 + (minutes / 60) * 30
 
-  // Status logic: Open between 09:00 and 17:59
-  const isOpen = hours >= 9 && hours < 18
+  // Status logic: Open between 09:00 and 17:59, Mon-Fri
+  const isWeekend = time.getDay() === 0 || time.getDay() === 6
+  const isOpen = !isWeekend && hours >= 9 && hours < 18
 
   return (
     <div className={styles.clockContainer}>
