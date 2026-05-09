@@ -1,0 +1,300 @@
+.portfolioSection {
+  padding: 120px 0;
+  background: var(--color-bg);
+}
+
+/* Header */
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.title {
+  font-family: var(--font-title);
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 200;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.titleBold {
+  font-weight: 500;
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  max-width: 800px;
+}
+
+/* Grid */
+.projectsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .projectsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card Principal ── */
+.projectCard {
+  position: relative;
+  background-color: #161616;
+  border-radius: var(--border-radius-standard);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Right column cards (even) get mirrored border-radius */
+.projectCard:nth-child(even) {
+  border-radius: var(--border-radius-mirror);
+}
+
+
+/* Container da Imagem */
+.imageWrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--border-radius-standard);
+  overflow: hidden;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top center;
+  z-index: 1;
+}
+
+.projectCard:nth-child(even) .imageWrapper {
+  border-radius: var(--border-radius-mirror);
+}
+
+.projectImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+
+.imageOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 40%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+/* ── Efeito Hover na Imagem ── */
+.projectCard:hover .imageWrapper {
+  height: calc(100% - 100px);
+  border-radius: var(--border-radius-standard);
+}
+
+.projectCard:nth-child(even):hover .imageWrapper {
+  border-radius: var(--border-radius-mirror);
+}
+
+.projectCard:hover .imageOverlay {
+  opacity: 1;
+}
+
+/* Sem zoom na imagem no hover */
+.projectCard:hover .projectImage {
+  transform: none;
+}
+
+/* ------------------------------------------- */
+/* CONTROLE INDIVIDUAL DAS BORDAS DOS CARDS 3 e 4 */
+/* Colocado aqui para sobrescrever as regras de :nth-child(even) acima */
+/* ------------------------------------------- */
+
+/* CARD 3 */
+.projectCard:nth-child(3),
+.projectCard:nth-child(3) .imageWrapper,
+.projectCard:nth-child(3):hover .imageWrapper {
+  border-radius: 0px 40px 0px 40px;
+}
+
+/* CARD 4 */
+.projectCard:nth-child(4),
+.projectCard:nth-child(4) .imageWrapper,
+.projectCard:nth-child(4):hover .imageWrapper {
+  border-radius: 40px 0px 40px 0px;
+}
+
+/* ── Tab Superior Direito (Stat) ── */
+.statTab {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #161616;
+  color: #999;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  padding: 12px 24px;
+  border-bottom-left-radius: 24px; /* Curva interna */
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.4s ease;
+  transition-delay: 0.1s;
+}
+
+/* Curvas fluidas (Inverted border radius) da Tab Superior */
+.statTab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -20px;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border-top-right-radius: 20px;
+  box-shadow: 10px -10px 0 0 #161616;
+}
+
+.statTab::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border-top-right-radius: 20px;
+  box-shadow: 10px -10px 0 0 #161616;
+}
+
+.projectCard:hover .statTab {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Painel Inferior (Info) ── */
+.infoPanel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 0; /* Fica atrás da imagem que sobe, mas visível pq a imagem diminui a altura */
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s ease;
+  transition-delay: 0.1s;
+}
+
+.projectCard:hover .infoPanel {
+  opacity: 1;
+  transform: translateY(0);
+  z-index: 2;
+}
+
+.infoText h3 {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.infoText p {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+}
+
+.tag {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+/* Mostrar mais CTA */
+.ctaWrapper {
+  margin-top: 64px;
+  display: flex;
+  justify-content: center;
+}
+
+.showMoreBtn {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px 32px;
+  background: transparent;
+  text-decoration: none;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.showMoreBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 992px) {
+  .projectCard {
+    aspect-ratio: auto;
+    height: 640px;
+  }
+  
+  /* Auto apply hover states */
+  .imageWrapper {
+    height: calc(100% - 100px);
+  }
+  
+  .imageOverlay {
+    opacity: 1;
+  }
+
+  .projectImage {
+    transform: none;
+  }
+
+  .statTab {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .infoPanel {
+    opacity: 1;
+    transform: translateY(0);
+    z-index: 2;
+  }
+}

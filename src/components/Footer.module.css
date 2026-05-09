@@ -1,0 +1,169 @@
+.footer {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Top section */
+.footerTop {
+  padding: 80px 0 60px;
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1fr 60px 1.5fr;
+  gap: 40px;
+}
+
+/* Left Column */
+.leftCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.footerLogo {
+  display: block;
+  margin-bottom: 24px;
+}
+
+.logoImg {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
+.servicesAndContact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.servicesList, .contactList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footerLink {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+  transition: color var(--transition);
+  display: inline-block;
+}
+
+.footerLink:hover {
+  color: var(--color-text-primary);
+}
+
+.contactList li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contactIcon {
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.contactValue {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  transition: color var(--transition);
+}
+
+a.contactValue:hover {
+  color: var(--color-text-primary);
+}
+
+/* Middle Col: Socials */
+.socialCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.socialLink {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #151515;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  transition: color var(--transition), background var(--transition);
+}
+
+.socialLink:hover {
+  color: var(--color-text-primary);
+  background: #252525;
+}
+
+/* Right Col: Map */
+.mapCol {
+  display: flex;
+}
+
+.mapWrapper {
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #111;
+  min-height: 250px;
+}
+
+/* Bottom bar */
+.footerBottom {
+  border-top: 1px solid var(--color-border);
+  padding: 24px 0;
+}
+
+.bottomInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bottomLinks {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Mobile responsive */
+@media (max-width: 992px) {
+  .footerGrid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+
+  .servicesAndContact {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .socialCol {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .mapWrapper {
+    height: 300px;
+  }
+
+  .bottomInner {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+}

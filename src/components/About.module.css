@@ -1,0 +1,176 @@
+.about {
+  background: var(--color-bg);
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 2-col content */
+.content {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 80px;
+  align-items: start;
+}
+
+/* Left */
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.photoContainer {
+  position: relative;
+}
+
+.aboutPhoto {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  object-position: top;
+  clip-path: polygon(
+    20px 0%,
+    100% 0%,
+    100% calc(100% - 20px),
+    calc(100% - 20px) 100%,
+    0% 100%,
+    0% 20px
+  );
+  display: block;
+}
+
+.cornerTL,
+.cornerBR {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+}
+
+.cornerTL {
+  top: -6px;
+  left: -6px;
+  border-top: 1px solid var(--color-border-strong);
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.cornerBR {
+  bottom: -6px;
+  right: -6px;
+  border-bottom: 1px solid var(--color-border-strong);
+  border-right: 1px solid var(--color-border-strong);
+}
+
+/* Competences */
+.competencesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.competenceItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.competenceLine {
+  width: 20px;
+  height: 1px;
+  background: var(--color-border-strong);
+  flex-shrink: 0;
+}
+
+.competenceText {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+}
+
+/* Right */
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* Bio block */
+.bioBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bioText {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+}
+
+.bioText strong {
+  color: var(--color-text-primary);
+  font-weight: 400;
+}
+
+/* Technical sheet */
+.techSheet {
+  border: 1px solid var(--color-border);
+  clip-path: polygon(
+    14px 0%, 100% 0%, 100% calc(100% - 14px),
+    calc(100% - 14px) 100%, 0% 100%, 0% 14px
+  );
+}
+
+.techSheetHeader {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.techSheetBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.techRow {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 20px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--color-border);
+  align-items: start;
+}
+
+.techRow:last-child {
+  border-bottom: none;
+}
+
+.techLabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding-top: 2px;
+}
+
+.techValue {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.825rem;
+  color: var(--color-text-primary);
+}
+
+/* CTA row */
+.aboutCta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}

@@ -1,0 +1,20 @@
+.purpose {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background-color: var(--color-bg);
+  padding: 180px 0;
+}
+
+.purposeText {
+  max-width: 1000px;
+  margin: 0 auto;
+  font-family: var(--font-title);
+  font-weight: 200;
+  font-size: clamp(1.8rem, 3.5vw, 3.2rem);
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}

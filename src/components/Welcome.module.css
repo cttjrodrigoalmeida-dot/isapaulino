@@ -1,0 +1,115 @@
+.welcomeSection {
+  padding: 120px 0 60px 0;
+  background: var(--color-bg);
+  position: relative;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: flex-start;
+}
+
+.heading {
+  font-family: var(--font-title);
+  font-weight: 200;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.right p {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.boldText {
+  font-weight: 400 !important;
+  color: var(--color-text-primary) !important;
+}
+
+.divider {
+  width: 100%;
+  max-width: 500px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 100px auto;
+}
+
+.dividerBottom {
+  width: 100%;
+  max-width: 500px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 100px auto 0;
+}
+
+.scrollTextContainer {
+  /* 
+     ====================================================
+     💡 CONTROLE DO TEMPO DE DURAÇÃO DO EFEITO "STICKY"
+     ====================================================
+     Aumente este valor (ex: 500vh, 600vh) para que a frase 
+     demore mais para terminar e a tela fique presa por mais tempo.
+     Diminua (ex: 300vh, 200vh) para que seja mais rápido.
+  */
+  height: 1000vh;
+  position: relative;
+  width: 100%;
+}
+
+.stickyTextContainer {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+.ideaHeading {
+  font-family: var(--font-title);
+  font-weight: 200;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.word {
+  display: inline-block;
+  margin-right: 0.3em;
+  transition: opacity 0.1s ease-out;
+}
+
+@media (max-width: 992px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .heading {
+    font-size: clamp(1.6rem, 8vw, 2.5rem);
+  }
+
+  .right p {
+    font-size: 0.95rem;
+  }
+}

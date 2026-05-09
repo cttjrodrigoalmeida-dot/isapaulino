@@ -1,0 +1,35 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Exclude large local asset and design folders
+01. IDENTIDADE VISUAL/
+02 - FOTOS/
+03. FONTES/
+03. MAPA/
+04. REDES SOCIAIS/
+05. DEPOIMENTOS/
+06. PERGUNTAS FREQUENTES/
+07. PORTFOLIOS/
+*.pdf
