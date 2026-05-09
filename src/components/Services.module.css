@@ -161,11 +161,16 @@
   }
 
   .cardImageWrapper {
-    padding: 0 24px 24px 24px;
-    height: 250px;
+    padding: 0 24px 32px 24px;
+    height: auto;
+    display: flex;
+    justify-content: center;
   }
   
   .cardImage {
+    width: 240px;
+    height: 240px;
+    object-fit: cover;
     border-radius: var(--border-radius-standard);
   }
 }
