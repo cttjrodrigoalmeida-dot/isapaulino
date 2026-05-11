@@ -1,16 +1,1 @@
-[
-  {
-    "slug": "um-teste-para-um-post",
-    "title": "Um teste para um post",
-    "subtitle": "Um teste para o blog da Isa",
-    "category": "Arquitetura",
-    "date": "10 de Maio, 2026",
-    "readTime": "1 min",
-    "coverImage": "https://images.unsplash.com/photo-1527576539890-dfa815648363?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YXJxdWl0ZXR1cmElMjBwcmV0byUyMGUlMjBicmFuY298ZW58MHx8MHx8fDA%3D",
-    "coverImageAlt": "Arquitetura",
-    "featured": false,
-    "content": "<p>Agora vou escrever algo aqui <br><strong>Testando negrito, <em>itálico, <u>sublinhado</u></em></strong></p><p></p><ul><li><p>Lista 1</p></li><li><p><strong>Apenas </strong><em>com</em> bolinhas</p></li><li><p><u>Funcionando</u></p></li></ul><p></p><ol><li><p>Lista 2</p></li><li><p>Apena com número</p></li><li><p>Funcinando</p></li></ol><p></p><blockquote><p>Agora posso citar qualquer coisa também.</p></blockquote><p></p><p></p><p></p>",
-    "seoTitle": "Um teste para um post - Tudo funcionando corretamente.",
-    "metaDescription": "Esse teste serve pra gente ver como está o blog, individual, textual e como está o SEO. 160 caracteres absurdamente suficiente. Mas quanto mais, melhor."
-  }
-]
+[]
