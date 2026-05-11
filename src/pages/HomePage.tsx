@@ -12,6 +12,7 @@ import Contact from '../components/Contact'
 import Footer from '../components/Footer'
 import WhatsappFloat from '../components/WhatsappFloat'
 import CustomCursor from '../components/CustomCursor'
+import About from '../components/About'
 import FadeIn from '../components/FadeIn'
 import { useEffect } from 'react'
 import Lenis from 'lenis'
@@ -49,7 +50,7 @@ export default function HomePage() {
         <PurposeSection />
         <FadeIn delay={0.1}><Testimonials /></FadeIn>
         <FadeIn delay={0.1}><InstagramCTA /></FadeIn>
-        {/* <About /> */}
+        <FadeIn delay={0.1}><About /></FadeIn>
         <FadeIn delay={0.1}><FAQ /></FadeIn>
         <FadeIn delay={0.1}><Contact /></FadeIn>
       </main>

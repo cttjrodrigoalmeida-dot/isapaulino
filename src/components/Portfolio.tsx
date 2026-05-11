@@ -76,7 +76,14 @@ export default function Portfolio() {
               Mostrar mais...
             </button>
           ) : (
-            <button onClick={() => setVisibleCount(4)} className={styles.showMoreBtn}>
+            <button
+              onClick={() => {
+                const section = document.getElementById('projetos')
+                if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                setTimeout(() => setVisibleCount(4), 400)
+              }}
+              className={styles.showMoreBtn}
+            >
               Mostrar menos
             </button>
           )}

@@ -28,7 +28,7 @@ export default function Contact() {
       `Telefone: ${formData.phone}\n\n` +
       `${formData.message}`
     )
-    window.open(`https://wa.me/5562999999999?text=${msg}`, '_blank')
+    window.open(`https://wa.me/5562919942598?text=${msg}`, '_blank')
     setSubmitted(true)
   }
 
@@ -60,7 +60,7 @@ export default function Contact() {
 
           <div className={styles.contactDetailsRow}>
             <div className={styles.contactDetailsText}>
-              <p><span>+</span> <a href="mailto:isabelapaulinostudio@gmail.com">isabelapaulinostudio@gmail.com</a></p>
+              <p><span>+</span> <a href="mailto:isapaulinostudio@gmail.com">isapaulinostudio@gmail.com</a></p>
               <div className={styles.separator}></div>
               <p><span>+</span> Goiás, Brasil</p>
               <p><span>+</span> (BRT - Brasília Time em UTC -03:00)</p>

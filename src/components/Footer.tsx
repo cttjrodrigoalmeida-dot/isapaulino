@@ -17,7 +17,7 @@ export default function Footer() {
       <div className={styles.footerTop}>
         <div className="container">
           <div className={styles.footerGrid}>
-            
+
             {/* Left Col: Logo & Info */}
             <div className={styles.leftCol}>
               <a href="#inicio" className={styles.footerLogo}>
@@ -30,7 +30,7 @@ export default function Footer() {
               <p className="text-body" style={{ maxWidth: 500, fontSize: '0.85rem', marginBottom: '32px' }}>
                 Fundado em 2020 pela arquiteta Isabela Paulino, o estúdio é especializado em projetos executivos, detalhamento técnico e compatibilização. Com mais de 200 projetos realizados no Brasil e no exterior, transforma ideias em projetos prontos para execução.
               </p>
-              
+
               <div className={styles.servicesAndContact}>
                 <ul className={styles.servicesList}>
                   {services.map(s => (
@@ -55,7 +55,7 @@ export default function Footer() {
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>
                       </svg>
                     </span>
-                    <a href="mailto:contato@isabelapaulino.com.br" className={styles.contactValue}>contato@isabelaPaulino.com.br</a>
+                    <a href="mailto:isapaulinastudio@gmail.com" className={styles.contactValue}>isapaulinostudio@gmail.com</a>
                   </li>
                   <li>
                     <span className={styles.contactIcon}>

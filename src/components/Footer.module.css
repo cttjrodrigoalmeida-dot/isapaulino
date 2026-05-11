@@ -104,11 +104,11 @@ a.contactValue:hover {
 }
 
 .socialCol .socialLink:nth-child(odd) {
-  border-radius: 0px 20px 0px 20px;
+  border-radius: 0px 8px 0px 8px;
 }
 
 .socialCol .socialLink:nth-child(even) {
-  border-radius: 20px 0px 20px 0px;
+  border-radius: 8px 0px 8px 0px;
 }
 
 .socialLink:hover {

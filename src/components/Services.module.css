@@ -36,7 +36,7 @@
 
 .accentText {
   font-weight: 200;
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
 }
 
 .cardsContainer {
