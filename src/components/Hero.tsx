@@ -53,7 +53,7 @@ export default function Hero() {
           {/* Tag line */}
           <div className={styles.tagLine}>
             <span className={styles.tagDot} />
-            <span className="text-label">ARQ / DET. TÉCNICO / TERCEIRIZAÇÃO</span>
+            <span className="text-label">ARQUITETURA / DETALHAMENTO TÉCNICO / TERCEIRIZAÇÃO</span>
           </div>
 
           {/* Main heading */}
@@ -61,12 +61,13 @@ export default function Hero() {
             <span className={styles.headingLine}>TERCEIRIZE</span>
             <span className={styles.headingLine}>SEU PROJETO</span>
             <span className={styles.headingLine}>COM QUEM</span>
-            <span className={`${styles.headingLine} ${styles.headingAccent}`}>VIVE O DETALHE.</span>
+            <span className={`${styles.headingLine} ${styles.headingAccent}`}>VIVE O</span>
+            <span className={`${styles.headingLine} ${styles.headingAccent}`}>DETALHE</span>
           </h1>
 
           {/* Subtitle */}
           <p className={styles.heroSubtitle}>
-            Se o detalhamento está travando seu projeto, acumulando decisões e apertando seu prazo, você sabe o quanto isso impacta a rotina do seu escritório. É exatamente nesse ponto que eu entro.
+            Se o detalhamento está travando seu projeto, acumulando decisões e apertando seu prazo, você sabe o quanto isso impacta a rotina do seu escritório.<br></br> É exatamente nesse ponto que eu entro.
           </p>
 
           {/* CTA buttons */}
@@ -99,7 +100,7 @@ export default function Hero() {
             <div className={styles.statDivider} />
             <div className={styles.stat}>
               <span ref={ref100} className={styles.statValue}>0%</span>
-              <span className={styles.statLabel}>Satisfação garantida</span>
+              <span className={styles.statLabel}>Clientes satisfeitos</span>
             </div>
           </div>
         </div>
@@ -120,6 +121,11 @@ export default function Hero() {
             <div className={styles.floatingBadge}>
               <span className={styles.badgeTitle}>Isabela Paulino</span>
               <span className={styles.badgeRole}>Arquiteta / CAU A313396-6</span>
+            </div>
+            
+            {/* Tools List */}
+            <div className={styles.heroTools}>
+              <span className="text-label">AUTOCAD &bull; ARCHICAD &bull; SKETCHUP LAYOUT &bull; REVIT</span>
             </div>
           </div>
 

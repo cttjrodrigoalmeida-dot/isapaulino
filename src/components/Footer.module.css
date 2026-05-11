@@ -95,13 +95,20 @@ a.contactValue:hover {
 .socialLink {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
   background: #151515;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
   transition: color var(--transition), background var(--transition);
+}
+
+.socialCol .socialLink:nth-child(odd) {
+  border-radius: 0px 20px 0px 20px;
+}
+
+.socialCol .socialLink:nth-child(even) {
+  border-radius: 20px 0px 20px 0px;
 }
 
 .socialLink:hover {

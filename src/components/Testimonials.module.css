@@ -23,7 +23,6 @@
 .controlBtn {
   width: 48px;
   height: 48px;
-  border-radius: var(--border-radius-standard);
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: transparent;
   color: var(--color-text-primary);
@@ -31,6 +30,14 @@
   align-items: center;
   justify-content: center;
   transition: all var(--transition);
+}
+
+.controlBtn:nth-child(1) {
+  border-radius: 0px 20px 0px 20px;
+}
+
+.controlBtn:nth-child(2) {
+  border-radius: 20px 0px 20px 0px;
 }
 
 .controlBtn:hover {
@@ -96,8 +103,15 @@
   flex-direction: column;
   justify-content: space-between;
   min-height: 320px;
-  border-radius: var(--border-radius-standard);
   transition: background var(--transition);
+}
+
+.card:nth-child(odd) {
+  border-radius: 0px 20px 0px 20px;
+}
+
+.card:nth-child(even) {
+  border-radius: 20px 0px 20px 0px;
 }
 
 @media (max-width: 992px) {
@@ -140,9 +154,11 @@
 }
 
 .clientName {
-  font-family: var(--font-body);
+  font-family: var(--font-title);
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
   color: var(--color-text-primary);
 }
 
@@ -153,12 +169,19 @@
   color: var(--color-text-secondary);
 }
 
+.clientSeparator {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-weight: 300;
+}
+
 .clientLocation {
   font-family: var(--font-body);
   font-size: 0.8rem;
   font-weight: 300;
   color: var(--color-text-secondary);
-  text-transform: lowercase;
+  text-transform: capitalize;
 }
 
 .clientRole {

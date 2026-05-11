@@ -15,16 +15,17 @@
 
 .title {
   font-family: var(--font-title);
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 300;
+  font-weight: 200;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
   line-height: 1.1;
   color: var(--color-text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
   text-transform: uppercase;
 }
 
 .titleOutline {
   font-weight: 200;
+  color: var(--color-text-secondary);
 }
 
 .subtitle {
@@ -93,9 +94,9 @@
 .stepTitle {
   font-family: var(--font-title);
   font-size: 1.1rem;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--color-text-primary);
-  letter-spacing: 0.02em;
+  letter-spacing: -0.04em;
   display: flex;
   align-items: center;
   gap: 6px;

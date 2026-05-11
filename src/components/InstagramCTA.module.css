@@ -27,9 +27,13 @@
   font-weight: 200;
   font-size: clamp(2rem, 3.5vw, 3.5rem);
   line-height: 1.1;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.04em;
   text-transform: uppercase;
   margin-bottom: 20px;
+}
+
+.titleMuted {
+  color: var(--color-text-secondary);
 }
 
 .subtitle {
@@ -89,7 +93,8 @@
   width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
+  gap: 20px;
+  padding: 0 5vw;
 }
 
 .gridItem {
@@ -97,11 +102,14 @@
   aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--color-surface);
-  border-radius: var(--border-radius-standard);
+}
+
+.gridItem:nth-child(odd) {
+  border-radius: 0px 40px 0px 40px;
 }
 
 .gridItem:nth-child(even) {
-  border-radius: var(--border-radius-mirror);
+  border-radius: 40px 0px 40px 0px;
 }
 
 .gridImg {

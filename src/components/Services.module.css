@@ -5,13 +5,33 @@
 
 .mainTitle {
   font-family: var(--font-title);
-  font-weight: 500;
-  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 200;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
   line-height: 1.1;
+  letter-spacing: -0.04em;
   text-align: center;
   color: var(--color-text-primary);
   margin-bottom: 80px;
   text-transform: uppercase;
+  background: var(--color-bg);
+  padding: 16px 0;
+  pointer-events: auto;
+}
+
+.sectionHeader {
+  position: sticky;
+  top: 120px;
+  z-index: 10;
+  text-align: center;
+  pointer-events: none;
+}
+
+.sectionHeader .mainTitle {
+  margin-bottom: 0;
+}
+
+.titleSpacer {
+  height: 600px;
 }
 
 .accentText {
@@ -23,6 +43,9 @@
   display: flex;
   flex-direction: column;
   gap: 40px;
+  margin-top: -600px;
+  position: relative;
+  z-index: 5;
 }
 
 .serviceCard {
@@ -36,12 +59,14 @@
 }
 
 /* Efeito de empilhamento no scroll */
-.serviceCard:nth-child(1) { top: 120px; }
-.serviceCard:nth-child(2) { top: 150px; }
-.serviceCard:nth-child(3) { top: 180px; }
+.serviceCard:nth-child(1) { top: 280px; }
+.serviceCard:nth-child(2) { top: 310px; }
+.serviceCard:nth-child(3) { top: 340px; }
+.serviceCard:nth-child(4) { top: 370px; }
+.serviceCard:nth-child(5) { top: 400px; }
 
 .cardContent {
-  padding: 32px 32px 32px 48px;
+  padding: 32px 80px 32px 64px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -56,9 +81,9 @@
 
 .cardTitle {
   font-family: var(--font-title);
-  font-weight: 300;
+  font-weight: 500;
   font-size: 1.4rem;
-  letter-spacing: 0.05em;
+  letter-spacing: -0.04em;
   color: var(--color-text-primary);
   margin-bottom: 16px;
 }
@@ -112,8 +137,10 @@
 
 .cardImageWrapper {
   width: 100%;
-  height: 100%;
-  padding: 32px 32px 32px 0;
+  padding: 40px 40px 40px 0;
+  box-sizing: border-box;
+  display: flex;
+  min-height: 0;
 }
 
 .cardImage {
@@ -122,6 +149,7 @@
   object-fit: cover;
   object-position: center;
   border-radius: var(--border-radius-standard);
+  min-height: 0;
 }
 
 @media (max-width: 992px) {
@@ -134,9 +162,11 @@
   }
   
   /* Update sticky tops for smaller screens */
-  .serviceCard:nth-child(1) { top: 80px; }
-  .serviceCard:nth-child(2) { top: 100px; }
-  .serviceCard:nth-child(3) { top: 120px; }
+  .serviceCard:nth-child(1) { top: 240px; }
+  .serviceCard:nth-child(2) { top: 260px; }
+  .serviceCard:nth-child(3) { top: 280px; }
+  .serviceCard:nth-child(4) { top: 300px; }
+  .serviceCard:nth-child(5) { top: 320px; }
 
   .cardContent {
     padding: 24px;

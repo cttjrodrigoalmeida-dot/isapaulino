@@ -41,8 +41,8 @@ export default function HowItWorks() {
         {/* Header */}
         <div className={styles.sectionHeader}>
           <h2 className={styles.title}>
-            COMO FUNCIONA O<br />
-            <span className={styles.titleOutline}>DETALHAMENTO</span>
+            COMO FUNCIONA<br />
+            <span className={styles.titleOutline}>O DETALHAMENTO</span>
           </h2>
           <p className={styles.subtitle}>
             Um processo simples, com etapas claras e prazos definidos<br/>

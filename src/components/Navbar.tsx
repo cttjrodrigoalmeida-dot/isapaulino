@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import styles from './Navbar.module.css'
 
 const navItems = [
@@ -8,6 +9,7 @@ const navItems = [
   { label: 'Feedbacks', href: '#feedbacks' },
   { label: 'Sobre', href: '#sobre' },
   { label: 'Contato', href: '#contato' },
+  { label: 'Blog', href: '/blog' },
 ]
 
 const socialLinks = [
@@ -21,6 +23,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [activeSection, setActiveSection] = useState('inicio')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,11 +36,29 @@ export default function Navbar() {
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault()
+    setMobileMenuOpen(false)
+
+    // Route-based navigation (e.g. /blog)
+    if (href.startsWith('/')) {
+      navigate(href)
+      return
+    }
+
+    // If we're not on the homepage, navigate there first then scroll
+    if (location.pathname !== '/') {
+      navigate('/')
+      setTimeout(() => {
+        const target = document.querySelector(href)
+        if (target) target.scrollIntoView({ behavior: 'smooth' })
+      }, 300)
+      return
+    }
+
+    // Hash-based scroll on homepage
     const target = document.querySelector(href)
     if (target) {
       target.scrollIntoView({ behavior: 'smooth' })
       setActiveSection(href.replace('#', ''))
-      setMobileMenuOpen(false) // Close menu on click
     }
   }
 

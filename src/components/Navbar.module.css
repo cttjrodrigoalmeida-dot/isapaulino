@@ -17,7 +17,7 @@
   width: calc(100% - 32px);
   max-width: 1440px;
   position: relative;
-  border-radius: var(--border-radius-standard);
+  border-radius: var(--border-radius-mirror);
 }
 
 .navbar::before {
@@ -28,9 +28,9 @@
   right: 0;
   bottom: 0;
   background: #111111;
-  border-radius: var(--border-radius-standard);
+  border-radius: var(--border-radius-mirror);
   z-index: -1;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .navInner {
@@ -109,7 +109,22 @@
   justify-content: center;
   color: var(--color-text-secondary);
   transition: color var(--transition), background var(--transition);
-  border-radius: var(--border-radius-sm);
+}
+
+.socialLink:nth-child(1) {
+  border-radius: 0px 8px 0px 8px;
+}
+
+.socialLink:nth-child(2) {
+  border-radius: 8px 0px 8px 0px;
+}
+
+.socialLink:nth-child(3) {
+  border-radius: 0px 8px 0px 8px;
+}
+
+.socialLink:nth-child(4) {
+  border-radius: 8px 0px 8px 0px;
 }
 
 .socialLink:hover {
@@ -162,7 +177,7 @@
   .navbar {
     width: calc(100% - 32px);
   }
-  
+
   .navInner {
     padding: 16px 24px;
   }

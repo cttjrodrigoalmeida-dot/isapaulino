@@ -2,14 +2,19 @@ import { useRef } from 'react'
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
 import styles from './Welcome.module.css'
 
-const ideaText = "A IDEIA AQUI É SIMPLES: EVITAR QUE VOCÊ PRECISE RESOLVER NA OBRA O QUE PODERIA TER SIDO DECIDIDO NO PROJETO."
-const words = ideaText.split(" ")
+const ideaPhrases = [
+  "A IDEIA AQUI É SIMPLES",
+  "EVITAR QUE VOCÊ PRECISE",
+  "RESOLVER NA OBRA",
+  "O QUE PODERIA TER SIDO DECIDIDO",
+  "AINDA NA FASE DE PROJETO."
+]
 
-function Word({ word, progress, range }: { word: string, progress: MotionValue<number>, range: [number, number] }) {
-  const opacity = useTransform(progress, range, [0.10, 1])
+function Phrase({ text, progress, range }: { text: string, progress: MotionValue<number>, range: [number, number] }) {
+  const opacity = useTransform(progress, range, [0.15, 1])
   return (
-    <motion.span style={{ opacity }} className={styles.word}>
-      {word}
+    <motion.span style={{ opacity }} className={styles.phrase}>
+      {text}
     </motion.span>
   )
 }
@@ -30,8 +35,10 @@ export default function Welcome() {
             UM ESTÚDIO<br />
             FOCADO EM<br />
             TORNAR<br />
-            PROJETOS<br />
-            EXECUTÁVEIS.
+            <span className={styles.headingAccent}>
+              PROJETOS<br />
+              EXECUTÁVEIS.
+            </span>
           </h2>
         </div>
         <div className={styles.right}>
@@ -64,13 +71,15 @@ export default function Welcome() {
         <div className={styles.stickyTextContainer}>
           <div className="container">
             <h3 className={styles.ideaHeading}>
-              {words.map((word, i) => {
-                const start = i / words.length
-                const end = start + (1 / words.length)
+              {ideaPhrases.map((phrase, i) => {
+                // Animação termina aos 75% (0.75) do scroll para dar a pausa no final
+                const animationDuration = 0.75
+                const start = (i / ideaPhrases.length) * animationDuration
+                const end = start + (animationDuration / ideaPhrases.length)
                 return (
-                  <Word
+                  <Phrase
                     key={i}
-                    word={word}
+                    text={phrase}
                     progress={scrollYProgress}
                     range={[start, end]}
                   />

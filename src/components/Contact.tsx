@@ -35,7 +35,7 @@ export default function Contact() {
   return (
     <section id="contato" className={styles.contactSection}>
       <div className={styles.containerSplit}>
-        
+
         {/* Left Column: Contate-nos */}
         <div className={styles.leftColumn}>
           <div className={styles.columnHeader}>
@@ -47,15 +47,12 @@ export default function Contact() {
             <div className={styles.profileImageWrapper}>
               {/* Foto da HERO conforme solicitado */}
               <img src="/assets/images/hero-photo.jpg" alt="Isabela Paulino" className={styles.profileImage} />
-              <div className={styles.whatsappBadge}>
-                <img src="/assets/icons/whatsapp.png" alt="WhatsApp" />
-              </div>
             </div>
             <div className={styles.profileInfo}>
               <img src="/assets/logo-parasite.png" alt="Isabela Paulino Studio" className={styles.profileLogo} />
               <p className={styles.profileRole}>
                 Fundadora -<br />
-                Arquiteta e Archviz<br />
+                Arquiteta<br />
                 CAU: A313396-6
               </p>
             </div>
@@ -63,7 +60,7 @@ export default function Contact() {
 
           <div className={styles.contactDetailsRow}>
             <div className={styles.contactDetailsText}>
-              <p><span>+</span> <a href="mailto:contato@isabelapaulino.com.br">contato@isabelaPaulino.com.br</a></p>
+              <p><span>+</span> <a href="mailto:isabelapaulinostudio@gmail.com">isabelapaulinostudio@gmail.com</a></p>
               <div className={styles.separator}></div>
               <p><span>+</span> Goiás, Brasil</p>
               <p><span>+</span> (BRT - Brasília Time em UTC -03:00)</p>
@@ -135,9 +132,9 @@ export default function Contact() {
               </div>
 
               <div className={styles.checkboxWrapper}>
-                <input 
-                  type="checkbox" 
-                  id="privacy" 
+                <input
+                  type="checkbox"
+                  id="privacy"
                   checked={accepted}
                   onChange={(e) => setAccepted(e.target.checked)}
                 />

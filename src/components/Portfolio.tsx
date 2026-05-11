@@ -1,49 +1,31 @@
+import { useState } from 'react'
 import styles from './Portfolio.module.css'
 
-const portfolioItems = [
-  { 
-    id: 1, 
-    src: '/assets/portfolio/1.jpg', 
-    title: 'SafeRide',
-    description: "Redesigned a healthcare provider's patient...",
-    stat: '41% increase in prescription refill completion rate',
-    tags: ['UI/UX Designer', 'Travel']
-  },
-  { 
-    id: 2, 
-    src: '/assets/portfolio/2.jpg', 
-    title: 'SafeRide',
-    description: "Redesigned a healthcare provider's patient...",
-    stat: '41% increase in prescription refill completion rate',
-    tags: ['UI/UX Designer', 'Travel']
-  },
-  { 
-    id: 3, 
-    src: '/assets/portfolio/3.jpg', 
-    title: 'SafeRide',
-    description: "Redesigned a healthcare provider's patient...",
-    stat: '41% increase in prescription refill completion rate',
-    tags: ['UI/UX Designer', 'Travel']
-  },
-  { 
-    id: 4, 
-    src: '/assets/portfolio/4.jpg', 
-    title: 'SafeRide',
-    description: "Redesigned a healthcare provider's patient...",
-    stat: '41% increase in prescription refill completion rate',
-    tags: ['UI/UX Designer', 'Travel']
-  },
-]
+const portfolioItems = Array.from({ length: 20 }, (_, i) => ({
+  id: i + 1,
+  src: `/assets/portfolio/PRANCHA PORTFOLIOS (${i + 1}).webp`,
+  title: 'PROJETO EXECUTIVO',
+  description: 'Detalhamento técnico completo, focado em precisão e alinhamento estético para execução.',
+  stat: `Prancha ${String(i + 1).padStart(2, '0')}`,
+  tags: ['Executivo', 'Detalhamento', 'Layout']
+}))
 
 export default function Portfolio() {
+  const [visibleCount, setVisibleCount] = useState(6)
+
+  const handleShowMore = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setVisibleCount(portfolioItems.length)
+  }
+
   return (
     <section id="projetos" className={styles.portfolioSection}>
       <div className="container">
         {/* Header */}
         <div className={styles.sectionHeader}>
           <h2 className={styles.title}>
-            UM <span className={styles.titleBold}>PROJETO PRONTO</span> PARA<br />
-            EXECUÇÃO COMEÇA NO DETALHE.
+            PROJETO PRONTO <span className={styles.titleAccent}>PARA<br />
+            EXECUÇÃO</span> COMEÇA NO DETALHE.
           </h2>
           <p className={styles.subtitle}>
             Cada projeto abaixo mostra um pouco de como o detalhamento, a imagem e a<br />
@@ -52,7 +34,7 @@ export default function Portfolio() {
         </div>
 
         <div className={styles.projectsGrid}>
-          {portfolioItems.map((item) => {
+          {portfolioItems.slice(0, visibleCount).map((item) => {
             return (
               <div key={item.id} className={styles.projectCard}>
                 
@@ -87,12 +69,20 @@ export default function Portfolio() {
           })}
         </div>
 
-        {/* Mostrar mais CTA */}
+        {/* Mostrar mais / menos CTA */}
         <div className={styles.ctaWrapper}>
-          <a href="#contato" className={styles.showMoreBtn}>
-            Mostrar mais...
-          </a>
+          {visibleCount < portfolioItems.length ? (
+            <button onClick={handleShowMore} className={styles.showMoreBtn}>
+              Mostrar mais...
+            </button>
+          ) : (
+            <button onClick={() => setVisibleCount(6)} className={styles.showMoreBtn}>
+              Mostrar menos
+            </button>
+          )}
         </div>
+
+
       </div>
     </section>
   )

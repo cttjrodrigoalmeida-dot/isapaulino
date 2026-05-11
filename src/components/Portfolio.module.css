@@ -15,16 +15,16 @@
 
 .title {
   font-family: var(--font-title);
-  font-size: clamp(1.8rem, 3vw, 2.5rem);
   font-weight: 200;
-  line-height: 1.2;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
   color: var(--color-text-primary);
   text-transform: uppercase;
-  letter-spacing: -0.01em;
 }
 
-.titleBold {
-  font-weight: 500;
+.titleAccent {
+  color: var(--color-text-secondary);
 }
 
 .subtitle {
@@ -55,18 +55,21 @@
 .projectCard {
   position: relative;
   background-color: #161616;
-  border-radius: var(--border-radius-standard);
   aspect-ratio: 4 / 5;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* Right column cards (even) get mirrored border-radius */
-.projectCard:nth-child(even) {
-  border-radius: var(--border-radius-mirror);
+.projectCard:nth-child(4n + 1),
+.projectCard:nth-child(4n + 4) {
+  border-radius: 0px 40px 0px 40px;
 }
 
+.projectCard:nth-child(4n + 2),
+.projectCard:nth-child(4n + 3) {
+  border-radius: 40px 0px 40px 0px;
+}
 
 /* Container da Imagem */
 .imageWrapper {
@@ -75,15 +78,20 @@
   left: 0;
   width: 100%;
   height: 100%;
-  border-radius: var(--border-radius-standard);
   overflow: hidden;
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: top center;
   z-index: 1;
 }
 
-.projectCard:nth-child(even) .imageWrapper {
-  border-radius: var(--border-radius-mirror);
+.projectCard:nth-child(4n + 1) .imageWrapper,
+.projectCard:nth-child(4n + 4) .imageWrapper {
+  border-radius: 0px 40px 0px 40px;
+}
+
+.projectCard:nth-child(4n + 2) .imageWrapper,
+.projectCard:nth-child(4n + 3) .imageWrapper {
+  border-radius: 40px 0px 40px 0px;
 }
 
 .projectImage {
@@ -107,11 +115,16 @@
 /* ── Efeito Hover na Imagem ── */
 .projectCard:hover .imageWrapper {
   height: calc(100% - 100px);
-  border-radius: var(--border-radius-standard);
 }
 
-.projectCard:nth-child(even):hover .imageWrapper {
-  border-radius: var(--border-radius-mirror);
+.projectCard:nth-child(4n + 1):hover .imageWrapper,
+.projectCard:nth-child(4n + 4):hover .imageWrapper {
+  border-radius: 0px 40px 0px 40px;
+}
+
+.projectCard:nth-child(4n + 2):hover .imageWrapper,
+.projectCard:nth-child(4n + 3):hover .imageWrapper {
+  border-radius: 40px 0px 40px 0px;
 }
 
 .projectCard:hover .imageOverlay {
@@ -121,25 +134,6 @@
 /* Sem zoom na imagem no hover */
 .projectCard:hover .projectImage {
   transform: none;
-}
-
-/* ------------------------------------------- */
-/* CONTROLE INDIVIDUAL DAS BORDAS DOS CARDS 3 e 4 */
-/* Colocado aqui para sobrescrever as regras de :nth-child(even) acima */
-/* ------------------------------------------- */
-
-/* CARD 3 */
-.projectCard:nth-child(3),
-.projectCard:nth-child(3) .imageWrapper,
-.projectCard:nth-child(3):hover .imageWrapper {
-  border-radius: 0px 40px 0px 40px;
-}
-
-/* CARD 4 */
-.projectCard:nth-child(4),
-.projectCard:nth-child(4) .imageWrapper,
-.projectCard:nth-child(4):hover .imageWrapper {
-  border-radius: 40px 0px 40px 0px;
 }
 
 /* ── Tab Superior Direito (Stat) ── */

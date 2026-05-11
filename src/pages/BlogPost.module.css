@@ -1,0 +1,219 @@
+.blogPostPage {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding-top: 120px;
+}
+
+/* ── Hero Cover ── */
+.coverWrapper {
+  max-width: 1000px;
+  margin: 0 auto 48px;
+  padding: 0 clamp(24px, 5vw, 80px);
+}
+
+.coverImage {
+  width: 100%;
+  height: clamp(300px, 40vw, 500px);
+  object-fit: cover;
+  border-radius: var(--border-radius-standard);
+  border: 1px solid var(--color-border);
+}
+
+/* ── Article Header ── */
+.articleHeader {
+  max-width: 760px;
+  margin: 0 auto 48px;
+  padding: 0 clamp(24px, 5vw, 80px);
+}
+
+.articleCategory {
+  font-family: var(--font-subtitle);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 16px;
+}
+
+.articleTitle {
+  font-family: var(--font-title);
+  font-weight: 200;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  margin-bottom: 16px;
+}
+
+.articleSubtitle {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin-bottom: 24px;
+}
+
+.articleMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-subtitle);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── Article Content ── */
+.articleContent {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 clamp(24px, 5vw, 80px) 120px;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: var(--color-text-secondary);
+}
+
+.articleContent h2 {
+  font-family: var(--font-title);
+  font-weight: 300;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  margin: 2.5em 0 0.75em;
+}
+
+.articleContent h3 {
+  font-family: var(--font-title);
+  font-weight: 300;
+  font-size: 1.2rem;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  margin: 2em 0 0.5em;
+}
+
+.articleContent p {
+  margin: 0 0 1.5em;
+}
+
+.articleContent strong {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.articleContent em {
+  font-style: italic;
+}
+
+.articleContent a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.articleContent ul,
+.articleContent ol {
+  padding-left: 1.5em;
+  margin: 0 0 1.5em;
+}
+
+.articleContent li {
+  margin: 0.5em 0;
+}
+
+.articleContent blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding: 16px 24px;
+  margin: 2em 0;
+  background: var(--color-surface);
+  border-radius: 0 12px 12px 0;
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.articleContent img {
+  max-width: 100%;
+  border-radius: 12px;
+  margin: 2em 0;
+  border: 1px solid var(--color-border);
+}
+
+/* ── Back Link ── */
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-subtitle);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-bottom: 48px;
+  transition: color var(--transition);
+}
+
+.backLink:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── Not Found ── */
+.notFound {
+  text-align: center;
+  padding: 120px 32px;
+}
+
+.notFoundTitle {
+  font-family: var(--font-title);
+  font-weight: 200;
+  font-size: 1.8rem;
+  letter-spacing: -0.03em;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.notFoundText {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 32px;
+}
+
+.notFoundBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-family: var(--font-subtitle);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-btn);
+  text-decoration: none;
+  transition: all var(--transition);
+}
+
+.notFoundBtn:hover {
+  background: var(--color-text-primary);
+  color: var(--color-bg);
+}
+
+@media (max-width: 600px) {
+  .blogPostPage {
+    padding-top: 100px;
+  }
+}

@@ -5,7 +5,7 @@ const testimonials = [
   {
     id: 7,
     name: 'Leison Martins',
-    handle: '',
+    handle: '@leisonmartins',
     location: 'Goiás, Brasil.',
     role: 'Engenheiro Civil',
     text: 'Trabalhar com a Isabela é sempre um prazer; Ela leva suas ideias para o próximo nível com excelente gerenciamento de projetos e flexibilidade para soluções ao longo do caminho.',
@@ -13,15 +13,15 @@ const testimonials = [
   {
     id: 6,
     name: 'Jordana Paulino',
-    handle: '',
+    handle: '@jordanaluciia',
     location: 'Goiás, Brasil.',
-    role: '',
+    role: 'Engenheira Agrônoma',
     text: 'Parabéns Isabela! Profissional extremamente comprometida, atenta aos detalhes e dedicada a entregar sempre com excelência. Recomendo com total confiança! Orgulho de você ❤️',
   },
   {
     id: 8,
     name: 'Pedro Malta',
-    handle: '',
+    handle: '@estudio.cantu',
     location: 'São Paulo, Brasil.',
     role: 'Arquiteto / Estúdio Cantú',
     text: 'Oi Isabela Bom dia. Primeiramente mto obrigado! Já enviamos os desenhos e vc nos salvou. Isabela to mto satisfeito com o trabalho, os pontos que apontei sao bem poucos.',
@@ -89,8 +89,8 @@ export default function Testimonials() {
               <span>Feedbacks</span>
             </div>
             <h2 className={styles.title}>
-              O que dizem sobre nós<br />
-              <span className={styles.titleMuted}>a nossa experiência</span>
+              O QUE DIZEM SOBRE NÓS<br />
+              <span className={styles.titleMuted}>A NOSSA EXPERIÊNCIA</span>
             </h2>
           </div>
           <div className={styles.carouselControls}>
@@ -112,6 +112,7 @@ export default function Testimonials() {
                 <div className={styles.clientInfo}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span className={styles.clientName}>{t.name}</span>
+                    {t.handle && <span className={styles.clientSeparator}>|</span>}
                     {t.handle && <span className={styles.clientHandle}>{t.handle}</span>}
                   </div>
                   <span className={styles.clientRole}>{t.role}</span>

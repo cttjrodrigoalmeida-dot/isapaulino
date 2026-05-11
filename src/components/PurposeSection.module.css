@@ -1,10 +1,31 @@
 .purpose {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
   background-color: var(--color-bg);
-  padding: 180px 0;
+  padding: 0;
+  position: relative;
+}
+
+.scrollTextContainer {
+  /* 
+     ====================================================
+     💡 CONTROLE DO TEMPO DE DURAÇÃO DO EFEITO "STICKY"
+     ====================================================
+     Aumente este valor para que a frase demore mais para 
+     terminar e a tela fique presa por mais tempo.
+  */
+  height: 400vh;
+  position: relative;
+  width: 100%;
+}
+
+.stickyTextContainer {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
 }
 
 .purposeText {
@@ -12,9 +33,14 @@
   margin: 0 auto;
   font-family: var(--font-title);
   font-weight: 200;
-  font-size: clamp(1.8rem, 3.5vw, 3.2rem);
-  line-height: 1.2;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  line-height: 1.1;
   text-transform: uppercase;
   color: var(--color-text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
+}
+
+.phrase {
+  display: block;
+  transition: opacity 0.1s ease-out;
 }

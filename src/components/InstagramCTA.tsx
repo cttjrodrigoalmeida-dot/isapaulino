@@ -5,7 +5,11 @@ export default function InstagramCTA() {
     <section className={styles.instaCTA}>
       <div className={styles.header}>
         <div className={styles.divider}></div>
-        <h2 className={styles.title}>Quer ver de perto como tudo acontece por aqui?</h2>
+        <h2 className={styles.title}>
+          QUER VER DE PERTO<br />
+          <span className={styles.titleMuted}>COMO TUDO ACONTECE</span><br />
+          POR AQUI?
+        </h2>
         <p className={styles.subtitle}>
           Acompanhe bastidores, processos, detalhes técnicos e resultados dos projetos no Instagram.
         </p>
