@@ -161,12 +161,26 @@
     min-height: 560px;
   }
   
-  /* Update sticky tops for smaller screens */
-  .serviceCard:nth-child(1) { top: 240px; }
-  .serviceCard:nth-child(2) { top: 260px; }
-  .serviceCard:nth-child(3) { top: 280px; }
-  .serviceCard:nth-child(4) { top: 300px; }
-  .serviceCard:nth-child(5) { top: 320px; }
+  .sectionHeader {
+    position: relative;
+    top: 0;
+    margin-bottom: 40px;
+  }
+
+  .titleSpacer {
+    display: none;
+  }
+
+  .cardsContainer {
+    margin-top: 0;
+  }
+
+  /* Update sticky tops for smaller screens (header is not sticky anymore) */
+  .serviceCard:nth-child(1) { top: 100px; }
+  .serviceCard:nth-child(2) { top: 120px; }
+  .serviceCard:nth-child(3) { top: 140px; }
+  .serviceCard:nth-child(4) { top: 160px; }
+  .serviceCard:nth-child(5) { top: 180px; }
 
   .cardContent {
     padding: 24px;

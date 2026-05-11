@@ -323,3 +323,9 @@
   height: 12px;
   background: var(--color-border);
 }
+
+@media (max-width: 992px) {
+  .heroContent {
+    padding-top: 80px;
+  }
+}
