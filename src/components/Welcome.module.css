@@ -88,7 +88,7 @@
 .ideaHeading {
   font-family: var(--font-title);
   font-weight: 200;
-  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
   line-height: 1.2;
   letter-spacing: -0.04em;
   color: var(--color-text-primary);
@@ -109,7 +109,11 @@
   }
 
   .heading {
-    font-size: clamp(1.6rem, 8vw, 2.5rem);
+    font-size: clamp(1.4rem, 7vw, 2rem);
+  }
+
+  .ideaHeading {
+    font-size: clamp(1.4rem, 7vw, 2rem);
   }
 
   .right p {

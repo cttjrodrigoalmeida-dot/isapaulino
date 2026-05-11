@@ -33,7 +33,7 @@
   margin: 0 auto;
   font-family: var(--font-title);
   font-weight: 200;
-  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
   line-height: 1.1;
   text-transform: uppercase;
   color: var(--color-text-primary);
@@ -43,4 +43,10 @@
 .phrase {
   display: block;
   transition: opacity 0.1s ease-out;
+}
+
+@media (max-width: 768px) {
+  .purposeText {
+    font-size: clamp(1.4rem, 7vw, 2rem);
+  }
 }

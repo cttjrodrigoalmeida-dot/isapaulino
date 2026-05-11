@@ -198,6 +198,19 @@ ul, ol { list-style: none; }
   text-transform: uppercase;
 }
 
+/* ============================================================
+   🎯 CONTROLE GLOBAL DOS TÍTULOS DE SEÇÃO — MOBILE
+   ============================================================
+   Este é o ponto central para ajustar o tamanho de todos os
+   títulos grandes do site de uma só vez (mobile e desktop).
+   Títulos que usam essa configuração:
+     - A IDEIA AQUI É SIMPLES... (Welcome)
+     - SERVIÇOS QUE ELEVAM O NÍVEL DO SEU PROJETO (Services)
+     - COMO FUNCIONA O DETALHAMENTO (HowItWorks)
+     - PROJETO PRONTO PARA EXECUÇÃO... (Portfolio)
+     - MAIS DO QUE ENTREGAR UM MATERIAL... (PurposeSection)
+     - QUER VER DE PERTO COMO TUDO ACONTECE... (InstagramCTA)
+   ============================================================ */
 .text-section-title {
   font-family: var(--font-title);
   font-weight: 200;
@@ -205,6 +218,13 @@ ul, ol { list-style: none; }
   line-height: 1.1;
   letter-spacing: -0.04em;
   text-transform: uppercase;
+}
+
+/* 📱 Override mobile — altere aqui para ajustar só no celular */
+@media (max-width: 768px) {
+  .text-section-title {
+    font-size: clamp(1.4rem, 7vw, 2rem);
+  }
 }
 
 .text-subtitle {

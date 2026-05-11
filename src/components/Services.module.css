@@ -6,7 +6,7 @@
 .mainTitle {
   font-family: var(--font-title);
   font-weight: 200;
-  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
   line-height: 1.1;
   letter-spacing: -0.04em;
   text-align: center;
@@ -36,7 +36,7 @@
 
 .accentText {
   font-weight: 200;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .cardsContainer {
@@ -56,6 +56,9 @@
   border-radius: var(--border-radius-standard);
   overflow: hidden;
   position: sticky;
+  will-change: scale;
+  transition: scale 0.08s linear;
+  transform-origin: top center;
 }
 
 /* Efeito de empilhamento no scroll */
@@ -181,6 +184,10 @@
   .serviceCard:nth-child(3) { top: 140px; }
   .serviceCard:nth-child(4) { top: 160px; }
   .serviceCard:nth-child(5) { top: 180px; }
+
+  .mainTitle {
+    font-size: clamp(1.4rem, 7vw, 2rem);
+  }
 
   .cardContent {
     padding: 24px;

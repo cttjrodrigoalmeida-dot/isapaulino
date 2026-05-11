@@ -11,7 +11,7 @@ const portfolioItems = Array.from({ length: 20 }, (_, i) => ({
 }))
 
 export default function Portfolio() {
-  const [visibleCount, setVisibleCount] = useState(6)
+  const [visibleCount, setVisibleCount] = useState(4)
 
   const handleShowMore = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -76,7 +76,7 @@ export default function Portfolio() {
               Mostrar mais...
             </button>
           ) : (
-            <button onClick={() => setVisibleCount(6)} className={styles.showMoreBtn}>
+            <button onClick={() => setVisibleCount(4)} className={styles.showMoreBtn}>
               Mostrar menos
             </button>
           )}

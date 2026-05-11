@@ -9,6 +9,13 @@ function useCountUp(target: number, duration = 1800, prefix = '', suffix = '') {
     const el = ref.current
     if (!el) return
 
+    // No mobile, mostra o valor final direto (sem animação)
+    const isMobile = window.innerWidth < 768
+    if (isMobile) {
+      el.textContent = `${prefix}${target}${suffix}`
+      return
+    }
+
     let startTime: number | null = null
     const step = (timestamp: number) => {
       if (!startTime) startTime = timestamp

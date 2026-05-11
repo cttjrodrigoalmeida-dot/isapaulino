@@ -25,7 +25,7 @@
 .title {
   font-family: var(--font-title);
   font-weight: 200;
-  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
   line-height: 1.1;
   letter-spacing: -0.04em;
   text-transform: uppercase;
@@ -132,5 +132,9 @@
 @media (max-width: 600px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .title {
+    font-size: clamp(1.4rem, 7vw, 2rem);
   }
 }

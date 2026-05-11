@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import styles from './Services.module.css'
 
 const services = [
@@ -39,6 +40,56 @@ const services = [
 ]
 
 export default function Services() {
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  useEffect(() => {
+    const SCALE_MIN = 0.88
+    const SCALE_MAX = 1.0
+
+    const updateScales = () => {
+      const cards = cardRefs.current
+      if (!cards.length) return
+
+      cards.forEach((card, index) => {
+        if (!card) return
+
+        // O último card nunca escala (ele é o card mais abaixo e não tem nada abaixo dele)
+        if (index === cards.length - 1) {
+          card.style.scale = String(SCALE_MAX)
+          return
+        }
+
+        const rect = card.getBoundingClientRect()
+        const viewportHeight = window.innerHeight
+
+        // Quando o card começa a entrar pela parte de baixo da tela,
+        // ele começa em SCALE_MIN e vai até SCALE_MAX conforme sobe
+        const entryStart = viewportHeight          // começa a escalar quando entra na tela
+        const entryEnd = viewportHeight * 0.6      // termina de escalar quando está 60% acima
+
+        let progress = 0
+        if (rect.top <= entryStart && rect.top >= entryEnd) {
+          progress = 1 - (rect.top - entryEnd) / (entryStart - entryEnd)
+        } else if (rect.top < entryEnd) {
+          progress = 1
+        }
+
+        const scale = SCALE_MIN + (SCALE_MAX - SCALE_MIN) * progress
+        card.style.scale = String(parseFloat(scale.toFixed(4)))
+      })
+    }
+
+    // Roda no scroll e no resize
+    window.addEventListener('scroll', updateScales, { passive: true })
+    window.addEventListener('resize', updateScales, { passive: true })
+    updateScales()
+
+    return () => {
+      window.removeEventListener('scroll', updateScales)
+      window.removeEventListener('resize', updateScales)
+    }
+  }, [])
+
   return (
     <section id="servicos" className={styles.servicesSection}>
       <div className="container">
@@ -50,8 +101,13 @@ export default function Services() {
         </div>
 
         <div className={styles.cardsContainer}>
-          {services.map((service) => (
-            <div key={service.id} className={styles.serviceCard}>
+          {services.map((service, index) => (
+            <div
+              key={service.id}
+              className={styles.serviceCard}
+              ref={(el) => { cardRefs.current[index] = el }}
+              style={{ transformOrigin: 'top center' }}
+            >
               <div className={styles.cardContent}>
                 <div className={styles.cardLine} />
                 <h3 className={styles.cardTitle}>{service.title}</h3>

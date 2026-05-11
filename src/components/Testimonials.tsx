@@ -29,7 +29,7 @@ const testimonials = [
   {
     id: 1,
     name: 'Ana Araújo',
-    handle: '',
+    handle: '@anaaraujoarquitetura',
     location: 'Minas Gerais, Brasil.',
     role: 'Arquiteta',
     text: 'É isso mesmo! Nossa, você foi super rápida! Você me salvou!',
@@ -37,7 +37,7 @@ const testimonials = [
   {
     id: 2,
     name: 'Carol Bedin',
-    handle: '',
+    handle: '@bedinconstrutora',
     location: 'Mato Grosso, Brasil.',
     role: 'Arquiteta / Bedin Construtora',
     text: 'Isa, ficou show! Seu trabalho é espetacular.',
@@ -45,7 +45,7 @@ const testimonials = [
   {
     id: 3,
     name: 'Égina Queiroz',
-    handle: '',
+    handle: '@eginaqueiroz.arquitetura',
     location: 'Goiás, Brasil.',
     role: 'Arquiteta',
     text: 'Ficou ótimo querida! Muito obrigada pela sua diligência 🙏 Já me coloca no seu cronograma para mais detalhamentos. Quando surgir disponibilidade me avisa para eu te enviar mais projetos ✌️',
@@ -53,7 +53,7 @@ const testimonials = [
   {
     id: 4,
     name: 'Grace Santiago',
-    handle: '',
+    handle: '@gracesantiago.arquiteta',
     location: 'Goiás, Brasil.',
     role: 'Arquiteta',
     text: 'Ficou perfeito, amei. 🥰 Bem como eu queria. Da última reunião pra cá foi uma evolução fodastica. Ficou topissimo, você foi super assertiva absorveu todas as referências. Todos os detalhes que pedi. Ficou um capricho!',
@@ -61,7 +61,7 @@ const testimonials = [
   {
     id: 5,
     name: 'Isabella Serrano',
-    handle: '',
+    handle: '@arquitetaisabellaserrano',
     location: 'Espírito Santo, Brasil.',
     role: 'Arquiteta',
     text: 'Isaa ficou perfeito!',
