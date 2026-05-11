@@ -99,7 +99,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Comece a escr
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content, false);
+      editor.commands.setContent(content, false as unknown as Parameters<typeof editor.commands.setContent>[1]);
     }
   }, [content, editor]);
 
