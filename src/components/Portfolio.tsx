@@ -18,6 +18,20 @@ export default function Portfolio() {
     setVisibleCount(portfolioItems.length)
   }
 
+  const handleShowLess = () => {
+    const section = document.getElementById('projetos')
+    if (section) {
+      // Calcula posição absoluta da seção no documento
+      const sectionTop = section.getBoundingClientRect().top + window.scrollY
+      // Define scroll diretamente (bypassa Lenis) ANTES de colapsar os cards
+      document.documentElement.scrollTop = sectionTop
+    }
+    // Aguarda um frame para o scroll ser aplicado, depois recolhe os cards
+    requestAnimationFrame(() => {
+      setVisibleCount(4)
+    })
+  }
+
   return (
     <section id="projetos" className={styles.portfolioSection}>
       <div className="container">
@@ -76,14 +90,7 @@ export default function Portfolio() {
               Mostrar mais...
             </button>
           ) : (
-            <button
-              onClick={() => {
-                const section = document.getElementById('projetos')
-                if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                setTimeout(() => setVisibleCount(4), 400)
-              }}
-              className={styles.showMoreBtn}
-            >
+            <button onClick={handleShowLess} className={styles.showMoreBtn}>
               Mostrar menos
             </button>
           )}

@@ -1,21 +1,14 @@
 import styles from './About.module.css'
 
 const technicalSheet = [
-  { label: 'Formação', value: 'Arquitetura e Urbanismo · CAU Registrado' },
-  { label: 'Especialização', value: 'Design de Interiores · Visualização 3D' },
-  { label: 'Experiência', value: '6+ anos em detalhamento técnico executivo' },
-  { label: 'Softwares', value: 'AutoCAD · Revit · 3ds Max · Corona · SketchUp · Lumion' },
-  { label: 'Método de trabalho', value: 'Remoto · Terceirização · Parceria estratégica' },
-  { label: 'Entrega', value: 'PDF executivo · DWG · JPG alta resolução · Vídeo 4K' },
-]
-
-const competences = [
-  'Detalhamento técnico executivo completo',
-  'Modelagem 3D e renderização fotorrealista',
-  'Animação arquitetônica cinematográfica',
-  'Coordenação de projetos terceirizados',
-  'Compatibilização de projetos',
-  'Apresentação e prancha de conceito',
+  { label: 'Nome', value: 'Isabela Paulino' },
+  { label: 'CAU', value: 'A313396-6' },
+  { label: 'Formação', value: 'ARQUITETURA E URBANISMO - UNIGOIÁS | 2021/21' },
+  { label: 'Especialização', value: 'Projeto Executivo de Arquitetura e Interiores' },
+  { label: 'Experiência', value: '+6 ANOS EM DETALHAMENTO E 3D' },
+  { label: 'Softwares', value: 'AutoCAD • Archicad • SketchUp Layout • Revit • CoronaRenderer • 3Ds Max • Photoshop • Illustrator' },
+  { label: 'Método de Trabalho', value: 'Online • Terceirização • Parceria Estratégica' },
+  { label: 'Entrega', value: 'FORMATO EM PDF • DWG • PLN • RVT • SKP • LAYOUT' },
 ]
 
 export default function About() {
@@ -39,20 +32,7 @@ export default function About() {
                 alt="Isabela Paulino"
                 className={styles.aboutPhoto}
               />
-              {/* Corner decorators */}
-              <div className={styles.cornerTL} aria-hidden="true" />
-              <div className={styles.cornerBR} aria-hidden="true" />
-            </div>
-
-            {/* Competences */}
-            <div className={styles.competencesList}>
-              <span className="text-label" style={{ marginBottom: '16px', display: 'block' }}>Competências</span>
-              {competences.map((comp, i) => (
-                <div key={i} className={styles.competenceItem}>
-                  <div className={styles.competenceLine} />
-                  <span className={styles.competenceText}>{comp}</span>
-                </div>
-              ))}
+              <div className={styles.cornerAccent} aria-hidden="true" />
             </div>
           </div>
 
@@ -60,20 +40,20 @@ export default function About() {
           <div className={styles.right}>
             <div className={styles.bioBlock}>
               <p className={styles.bioText}>
-                Isabela Angela Paulino Rodrigues é arquiteta com registro no CAU e especialista em detalhamento técnico executivo, visualização 3D e animação arquitetônica.
+                Sou <strong>Isabela Paulino</strong>, arquiteta nascida em 1995, em Goiânia, Goiás, formada em Arquitetura e Urbanismo pela UniGoiás em 2020 e fundadora da Isabela Paulino Studio.
               </p>
               <p className={styles.bioText}>
-                Fundadora do <strong>Isabela Paulino Studio</strong>, atua há mais de 6 anos prestando serviços de terceirização para escritórios de arquitetura e design de interiores em todo o Brasil — sempre com rigor técnico e excelência visual.
+                Sempre enxerguei a arquitetura além da estética. Foi atuando com detalhamento executivo e visualização 3D que encontrei o caminho que queria seguir.
               </p>
               <p className={styles.bioText}>
-                Cada projeto é tratado com atenção personalizada, garantindo entregas precisas, dentro do prazo e alinhadas às necessidades de cada cliente.
+                Hoje, junto à minha equipe, desenvolvo projetos para arquitetos e construtoras no Brasil e no exterior, com foco em detalhamento executivo, organização e atenção à execução na prática.
               </p>
             </div>
 
             {/* Technical sheet — "Ficha Técnica" */}
             <div className={styles.techSheet}>
               <div className={styles.techSheetHeader}>
-                <span className="text-label">Ficha Técnica</span>
+                <span className={styles.techSheetTitle}>Ficha Técnica</span>
               </div>
               <div className={styles.techSheetBody}>
                 {technicalSheet.map((item, idx) => (

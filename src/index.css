@@ -188,6 +188,12 @@ ul, ol { list-style: none; }
   padding: 100px 0;
 }
 
+@media (max-width: 992px) {
+  .section-padding {
+    padding: 60px 0;
+  }
+}
+
 /* ── Typography ── */
 .text-hero {
   font-family: var(--font-title);

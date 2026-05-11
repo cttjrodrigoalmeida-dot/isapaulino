@@ -44,22 +44,14 @@ export default function Welcome() {
         <div className={styles.right}>
           <p className={styles.boldText}>Bem-vindo ao Isabela Paulino Studio.</p>
           <p>
-            Eu sou a Isabela, arquiteta e fundadora do estúdio. Atuo
-            com detalhamento executivo terceirizado, para arquitetos, designers e construtoras que
-            precisam transformar ideias em projetos claros,
-            organizados e prontos para execução.
+            Fundado em 2020 pela arquiteta Isabela Paulino, o estúdio atua com detalhamento executivo terceirizado para arquitetos, designers e construtoras que precisam transformar ideias em projetos claros, organizados e prontos para execução.
           </p>
           <p>
-            Já participei de mais de 200 projetos no Brasil e no exterior,
-            e sei bem como o detalhamento costuma ficar para o final,
-            justamente quando o prazo está apertado, o cliente está
-            cobrando e a obra precisa de respostas.
+            Com mais de 200 projetos realizados no Brasil e no exterior, o estúdio entende como o detalhamento costuma ficar para o final, justamente quando o prazo está apertado, o cliente está cobrando e a obra precisa de respostas.
           </p>
-          <p>É aí que eu entro.</p>
+          <p>É nesse ponto que o estúdio entra.</p>
           <p>
-            Organizo as informações, desenvolvo o material técnico e
-            preparo o projeto para que quem executa consiga
-            entender, seguir e construir com mais segurança.
+            Organizamos as informações, desenvolvemos o material técnico e preparamos o projeto para que quem executa consiga entender, seguir e construir com mais segurança.
           </p>
         </div>
       </div>
