@@ -62,11 +62,6 @@
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-
-#root {
-  overflow-x: hidden;
 }
 
 *, *::before, *::after {
@@ -90,7 +85,11 @@ body {
   font-weight: 300;
   font-size: 15px;
   line-height: 1.65;
-  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+html {
+  overflow-x: clip;
 }
 
 
