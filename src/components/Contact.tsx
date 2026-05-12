@@ -28,7 +28,7 @@ export default function Contact() {
       `Telefone: ${formData.phone}\n\n` +
       `${formData.message}`
     )
-    window.open(`https://wa.me/5562919942598?text=${msg}`, '_blank')
+    window.open(`https://wa.me/556291942598?text=${msg}`, '_blank')
     setSubmitted(true)
   }
 

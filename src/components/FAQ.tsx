@@ -50,7 +50,7 @@ export default function FAQ() {
             <p className="text-body" style={{ maxWidth: 280 }}>
               Não encontrou o que procurava? Entre em contato pelo WhatsApp e respondemos em breve.
             </p>
-            <a href="#contato" className="btn btn-outline" style={{ marginTop: '8px' }}>
+            <a href="https://wa.me/556291942598" target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ marginTop: '8px' }}>
               Fale Conosco
             </a>
           </div>
