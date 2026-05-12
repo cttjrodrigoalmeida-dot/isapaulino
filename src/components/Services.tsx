@@ -6,7 +6,7 @@ const services = [
     id: '01',
     title: 'PROJETO EXECUTIVO DE INTERIORES',
     description: 'Desenvolvimento técnico completo para transformar o conceito do projeto em uma execução clara, organizada e bem resolvida, reduzindo imprevistos na obra e facilitando a comunicação entre todos os envolvidos.',
-    buttonText: 'Quero detalhar meu projeto',
+    buttonText: 'Quero este serviço',
     image: '/assets/services/1.jpg',
   },
   {
@@ -95,7 +95,7 @@ export default function Services() {
       <div className="container">
         <div className={styles.sectionHeader}>
           <h2 className={styles.mainTitle}>
-            SERVIÇOS <span className={styles.accentText}>QUE<br className="br-mobile" /> ELEVAM O NÍVEL<br className="br-mobile" /> DO SEU PROJETO</span>
+            SERVIÇOS <span className={styles.accentText}>QUE<br className="br-mobile" /> ELEVAM O<br className="br-desktop" /> NÍVEL<br className="br-mobile" /> DO SEU PROJETO</span>
           </h2>
           <div className={styles.titleSpacer} />
         </div>

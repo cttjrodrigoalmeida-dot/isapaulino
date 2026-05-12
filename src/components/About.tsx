@@ -3,7 +3,7 @@ import styles from './About.module.css'
 const technicalSheet = [
   { label: 'Nome', value: 'Isabela Paulino' },
   { label: 'CAU', value: 'A313396-6' },
-  { label: 'Formação', value: 'ARQUITETURA E URBANISMO - UNIGOIÁS | 2021/21' },
+  { label: 'Formação', value: 'ARQUITETURA E URBANISMO - UNIGOIÁS | 2020/21' },
   { label: 'Especialização', value: 'Projeto Executivo de Arquitetura e Interiores' },
   { label: 'Experiência', value: '+6 ANOS EM DETALHAMENTO E 3D' },
   { label: 'Softwares', value: 'AutoCAD • Archicad • SketchUp Layout • Revit • CoronaRenderer • 3Ds Max • Photoshop • Illustrator' },

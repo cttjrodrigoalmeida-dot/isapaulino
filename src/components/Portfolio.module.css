@@ -147,9 +147,10 @@
   top: 0;
   right: 0;
   background: #161616;
-  color: #999;
-  font-family: var(--font-body);
-  font-size: 0.75rem;
+  color: #ccc;
+  font-family: var(--font-subtitle);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
   padding: 12px 24px;
   border-bottom-left-radius: 24px;
   z-index: 2;
@@ -159,55 +160,12 @@
   transition-delay: 0.1s;
 }
 
-/* Curvas fluidas (Inverted border radius) da Tab (Padrão: Top Right) */
-.statTab::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -20px;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border-top-right-radius: 20px;
-  box-shadow: 10px -10px 0 0 #161616;
-}
-
-.statTab::after {
-  content: '';
-  position: absolute;
-  bottom: -20px;
-  right: 0;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border-top-right-radius: 20px;
-  box-shadow: 10px -10px 0 0 #161616;
-}
-
 /* Modificador para o card direito (Top Left) */
 .projectCard:nth-child(even) .statTab {
   right: auto;
   left: 0;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 24px;
-}
-
-.projectCard:nth-child(even) .statTab::before {
-  /* Curva direita (conecta ao topo) */
-  left: auto;
-  right: -20px;
-  border-top-right-radius: 0;
-  border-top-left-radius: 20px;
-  box-shadow: -10px -10px 0 0 #161616;
-}
-
-.projectCard:nth-child(even) .statTab::after {
-  /* Curva inferior (conecta à esquerda) */
-  right: auto;
-  left: 0;
-  border-top-right-radius: 0;
-  border-top-left-radius: 20px;
-  box-shadow: -10px -10px 0 0 #161616;
 }
 
 .projectCard:hover .statTab {
@@ -330,6 +288,7 @@
   .statTab {
     opacity: 1;
     transform: translateY(0);
+    font-size: 0.65rem;
   }
 
   .infoPanel {

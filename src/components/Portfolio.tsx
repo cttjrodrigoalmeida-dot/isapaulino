@@ -152,15 +152,15 @@ const portfolioItems = [
     title: 'CLÍNICA DR. PAULO FERNANDO',
     description: '',
     stat: 'AUTORA DO PROJETO: ARQ. ISABELLA SERRANO',
-    tags: ['EXECUTIVO', 'PAGINAÇÃO', 'ARCHICAD']
+    tags: ['DETALHAMENTO', 'MARCENARIA', 'AUTOCAD']
   },
   {
     id: 20,
     src: '/assets/portfolio/PRANCHA PORTFOLIOS (20).webp',
-    title: 'CASACOR BANHEIRO',
+    title: 'HOME OFFICE',
     description: '',
     stat: 'AUTORA DO PROJETO: ARQ. GRACE SANTIAGO',
-    tags: ['DETALHAMENTO', 'ÁREA MOLHADA', 'AUTOCAD']
+    tags: ['DETALHAMENTO', 'MARCENARIA', 'AUTOCAD']
   }
 ]
 
@@ -189,7 +189,7 @@ export default function Portfolio() {
         <div className={styles.sectionHeader}>
           <h2 className={styles.title}>
             PROJETO PRONTO <span className={styles.titleAccent}>PARA<br />
-            EXECUÇÃO</span> COMEÇA NO DETALHE.
+              EXECUÇÃO</span> COMEÇA NO DETALHE.
           </h2>
           <p className={styles.subtitle}>
             Cada projeto abaixo mostra um pouco de como o detalhamento, a imagem e a<br />
@@ -201,11 +201,11 @@ export default function Portfolio() {
           {portfolioItems.slice(0, visibleCount).map((item) => {
             return (
               <div key={item.id} className={styles.projectCard}>
-                
+
                 {/* Imagem de Fundo (que vai encolher no hover) */}
                 <div className={styles.imageWrapper}>
                   <img src={item.src} alt={item.title} className={styles.projectImage} />
-                  
+
                   {/* Overlay Escuro sobre a imagem para dar contraste */}
                   <div className={styles.imageOverlay}></div>
                 </div>

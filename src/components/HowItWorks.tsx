@@ -45,7 +45,7 @@ export default function HowItWorks() {
             <span className={styles.titleOutline}>O DETALHAMENTO</span>
           </h2>
           <p className={styles.subtitle}>
-            Um processo simples, com etapas claras e prazos definidos<br/>
+            Um processo simples, com etapas claras e prazos definidos<br className="br-desktop"/>
             para que seu projeto chegue pronto para execução.
           </p>
         </div>
