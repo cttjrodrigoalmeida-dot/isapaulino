@@ -258,6 +258,13 @@ ul, ol { list-style: none; }
   color: var(--color-text-secondary);
 }
 
+/* Utilitários de quebra de linha */
+.br-mobile { display: none; }
+@media (max-width: 768px) {
+  .br-mobile { display: initial; }
+  .br-desktop { display: none; }
+}
+
 /* ── Dividers ── */
 .divider {
   width: 100%;

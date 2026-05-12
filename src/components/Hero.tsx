@@ -79,8 +79,8 @@ export default function Hero() {
 
           {/* CTA buttons */}
           <div className={styles.ctaGroup}>
-            <a href="#contato" className={`btn btn-outline ${styles.ctaBtn}`} id="hero-cta">
-              Me manda seu projeto
+            <a href="https://wa.me/556291942598" target="_blank" rel="noopener noreferrer" className={`btn btn-outline ${styles.ctaBtn}`} id="hero-cta">
+              Me mande seu projeto
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
                 <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

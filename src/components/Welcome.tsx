@@ -3,14 +3,19 @@ import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
 import styles from './Welcome.module.css'
 
 const ideaPhrases = [
-  "A IDEIA AQUI É SIMPLES",
-  "EVITAR QUE VOCÊ PRECISE",
-  "RESOLVER NA OBRA",
-  "O QUE PODERIA TER SIDO DECIDIDO",
-  "AINDA NA FASE DE PROJETO."
+  <span key={1}>A IDEIA AQUI É SIMPLES:<br className="br-desktop" /><br className="br-mobile" /></span>,
+  <span key={2}>EVITAR QUE VOCÊ <br className="br-mobile" /></span>,
+  <span key={3}>PRECISE <br className="br-desktop" /></span>,
+  <span key={4}>RESOLVER <br className="br-mobile" /></span>,
+  <span key={5}>NA OBRA <br className="br-desktop" /></span>,
+  <span key={6}>O QUE <br className="br-mobile" /></span>,
+  <span key={7}>PODERIA TER SIDO <br className="br-mobile" /></span>,
+  <span key={8}>DECIDIDO <br className="br-desktop" /></span>,
+  <span key={9}>AINDA NA <br className="br-mobile" /></span>,
+  <span key={10}>FASE DE PROJETO.</span>
 ]
 
-function Phrase({ text, progress, range }: { text: string, progress: MotionValue<number>, range: [number, number] }) {
+function Phrase({ text, progress, range }: { text: React.ReactNode, progress: MotionValue<number>, range: [number, number] }) {
   const opacity = useTransform(progress, range, [0.15, 1])
   return (
     <motion.span style={{ opacity }} className={styles.phrase}>

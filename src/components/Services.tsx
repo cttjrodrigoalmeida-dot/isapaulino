@@ -95,7 +95,7 @@ export default function Services() {
       <div className="container">
         <div className={styles.sectionHeader}>
           <h2 className={styles.mainTitle}>
-            SERVIÇOS <span className={styles.accentText}>QUE ELEVAM O<br />NÍVEL DO SEU PROJETO</span>
+            SERVIÇOS <span className={styles.accentText}>QUE<br className="br-mobile" /> ELEVAM O NÍVEL<br className="br-mobile" /> DO SEU PROJETO</span>
           </h2>
           <div className={styles.titleSpacer} />
         </div>
@@ -112,7 +112,7 @@ export default function Services() {
                 <div className={styles.cardLine} />
                 <h3 className={styles.cardTitle}>{service.title}</h3>
                 <p className={styles.cardDesc}>{service.description}</p>
-                <a href="#contato" className={styles.cardBtn}>
+                <a href="https://wa.me/556291942598" target="_blank" rel="noopener noreferrer" className={styles.cardBtn}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                     <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

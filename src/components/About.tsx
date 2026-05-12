@@ -73,8 +73,8 @@ export default function About() {
                   <path d="M7 17L17 7M7 7h10v10" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </a>
-              <a href="#contato" className="btn btn-outline">
-                Trabalhe conosco
+              <a href="https://wa.me/556291942598" target="_blank" rel="noopener noreferrer" className="btn btn-outline">
+                Terceirize Conosco
               </a>
             </div>
           </div>

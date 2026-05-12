@@ -98,7 +98,7 @@
 }
 
 .phrase {
-  display: block;
+  display: inline;
   transition: opacity 0.1s ease-out;
 }
 
