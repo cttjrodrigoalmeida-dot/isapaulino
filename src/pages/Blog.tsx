@@ -20,6 +20,9 @@ export default function Blog() {
       <div className={styles.blogPage}>
         {/* Header */}
         <div className={styles.blogHeader}>
+          <span className={styles.preTitle}>
+            • ARQUITETURA / DETALHAMENTO TÉCNICO / TERCEIRIZAÇÃO
+          </span>
           <h1 className={styles.blogTitle}>
             BLOG <span className={styles.blogTitleAccent}>ISABELA PAULINO</span>
           </h1>

@@ -33,7 +33,7 @@ export default function Welcome() {
   })
 
   return (
-    <section className={styles.welcomeSection}>
+    <section id="estudio" className={styles.welcomeSection}>
       <div className={`container ${styles.grid}`}>
         <div className={styles.left}>
           <h2 className={styles.heading}>

@@ -11,6 +11,16 @@
   margin: 0 auto;
 }
 
+.preTitle {
+  font-family: var(--font-subtitle);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  display: block;
+}
+
 .blogTitle {
   font-family: var(--font-title);
   font-weight: 200;
