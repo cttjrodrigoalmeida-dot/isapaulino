@@ -119,7 +119,7 @@ export default function Hero() {
             <div className={styles.cornerAccent} aria-hidden="true" />
 
             <img
-              src="/assets/images/hero-photo.jpg"
+              src="/assets/images/hero-photo.webp"
               alt="Isabela Paulino — Arquiteta e Designer de Interiores"
               className={styles.heroPhoto}
             />

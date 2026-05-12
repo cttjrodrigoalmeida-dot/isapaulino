@@ -3,10 +3,10 @@ import styles from './InstagramCTA.module.css'
 const INSTAGRAM_URL = 'https://www.instagram.com/isapaulinostudio/'
 
 const photos = [
-  { src: '/assets/instagram/1.jpg', alt: 'Instagram Post 1' },
-  { src: '/assets/instagram/2.jpg', alt: 'Instagram Post 2' },
-  { src: '/assets/instagram/3.jpg', alt: 'Instagram Post 3' },
-  { src: '/assets/instagram/4.jpg', alt: 'Instagram Post 4' },
+  { src: '/assets/instagram/1.webp', alt: 'Instagram Post 1' },
+  { src: '/assets/instagram/2.webp', alt: 'Instagram Post 2' },
+  { src: '/assets/instagram/3.webp', alt: 'Instagram Post 3' },
+  { src: '/assets/instagram/4.webp', alt: 'Instagram Post 4' },
 ]
 
 export default function InstagramCTA() {
@@ -24,7 +24,7 @@ export default function InstagramCTA() {
         </p>
         
         <div className={styles.profileRow}>
-          <img src="/assets/images/hero-photo.jpg" alt="@IsaPaulinoStudio" className={styles.profilePic} />
+          <img src="/assets/images/hero-photo.webp" alt="@IsaPaulinoStudio" className={styles.profilePic} />
           <span className={styles.handle}>@IsaPaulinoStudio</span>
           <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={`btn btn-outline-sm ${styles.followBtnCTA}`} style={{ marginLeft: '10px' }}>
             Seguir

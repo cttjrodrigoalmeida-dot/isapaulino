@@ -11,7 +11,7 @@ export default function WhatsappFloat() {
       id="whatsapp-float"
     >
       <img
-        src="/assets/icons/whatsapp.png"
+        src="/assets/icons/whatsapp.webp"
         alt="WhatsApp"
         className={styles.whatsappIcon}
         onError={(e) => { e.currentTarget.style.display = 'none' }}

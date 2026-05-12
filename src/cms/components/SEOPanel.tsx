@@ -70,7 +70,7 @@ export function SEOPanel({ post, onChange }: SEOPanelProps) {
       <div>
         <p style={{ fontSize: "11px", fontWeight: 500, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>Preview no Google</p>
         <div style={{ background: "#fff", border: "1px solid #ddd", borderRadius: "12px", padding: "16px" }}>
-          <div style={{ fontSize: "12px", color: "#3C4043", marginBottom: "4px" }}>isapaulinostudio.com/blog/{post.slug || "seu-slug"}</div>
+          <div style={{ fontSize: "12px", color: "#3C4043", marginBottom: "4px" }}>isabelapaulino.com.br/blog/{post.slug || "seu-slug"}</div>
           <div style={{ color: "#1A0DAB", fontSize: "18px", lineHeight: 1.3, marginBottom: "4px" }}>{previewTitle || "Título do seu artigo"}</div>
           <div style={{ fontSize: "13px", color: "#4D5156", lineHeight: 1.4 }}>{previewDesc || "Insira a meta description..."}</div>
         </div>

@@ -46,10 +46,10 @@ export default function Contact() {
           <div className={styles.profileCard}>
             <div className={styles.profileImageWrapper}>
               {/* Foto da HERO conforme solicitado */}
-              <img src="/assets/images/hero-photo.jpg" alt="Isabela Paulino" className={styles.profileImage} />
+              <img src="/assets/images/hero-photo.webp" alt="Isabela Paulino" className={styles.profileImage} />
             </div>
             <div className={styles.profileInfo}>
-              <img src="/assets/logo-parasite.png" alt="Isabela Paulino Studio" className={styles.profileLogo} />
+              <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.profileLogo} />
               <p className={styles.profileRole}>
                 Fundadora -<br />
                 Arquiteta<br />

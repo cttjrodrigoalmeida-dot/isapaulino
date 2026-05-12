@@ -28,7 +28,7 @@ export default function About() {
           <div className={styles.left}>
             <div className={styles.photoContainer}>
               <img
-                src="/assets/images/hero-photo.jpg"
+                src="/assets/images/hero-photo.webp"
                 alt="Isabela Paulino"
                 className={styles.aboutPhoto}
               />

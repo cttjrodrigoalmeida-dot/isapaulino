@@ -7,35 +7,35 @@ const services = [
     title: 'PROJETO EXECUTIVO DE INTERIORES',
     description: 'Desenvolvimento técnico completo para transformar o conceito do projeto em uma execução clara, organizada e bem resolvida, reduzindo imprevistos na obra e facilitando a comunicação entre todos os envolvidos.',
     buttonText: 'Quero este serviço',
-    image: '/assets/services/1.jpg',
+    image: '/assets/services/1.webp',
   },
   {
     id: '02',
     title: 'COMPATIBILIZAÇÃO DE PROJETOS',
     description: 'Análise e alinhamento entre arquitetura, interiores e projetos complementares para identificar interferências antes da obra, evitando retrabalhos, conflitos na execução e decisões feitas às pressas no canteiro.',
     buttonText: 'Quero este serviço',
-    image: '/assets/services/CARD2.jpg',
+    image: '/assets/services/CARD2.webp',
   },
   {
     id: '03',
     title: 'DETALHAMENTO DE MARCENARIA E MARMORARIA',
     description: 'Desenhos técnicos detalhados para fabricação de marcenaria e marmoraria sob medida, garantindo alinhamento estético, funcionalidade, precisão nas medidas e mais segurança durante a execução.',
     buttonText: 'Quero este serviço',
-    image: '/assets/services/CARD3.jpg',
+    image: '/assets/services/CARD3.webp',
   },
   {
     id: '04',
     title: 'DETALHAMENTO DE ÁREAS MOLHADAS',
     description: 'Desenvolvimento técnico de cozinhas, banheiros e áreas de serviço, com definição de pontos hidráulicos, revestimentos, bancadas e acabamentos para uma execução mais organizada e eficiente.',
     buttonText: 'Quero este serviço',
-    image: '/assets/services/CARD4.jpg',
+    image: '/assets/services/CARD4.webp',
   },
   {
     id: '05',
     title: 'PLANTAS TÉCNICAS PARA EXECUÇÃO',
     description: 'Pranchas técnicas completas e organizadas para orientar fornecedores, equipe de obra e execução do projeto, facilitando a leitura, reduzindo dúvidas e trazendo mais clareza para cada etapa da obra.',
     buttonText: 'Quero este serviço',
-    image: '/assets/services/CARD5.jpg',
+    image: '/assets/services/CARD5.webp',
   }
 ]
 

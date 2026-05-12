@@ -72,7 +72,7 @@ export default function Navbar() {
         <div className={styles.navInner}>
         {/* Logo */}
         <a href="#inicio" className={styles.logo} onClick={(e) => handleNavClick(e, '#inicio')}>
-          <img src="/assets/logo-parasite.png" alt="Isabela Paulino Studio" className={styles.logoImg} />
+          <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.logoImg} />
         </a>
 
 {/* Mobile Toggle Button */}

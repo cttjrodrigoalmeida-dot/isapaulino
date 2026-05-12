@@ -22,7 +22,7 @@ export default function Footer() {
             <div className={styles.leftCol}>
               <a href="#inicio" className={styles.footerLogo}>
                 <img
-                  src="/assets/logo-parasite.png"
+                  src="/assets/logo-parasite.webp"
                   alt="Isabela Paulino Studio"
                   className={styles.logoImg}
                 />
@@ -124,7 +124,7 @@ export default function Footer() {
               <span className="text-label" style={{ fontSize: '0.65rem', color: '#666' }}>/</span>
               <a href="#" className="text-label" style={{ fontSize: '0.65rem', color: '#666' }}>Declaração de cookies</a>
             </div>
-            <span className="text-label" style={{ fontSize: '0.65rem', color: '#666' }}>Site feito com amor por Isabela Paulino ♥</span>
+            <a href="https://rodrigoweb.site" target="_blank" rel="noopener noreferrer" className="text-label" style={{ fontSize: '0.65rem', color: '#666', textDecoration: 'none' }}>Feito por: Rodrigo - Web Designer</a>
           </div>
         </div>
       </div>

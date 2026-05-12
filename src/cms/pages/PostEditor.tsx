@@ -103,7 +103,7 @@ export function PostEditor({ post: initialPost, posts, sha, isNew, onSave, onBac
               <input type="text" value={post.title} onChange={(e) => update({ title: e.target.value })} placeholder="Título do artigo..."
                 style={{ width: "100%", fontSize: "2.5rem", fontWeight: 600, color: "#f5f5f5", background: "transparent", border: "none", outline: "none", fontFamily: "'Kinn', sans-serif", marginBottom: "8px" }} />
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                <span style={{ fontSize: "13px", color: "#666" }}>isapaulinostudio.com/blog/</span>
+                <span style={{ fontSize: "13px", color: "#666" }}>isabelapaulino.com.br/blog/</span>
                 <input type="text" value={post.slug}
                   onChange={(e) => { setSlugManuallyEdited(true); update({ slug: e.target.value.toLowerCase().replace(/\s+/g, "-") }); }}
                   placeholder="seu-slug"

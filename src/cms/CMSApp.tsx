@@ -108,7 +108,7 @@ export function CMSApp() {
         {/* Logo */}
         <div style={{ padding: "20px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ width: "36px", height: "36px", borderRadius: "12px", background: "#d4c5b0", display: "flex", alignItems: "center", justifyContent: "center", color: "#0a0a0a", fontWeight: 700, fontSize: "14px", flexShrink: 0, fontFamily: "'Kinn', sans-serif" }}>IP</div>
+            <img src="/assets/images/hero-photo.webp" alt="Isabela Paulino" style={{ width: "36px", height: "36px", borderRadius: "12px", objectFit: "cover", flexShrink: 0 }} />
             <div>
               <p style={{ color: "#f5f5f5", fontWeight: 600, fontSize: "13px", lineHeight: 1.2 }}>Isabela Paulino</p>
               <p style={{ color: "#666", fontSize: "11px" }}>Blog CMS</p>
