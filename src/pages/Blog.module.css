@@ -67,7 +67,7 @@
 
 .featuredInner:hover {
   transform: translateY(-4px);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
 }
 
 .featuredImage {
@@ -149,7 +149,7 @@
 
 .postCard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
 }
 
 .postCardImage {
@@ -262,12 +262,15 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 24px;
   }
+
   .featuredInner {
     grid-template-columns: 1fr;
   }
+
   .featuredImage {
     min-height: 240px;
   }
+
   .featuredContent {
     padding: 32px;
   }
@@ -277,7 +280,8 @@
   .postsGrid {
     grid-template-columns: 1fr;
   }
+
   .blogPage {
-    padding-top: 100px;
+    padding-top: 130px;
   }
 }
