@@ -7,7 +7,7 @@ const navItems = [
   { label: 'Serviços', href: '#servicos' },
   { label: 'Projetos', href: '#projetos' },
   { label: 'Feedbacks', href: '#feedbacks' },
-  { label: 'Sobre', href: '#sobre' },
+  { label: 'Estúdio', href: '#sobre' },
   { label: 'Contato', href: '#contato' },
   { label: 'Blog', href: '/blog' },
 ]
@@ -15,7 +15,7 @@ const navItems = [
 const socialLinks = [
   { label: 'Instagram', href: 'https://www.instagram.com/isapaulinostudio/', icon: 'IG' },
   { label: 'TikTok', href: 'https://tiktok.com/@isapaulinostudio', icon: 'TK' },
-  { label: 'Threads', href: '#', icon: 'TH' },
+  { label: 'Threads', href: 'https://www.threads.com/@isapaulinostudio', icon: 'TH' },
   { label: 'Pinterest', href: 'https://www.pinterest.com/isapaulinostudio', icon: 'PT' },
 ]
 

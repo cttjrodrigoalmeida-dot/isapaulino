@@ -111,19 +111,19 @@
 }
 
 .techSheetTitle {
-  font-family: var(--font-title);
-  font-weight: 200;
+  font-family: var(--font-subtitle);
+  font-weight: 400;
   font-size: 0.9rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-primary);
 }
 
 .techLabel {
-  font-family: var(--font-title);
-  font-weight: 200;
+  font-family: var(--font-subtitle);
+  font-weight: 400;
   font-size: 0.75rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
   padding-top: 0;

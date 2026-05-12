@@ -86,11 +86,11 @@ export default function Portfolio() {
         {/* Mostrar mais / menos CTA */}
         <div className={styles.ctaWrapper}>
           {visibleCount < portfolioItems.length ? (
-            <button onClick={handleShowMore} className={styles.showMoreBtn}>
-              Mostrar mais...
+            <button onClick={handleShowMore} className="btn btn-outline">
+              Mostrar mais
             </button>
           ) : (
-            <button onClick={handleShowLess} className={styles.showMoreBtn}>
+            <button onClick={handleShowLess} className="btn btn-outline">
               Mostrar menos
             </button>
           )}
