@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import HomePage from './pages/HomePage'
 import Blog from './pages/Blog'
 import BlogPost from './pages/BlogPost'
+import Bio from './pages/Bio'
 import { CMSApp } from './cms/CMSApp'
 
 function ScrollToTop() {
@@ -29,6 +30,7 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/bio" element={<Bio />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/cms" element={<CMSApp />} />
