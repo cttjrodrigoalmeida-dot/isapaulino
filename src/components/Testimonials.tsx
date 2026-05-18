@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import styles from './Testimonials.module.css'
 
 const testimonials = [
@@ -70,11 +70,25 @@ const testimonials = [
 
 export default function Testimonials() {
   const carouselRef = useRef<HTMLDivElement>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
 
   const scroll = (direction: 'left' | 'right') => {
+    const newIndex =
+      direction === 'right'
+        ? Math.min(currentIndex + 1, testimonials.length - 1)
+        : Math.max(currentIndex - 1, 0)
+
+    setCurrentIndex(newIndex)
+
     if (carouselRef.current) {
-      const scrollAmount = direction === 'left' ? -400 : 400
-      carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' })
+      const cards = carouselRef.current.children
+      if (cards[newIndex]) {
+        ;(cards[newIndex] as HTMLElement).scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'start',
+        })
+      }
     }
   }
 

@@ -124,8 +124,6 @@
   .card {
     flex: 0 0 100%;
     scroll-snap-align: start;
-    /* padding extra à direita cria separação visual entre cards sem gap */
-    padding-right: 24px;
   }
 }
 
@@ -211,11 +209,5 @@
   .sectionHeader {
     align-items: center;
     text-align: center;
-  }
-
-  /* Mobile: remove o gap para o card ocupar exatamente 100% sem vazar */
-  .grid {
-    gap: 0;
-    scroll-padding-left: 0;
   }
 }
