@@ -123,6 +123,7 @@
 @media (max-width: 600px) {
   .card {
     flex: 0 0 100%;
+    scroll-snap-align: center;
   }
 }
 
@@ -208,5 +209,14 @@
   .sectionHeader {
     align-items: center;
     text-align: center;
+  }
+
+  /* Faz o carrossel escapar do padding do container para ficar 100vw */
+  .grid {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    scroll-snap-type: x mandatory;
   }
 }
