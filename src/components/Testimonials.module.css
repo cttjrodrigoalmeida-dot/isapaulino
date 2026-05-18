@@ -123,7 +123,9 @@
 @media (max-width: 600px) {
   .card {
     flex: 0 0 100%;
-    scroll-snap-align: center;
+    scroll-snap-align: start;
+    /* padding extra à direita cria separação visual entre cards sem gap */
+    padding-right: 24px;
   }
 }
 
@@ -211,12 +213,9 @@
     text-align: center;
   }
 
-  /* Faz o carrossel escapar do padding do container para ficar 100vw */
+  /* Mobile: remove o gap para o card ocupar exatamente 100% sem vazar */
   .grid {
-    margin-left: -16px;
-    margin-right: -16px;
-    padding-left: 16px;
-    padding-right: 16px;
-    scroll-snap-type: x mandatory;
+    gap: 0;
+    scroll-padding-left: 0;
   }
 }
