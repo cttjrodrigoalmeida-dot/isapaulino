@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import styles from './FAQ.module.css'
 
-const faqs = [
+export const faqs = [
   {
     q: 'Para quem é indicado o seu serviço?',
     a: 'Meu trabalho é voltado principalmente para arquitetos, designers de interiores e construtoras que precisam de apoio técnico no desenvolvimento de detalhamento executivo, imagens 3D ou apresentações visuais.',

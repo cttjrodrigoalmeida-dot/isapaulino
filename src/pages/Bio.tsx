@@ -1,9 +1,26 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './Bio.module.css'
 import CustomCursor from '../components/CustomCursor'
+import { faqs } from '../components/FAQ'
+import AnalogClock from '../components/AnalogClock'
+
+const technicalSheet = [
+  { label: 'Nome', value: 'Isabela Paulino' },
+  { label: 'CAU', value: 'A313396-6' },
+  { label: 'Formação', value: 'ARQUITETURA E URBANISMO - UNIGOIÁS | 2020/1' },
+  { label: 'Especialização', value: 'Projeto Executivo de Arquitetura e Interiores' },
+  { label: 'Experiência', value: '+6 ANOS EM DETALHAMENTO E 3D' },
+  { label: 'Softwares', value: 'AutoCAD • Archicad • SketchUp Layout • Revit • CoronaRenderer • 3Ds Max • Photoshop • Illustrator' },
+  { label: 'Método de Trabalho', value: 'Online • Terceirização • Parceria Estratégica' },
+  { label: 'Entrega', value: 'FORMATO EM PDF • DWG • PLN • RVT • SKP • LAYOUT' },
+]
 
 export default function Bio() {
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isFaqOpen, setIsFaqOpen] = useState(false);
+  const [faqOpenIdx, setFaqOpenIdx] = useState<number | null>(null);
+
   useEffect(() => {
     // Force top scroll on mount
     window.scrollTo(0, 0)
@@ -47,41 +64,74 @@ export default function Bio() {
             </div>
 
             <h1 className={styles.name}>Isabela Paulino</h1>
-            <p className={styles.role}>Arquitetura / Detalhamento Técnico / Terceirização </p>
+            <p className={styles.role}>DESENVOLVIMENTO TÉCNICO / PROJETOS EXECUTIVOS / DETALHAMENTO PARA ARQUITETOS</p>
             <p className={styles.description}>
-              Terceirize seu projeto com quem vive o detalhe. Arquitetura e detalhamento técnico focados na execução.
+              Terceirize o detalhamento técnico com quem entende que projetos bem resolvidos começam no detalhe.
             </p>
+
+            <div className={styles.highlights}>
+              <span className={styles.highlightBadge}>✦ +200 PROJETOS REALIZADOS</span>
+              <span className={styles.highlightBadge}>■ ATENDIMENTO 100% ONLINE</span>
+            </div>
           </div>
 
           {/* Contatos & Redes Sociais */}
           <div className={styles.section}>
-            <a href="https://wa.me/556291942598" target="_blank" rel="noopener noreferrer" className={`btn btn-outline ${styles.linkBtn}`}>
-              Falar no WhatsApp
+
+            <div className={styles.servicesList}>
+              <h2 className={styles.sectionTitle}>Serviços</h2>
+              <ul className={styles.serviceItems}>
+                <li>Projeto Executivo de Arquitetura e Interiores</li>
+                <li>Compatibilização de Projetos</li>
+                <li>Detalhamento Técnico Minucioso</li>
+                <li>Marcenaria e Marmoraria</li>
+                <li>Terceirização para Arquitetos e Construtoras</li>
+              </ul>
+            </div>
+
+            <a href="https://wa.me/556291942598" target="_blank" rel="noopener noreferrer" className={`btn btn-outline ${styles.linkBtn} ${styles.linkBtnHighlight} ${styles.br1}`}>
+              SOLICITAR ORÇAMENTO
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
                 <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </a>
-            <a href="https://instagram.com/isabelapaulino.arq" target="_blank" rel="noopener noreferrer" className={`btn btn-outline ${styles.linkBtn}`}>
-              Instagram
+
+            <a href="https://instagram.com/isabelapaulino.arq" target="_blank" rel="noopener noreferrer" className={`btn btn-outline ${styles.linkBtn} ${styles.br2}`}>
+              INSTAGRAM
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
                 <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </a>
-            <Link to="/" className={`btn btn-outline ${styles.linkBtn} ${styles.linkBtnHighlight}`}>
-              Acessar Site Completo
+
+            <button onClick={() => setIsAboutOpen(true)} className={`btn btn-outline ${styles.linkBtn} ${styles.br1}`}>
+              SOBRE O ESTÚDIO
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            <Link to="/" className={`btn btn-outline ${styles.linkBtn} ${styles.br2}`}>
+              ACESSAR SITE COMPLETO
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
                 <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
+
+            <button onClick={() => setIsFaqOpen(true)} className={`btn btn-outline ${styles.linkBtn} ${styles.br1}`}>
+              PERGUNTAS FREQUENTES
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
 
           <div className={styles.footerInfo}>
+            <div className={styles.clockWidget}>
+              <AnalogClock />
+              <span>SEG-SEX • 9H ÀS 18H</span>
+            </div>
+
             <div className={styles.socialIconsRow}>
-              <a href="mailto:isapaulinastudio@gmail.com" target="_blank" rel="noopener noreferrer" aria-label="E-mail">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-              </a>
               <a href="https://www.tiktok.com/@isapaulinostudio" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
                 <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
                   <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.26 8.26 0 004.84 1.56V6.79a4.85 4.85 0 01-1.07-.1z" />
@@ -97,10 +147,94 @@ export default function Bio() {
                   <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z" />
                 </svg>
               </a>
+              <a href="mailto:isapaulinastudio@gmail.com" target="_blank" rel="noopener noreferrer" aria-label="E-mail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </a>
             </div>
           </div>
         </main>
       </div>
+
+      {/* Modal Sobre Mim */}
+      {isAboutOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsAboutOpen(false)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <button className={styles.closeBtn} onClick={() => setIsAboutOpen(false)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            <div className={styles.modalInner}>
+              <div className={styles.modalPhotoContainer}>
+                <img src="/assets/images/hero-photo.webp" alt="Isabela Paulino" className={styles.modalPhoto} />
+                <div className={styles.modalCornerAccent} aria-hidden="true" />
+              </div>
+
+              <div className={styles.modalBio}>
+                <h3 className={styles.modalTitle}>Isabela Paulino</h3>
+                <p><strong>UM ESTÚDIO FOCADO EM TORNAR PROJETOS EXECUTÁVEIS.</strong></p>
+                <p>Sou <strong>Isabela Paulino</strong>, arquiteta nascida em 1995, em Goiânia, Goiás, formada em Arquitetura e Urbanismo pela UniGoiás em 2020 e fundadora da Isabela Paulino Studio.</p>
+                <p>Sempre enxerguei a arquitetura além da estética. Foi atuando com detalhamento executivo e visualização 3D que encontrei o caminho que queria seguir.</p>
+                <p>Hoje, junto à minha equipe, desenvolvo projetos para arquitetos e construtoras no Brasil e no exterior, com foco em detalhamento executivo, organização e atenção à execução na prática.</p>
+              </div>
+
+              <div className={styles.modalTechSheet}>
+                <h4 className={styles.modalTechSheetTitle}>Ficha Técnica</h4>
+                <div className={styles.modalTechSheetBody}>
+                  {technicalSheet.map((item, idx) => (
+                    <div key={idx} className={styles.modalTechRow}>
+                      <span className={styles.modalTechLabel}>{item.label}</span>
+                      <span className={styles.modalTechValue}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Perguntas Frequentes */}
+      {isFaqOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsFaqOpen(false)}>
+          <div className={`${styles.modalContent} ${styles.faqModalContent}`} onClick={e => e.stopPropagation()}>
+            <button className={styles.closeBtn} onClick={() => setIsFaqOpen(false)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            <div className={styles.modalInner}>
+              <div className={styles.modalBio}>
+                <h3 className={styles.modalTitle}>Perguntas Frequentes</h3>
+              </div>
+
+              <div className={styles.faqList}>
+                {faqs.map((faq, idx) => (
+                  <div key={idx} className={`${styles.faqItem} ${faqOpenIdx === idx ? styles.faqItemOpen : ''}`}>
+                    <button
+                      className={styles.faqQuestion}
+                      onClick={() => setFaqOpenIdx(faqOpenIdx === idx ? null : idx)}
+                    >
+                      <span className={styles.faqQuestionText}>{faq.q}</span>
+                      <span className={styles.faqToggle}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </button>
+                    <div className={styles.faqAnswer}>
+                      <p>{faq.a}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
