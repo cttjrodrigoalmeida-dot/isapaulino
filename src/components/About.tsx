@@ -67,7 +67,7 @@ export default function About() {
 
             {/* CTA */}
             <div className={styles.aboutCta}>
-              <a href="https://instagram.com/isapaulinostudio" className="btn btn-outline" target="_blank" rel="noopener noreferrer">
+              <a href="https://www.instagram.com/isapaulinostudio" className="btn btn-outline" target="_blank" rel="noopener noreferrer">
                 Instagram
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
                   <path d="M7 17L17 7M7 7h10v10" strokeLinecap="round" strokeLinejoin="round" />

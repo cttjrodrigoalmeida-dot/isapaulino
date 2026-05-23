@@ -74,7 +74,7 @@ export default function Contact() {
           </div>
 
           <div className={styles.socialIcons}>
-            <a href="https://www.instagram.com/isapaulinostudio/" target="_blank" rel="noopener noreferrer" className={styles.socialIcon}>IG</a>
+            <a href="https://www.instagram.com/isapaulinostudio" target="_blank" rel="noopener noreferrer" className={styles.socialIcon}>IG</a>
             <a href="https://tiktok.com/@isapaulinostudio" target="_blank" rel="noopener noreferrer" className={styles.socialIcon}>TK</a>
             <a href="https://www.threads.com/@isapaulinostudio" target="_blank" rel="noopener noreferrer" className={styles.socialIcon}>TH</a>
             <a href="https://www.pinterest.com/isapaulinostudio" target="_blank" rel="noopener noreferrer" className={styles.socialIcon}>PT</a>

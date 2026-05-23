@@ -13,7 +13,7 @@ const navItems = [
 ]
 
 const socialLinks = [
-  { label: 'Instagram', href: 'https://www.instagram.com/isapaulinostudio/', icon: 'IG' },
+  { label: 'Instagram', href: 'https://www.instagram.com/isapaulinostudio', icon: 'IG' },
   { label: 'TikTok', href: 'https://tiktok.com/@isapaulinostudio', icon: 'TK' },
   { label: 'Threads', href: 'https://www.threads.com/@isapaulinostudio', icon: 'TH' },
   { label: 'Pinterest', href: 'https://www.pinterest.com/isapaulinostudio', icon: 'PT' },

@@ -1,6 +1,6 @@
 import styles from './InstagramCTA.module.css'
 
-const INSTAGRAM_URL = 'https://www.instagram.com/isapaulinostudio/'
+const INSTAGRAM_URL = 'https://www.instagram.com/isapaulinostudio'
 
 const photos = [
   { src: '/assets/instagram/1.webp', alt: 'Instagram Post 1' },
