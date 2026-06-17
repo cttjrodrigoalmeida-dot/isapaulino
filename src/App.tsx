@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import Blog from './pages/Blog'
 import BlogPost from './pages/BlogPost'
 import Bio from './pages/Bio'
+import Proposta from './pages/Proposta'
 import { CMSApp } from './cms/CMSApp'
 
 function ScrollToTop() {
@@ -33,6 +34,7 @@ function App() {
         <Route path="/bio" element={<Bio />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
+        <Route path="/proposta/:number" element={<Proposta />} />
         <Route path="/cms" element={<CMSApp />} />
       </Routes>
     </>
