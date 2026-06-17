@@ -47,11 +47,14 @@ function MobileCollapsible({
   header,
   children,
   defaultOpen = false,
+  compactHeader = false,
 }: {
   isDesktop: boolean;
   header: ReactNode;
   children: ReactNode;
   defaultOpen?: boolean;
+  /** Centraliza o chevron com o header quando este é só a pílula (sem h2). */
+  compactHeader?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = isDesktop || open;
@@ -59,7 +62,9 @@ function MobileCollapsible({
   return (
     <>
       <div
-        className={styles.mCollapseHead}
+        className={`${styles.mCollapseHead} ${
+          compactHeader ? styles.mCollapseHeadCompact : ""
+        }`}
         onClick={isDesktop ? undefined : toggle}
         role={isDesktop ? undefined : "button"}
         tabIndex={isDesktop ? undefined : 0}
@@ -90,39 +95,6 @@ function MobileCollapsible({
       {isOpen && children}
     </>
   );
-}
-
-// ── Contador animado (count-up) — réplica da hero do site ──────
-function useCountUp(target: number, duration = 1800, prefix = "", suffix = "") {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let startTime: number | null = null;
-    let raf = 0;
-    const step = (ts: number) => {
-      if (startTime === null) startTime = ts;
-      const progress = Math.min((ts - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      el.textContent = `${prefix}${Math.floor(eased * target)}${suffix}`;
-      if (progress < 1) raf = requestAnimationFrame(step);
-    };
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          raf = requestAnimationFrame(step);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-    obs.observe(el);
-    return () => {
-      obs.disconnect();
-      cancelAnimationFrame(raf);
-    };
-  }, [target, duration, prefix, suffix]);
-  return ref;
 }
 
 // ── Ícones inline (sem dependências externas) ─────────────────
@@ -176,6 +148,12 @@ const IconPix = () => (
     <path d="M16 2.6l4.7 4.7-4.7 4.7-4.7-4.7L16 2.6zM7.3 11.3l4.7 4.7-4.7 4.7L2.6 16l4.7-4.7zm17.4 0L29.4 16l-4.7 4.7L20 16l4.7-4.7zM16 20l4.7 4.7L16 29.4l-4.7-4.7L16 20z" />
   </svg>
 );
+const IconCopy = () => (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <rect x="8" y="8" width="12" height="12" rx="2" />
+    <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
+  </svg>
+);
 
 // ── Contador regressivo até o vencimento da proposta ──────────
 function Countdown({ until }: { until: string }) {
@@ -213,12 +191,55 @@ function Countdown({ until }: { until: string }) {
   );
 }
 
+// ── Botão "copiar" (chave PIX) — feedback rápido, sem libs externas ──
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = value;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={`${styles.copyBtn} ${copied ? styles.copyBtnDone : ""}`}
+      aria-label={copied ? "Chave PIX copiada" : "Copiar chave PIX"}
+    >
+      {copied ? <IconCheck /> : <IconCopy />}
+      {copied ? "Copiado" : "Copiar"}
+    </button>
+  );
+}
+
 interface Props {
   proposal: Proposal;
 }
 
 export default function ProposalView({ proposal: p }: Props) {
   const contact = p.contact ?? DEFAULT_CONTACT;
+  const pixCopyValue = p.pixKeyValue ?? p.pixKey;
   const about = p.studioAbout ?? DEFAULT_STUDIO_ABOUT;
   const aboutExtra = DEFAULT_STUDIO_ABOUT; // credenciais/ferramentas vêm sempre dos defaults
   const steps = p.processSteps ?? DEFAULT_PROCESS_STEPS;
@@ -270,11 +291,6 @@ export default function ProposalView({ proposal: p }: Props) {
   const [clausesOpen, setClausesOpen] = useState(false);
   const clausesSectionRef = useRef<HTMLElement>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  // stats animados (igual à hero do site)
-  const ref200 = useCountUp(200, 1800, "+", "");
-  const ref6 = useCountUp(6, 1400, "+", "");
-  const ref100 = useCountUp(100, 2000, "", "%");
 
   const waLink = `https://wa.me/${contact.whatsapp}`;
   const ctaWaLink = `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(
@@ -378,20 +394,20 @@ export default function ProposalView({ proposal: p }: Props) {
                   </p>
                 ))}
 
-                {/* stats da hero do site */}
+                {/* stats — visível apenas no mobile, sem animação */}
                 <div className={styles.statsRow}>
                   <div className={styles.stat}>
-                    <span ref={ref200} className={styles.statValue}>+0</span>
+                    <span className={styles.statValue}>+200</span>
                     <span className={styles.statLabel}>Projetos entregues</span>
                   </div>
                   <span className={styles.statDivider} />
                   <div className={styles.stat}>
-                    <span ref={ref6} className={styles.statValue}>+0</span>
+                    <span className={styles.statValue}>+6</span>
                     <span className={styles.statLabel}>Anos de experiência</span>
                   </div>
                   <span className={styles.statDivider} />
                   <div className={styles.stat}>
-                    <span ref={ref100} className={styles.statValue}>0%</span>
+                    <span className={styles.statValue}>100%</span>
                     <span className={styles.statLabel}>Clientes satisfeitos</span>
                   </div>
                 </div>
@@ -496,7 +512,7 @@ export default function ProposalView({ proposal: p }: Props) {
                 rel="noopener noreferrer"
                 className="btn btn-outline"
               >
-                Ver Mais
+                Ver mais no Instagram
               </a>
             </div>
           </section>
@@ -600,6 +616,7 @@ export default function ProposalView({ proposal: p }: Props) {
           <Reveal delay={0.1} className={styles.payWrap}>
             <MobileCollapsible
               isDesktop={isDesktop}
+              compactHeader
               header={<SectionLabel>FORMA DE PAGAMENTO</SectionLabel>}
             >
             {p.pixPlan && p.installmentPlan ? (
@@ -680,7 +697,10 @@ export default function ProposalView({ proposal: p }: Props) {
                       </span>
                       <div className={styles.pixBarText}>
                         <span className={styles.paySmallLabel}>Chave PIX</span>
-                        <span className={styles.pixKey}>{p.pixKey}</span>
+                        <div className={styles.pixKeyRow}>
+                          <span className={styles.pixKey}>{p.pixKey}</span>
+                          <CopyButton value={pixCopyValue} />
+                        </div>
                       </div>
                     </div>
                     {p.pixReminder && (
@@ -701,7 +721,10 @@ export default function ProposalView({ proposal: p }: Props) {
               <div className={styles.payCard}>
                 <div className={styles.pixBox}>
                   <span className={styles.miniLabel}>Chave PIX</span>
-                  <span className={styles.pixKey}>{p.pixKey}</span>
+                  <div className={styles.pixKeyRow}>
+                    <span className={styles.pixKey}>{p.pixKey}</span>
+                    <CopyButton value={pixCopyValue} />
+                  </div>
                 </div>
                 <div className={styles.payOptions}>
                   {(p.paymentOptions ?? []).map((opt) => (

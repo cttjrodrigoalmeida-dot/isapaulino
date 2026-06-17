@@ -362,12 +362,17 @@
   pointer-events: none;
 }
 
-/* stats (réplica da hero) */
+/* stats — exibidas apenas no mobile (ver media query no fim do arquivo) */
 .statsRow {
   display: flex;
   align-items: center;
   gap: 24px;
   margin-top: 28px;
+}
+@media (min-width: 992px) {
+  .statsRow {
+    display: none;
+  }
 }
 .stat {
   display: flex;
@@ -1048,6 +1053,45 @@
   color: var(--color-accent);
 }
 
+/* chave PIX + botão de copiar */
+.pixKeyRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0 8px 0 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition),
+    background var(--transition);
+}
+.copyBtn:hover {
+  color: var(--color-accent);
+  border-color: rgba(212, 197, 176, 0.4);
+  background: rgba(212, 197, 176, 0.06);
+}
+.copyBtn svg {
+  flex-shrink: 0;
+}
+.copyBtnDone {
+  color: var(--color-accent);
+  border-color: rgba(212, 197, 176, 0.5);
+  background: rgba(212, 197, 176, 0.1);
+}
+
 /* ════════════ PORTFÓLIO / GALERIA ════════════ */
 .galleryGrid {
   display: grid;
@@ -1696,6 +1740,13 @@
 .mCollapseHeadMain {
   flex: 1;
   min-width: 0;
+}
+/* quando o cabeçalho é só a pílula (sem h2), centraliza com o chevron */
+.mCollapseHeadCompact {
+  align-items: center;
+}
+.mCollapseHeadCompact .eyebrow {
+  margin-bottom: 0;
 }
 .mCollapseChevron {
   display: none;

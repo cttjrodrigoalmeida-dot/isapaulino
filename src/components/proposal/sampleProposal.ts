@@ -90,6 +90,7 @@ export const SAMPLE_PROPOSAL: Proposal = {
   totalExtenso: "(valor por extenso)",
 
   pixKey: "CNPJ: 49914763000137 (Conta PJ)",
+  pixKeyValue: "49914763000137",
   pixPlan: {
     discountLabel: "5% OFF",
     saveAmount: "R$ 100,00",

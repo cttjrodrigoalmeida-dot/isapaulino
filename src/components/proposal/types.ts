@@ -119,7 +119,9 @@ export interface Proposal {
   totalExtenso: string;    // valor por extenso
 
   // ── Forma de pagamento (exibida abaixo do total) ──
-  pixKey: string;          // "CNPJ: 49914763000137 (CONTA PJ)"
+  pixKey: string;          // texto exibido, ex.: "CNPJ: 49914763000137 (CONTA PJ)"
+  /** Valor exato da chave (sem rótulo/parênteses), usado pelo botão "copiar". Se ausente, copia pixKey. */
+  pixKeyValue?: string;
   /** Card 01 (PIX à vista, em destaque). Se ausente, usa o layout antigo de paymentOptions. */
   pixPlan?: PixPlan;
   /** Card 02 (parcelamento). */
