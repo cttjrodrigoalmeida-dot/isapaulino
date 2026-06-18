@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import type { Proposal } from "./types";
 import {
@@ -12,6 +12,11 @@ import {
 import { faqs } from "../FAQ";
 import styles from "./ProposalView.module.css";
 
+// Durante a exportação em PDF, desligamos as animações e abrimos
+// todas as seções colapsáveis — senão o conteúdo "fora da tela"
+// (opacity:0 do framer-motion / seções fechadas) sai em branco.
+const PrintContext = createContext(false);
+
 // ── Reveal on scroll ──────────────────────────────────────────
 function Reveal({
   children,
@@ -22,6 +27,11 @@ function Reveal({
   delay?: number;
   className?: string;
 }) {
+  const printing = useContext(PrintContext);
+  // Na impressão: sem motion, totalmente visível (evita PDF em branco).
+  if (printing) {
+    return <div className={className}>{children}</div>;
+  }
   return (
     <motion.div
       className={className}
@@ -56,8 +66,9 @@ function MobileCollapsible({
   /** Centraliza o chevron com o header quando este é só a pílula (sem h2). */
   compactHeader?: boolean;
 }) {
+  const printing = useContext(PrintContext);
   const [open, setOpen] = useState(defaultOpen);
-  const isOpen = isDesktop || open;
+  const isOpen = isDesktop || open || printing;
   const toggle = () => setOpen((o) => !o);
   return (
     <>
@@ -129,6 +140,12 @@ const IconPinterest = () => (
 const IconArrowUp = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
     <path d="M12 19V5M5 12l7-7 7 7" />
+  </svg>
+);
+const IconDownload = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <path d="M12 3v12m0 0l-4-4m4 4l4-4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 const IconCheck = () => (
@@ -262,6 +279,24 @@ export default function ProposalView({ proposal: p }: Props) {
   const scrollToTop = () =>
     window.scrollTo({ top: 0, behavior: "smooth" });
 
+  // Exportar em PDF: ativa o modo impressão (desliga animações e abre
+  // as seções colapsáveis), espera o React pintar o conteúdo visível e
+  // só então abre a janela de impressão ("Salvar como PDF").
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    if (!printing) return;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
+    const done = () => setPrinting(false);
+    window.addEventListener("afterprint", done);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener("afterprint", done);
+    };
+  }, [printing]);
+  const exportPdf = () => setPrinting(true);
+
   // ── Portfólio: "Ver Mais" + lightbox (ampliar — somente desktop) ──
   const GALLERY_INITIAL = 4;
   const gallery = p.gallery ?? [];
@@ -298,6 +333,7 @@ export default function ProposalView({ proposal: p }: Props) {
   )}`;
 
   return (
+    <PrintContext.Provider value={printing}>
     <div className={styles.page}>
       {/* fundo ambiente sutil (fixo) + glows de destaque */}
       <div className={styles.ambient} aria-hidden />
@@ -334,6 +370,15 @@ export default function ProposalView({ proposal: p }: Props) {
             alt="Isabela Paulino Studio"
             className={styles.heroLogo}
           />
+          <button
+            type="button"
+            onClick={exportPdf}
+            className={styles.pdfButton}
+            aria-label="Exportar proposta em PDF"
+          >
+            <IconDownload />
+            <span>Exportar PDF</span>
+          </button>
         </div>
 
         <div className={styles.heroBody}>
@@ -746,37 +791,42 @@ export default function ProposalView({ proposal: p }: Props) {
         {/* ───────────── PRAZO ───────────── */}
         <section className={`${styles.section} ${styles.sectionTight}`}>
           <Reveal className={styles.prazoCard}>
-            <SectionLabel>PRAZO DE ENTREGA</SectionLabel>
-            <div className={styles.prazoRow}>
-              <div className={styles.prazoItem}>
-                <span className={styles.prazoNum}>{p.prazoDetalhamento}</span>
-                <span className={styles.prazoCaption}>Detalhamento Executivo</span>
-              </div>
-              {p.prazoAnteprojeto && (
+            <MobileCollapsible
+              isDesktop={isDesktop}
+              compactHeader
+              header={<SectionLabel>PRAZO DE ENTREGA</SectionLabel>}
+            >
+              <div className={styles.prazoRow}>
                 <div className={styles.prazoItem}>
-                  <span className={styles.prazoNum}>{p.prazoAnteprojeto}</span>
-                  <span className={styles.prazoCaption}>Anteprojeto</span>
+                  <span className={styles.prazoNum}>{p.prazoDetalhamento}</span>
+                  <span className={styles.prazoCaption}>Detalhamento Executivo</span>
                 </div>
-              )}
-              {p.availableDate && (
-                <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
-                  <span className={styles.prazoNum}>{p.availableDate}</span>
-                  <span className={styles.prazoCaption}>Disponível para iniciar</span>
-                </div>
-              )}
-            </div>
-            {p.prazoNote && (
-              <p className={styles.prazoNote}>
-                {p.prazoNote.startsWith("Importante:") ? (
-                  <>
-                    <strong>Importante:</strong>
-                    {p.prazoNote.slice("Importante:".length)}
-                  </>
-                ) : (
-                  p.prazoNote
+                {p.prazoAnteprojeto && (
+                  <div className={styles.prazoItem}>
+                    <span className={styles.prazoNum}>{p.prazoAnteprojeto}</span>
+                    <span className={styles.prazoCaption}>Anteprojeto</span>
+                  </div>
                 )}
-              </p>
-            )}
+                {p.availableDate && (
+                  <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
+                    <span className={styles.prazoNum}>{p.availableDate}</span>
+                    <span className={styles.prazoCaption}>Disponível para iniciar</span>
+                  </div>
+                )}
+              </div>
+              {p.prazoNote && (
+                <p className={styles.prazoNote}>
+                  {p.prazoNote.startsWith("Importante:") ? (
+                    <>
+                      <strong>Importante:</strong>
+                      {p.prazoNote.slice("Importante:".length)}
+                    </>
+                  ) : (
+                    p.prazoNote
+                  )}
+                </p>
+              )}
+            </MobileCollapsible>
           </Reveal>
         </section>
 
@@ -953,6 +1003,16 @@ export default function ProposalView({ proposal: p }: Props) {
               Próximo passo: contrato digital · sem compromisso até a assinatura
             </span>
 
+            <button
+              type="button"
+              onClick={exportPdf}
+              className={styles.pdfButtonCta}
+              aria-label="Exportar proposta em PDF"
+            >
+              <IconDownload />
+              <span>Exportar esta proposta em PDF</span>
+            </button>
+
             <div className={styles.socialRow}>
               <a href={waLink} target="_blank" rel="noopener noreferrer" className={styles.social}>
                 <IconWhatsApp /> {contact.whatsappLabel}
@@ -1055,5 +1115,6 @@ export default function ProposalView({ proposal: p }: Props) {
         </div>
       )}
     </div>
+    </PrintContext.Provider>
   );
 }

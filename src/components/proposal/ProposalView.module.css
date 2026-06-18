@@ -160,6 +160,67 @@
   padding: 6px 14px;
   border-radius: var(--border-radius-sm);
 }
+/* botão Exportar PDF — canto direito do topbar */
+.pdfButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 9px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  background: rgba(20, 20, 20, 0.5);
+  border: 1px solid rgba(212, 197, 176, 0.35);
+  border-radius: var(--border-radius-btn);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+    color var(--transition);
+}
+.pdfButton svg {
+  color: var(--color-accent);
+}
+.pdfButton:hover {
+  background: rgba(212, 197, 176, 0.12);
+  border-color: var(--color-accent);
+}
+@media (max-width: 540px) {
+  /* no mobile estreito, mantém só o ícone para não competir com o logo */
+  .pdfButton span {
+    display: none;
+  }
+  .pdfButton {
+    padding: 9px 11px;
+  }
+}
+/* versão do botão no fim da página (abaixo do CTA principal) */
+.pdfButtonCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 12px 22px;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  background: rgba(20, 20, 20, 0.5);
+  border: 1px solid rgba(212, 197, 176, 0.35);
+  border-radius: var(--border-radius-btn);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+    color var(--transition);
+}
+.pdfButtonCta svg {
+  color: var(--color-accent);
+}
+.pdfButtonCta:hover {
+  background: rgba(212, 197, 176, 0.12);
+  border-color: var(--color-accent);
+}
 
 .heroBody {
   padding: 40px 0;
@@ -236,6 +297,10 @@
 }
 .aboutText {
   min-width: 0;
+}
+/* texto do "Sobre o estúdio" justificado */
+.aboutText .paragraph {
+  text-align: justify;
 }
 .aboutTitle {
   font-family: var(--font-title);
@@ -1851,14 +1916,26 @@
 
 /* ════════════ IMPRESSÃO / PDF ════════════ */
 @media print {
+  /* o framer-motion deixa elementos fora da tela em opacity:0 (estilo inline);
+     na impressão forçamos tudo visível, senão o PDF sai em branco */
+  *,
+  *::before,
+  *::after {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
   .ambient,
   .glowTop,
   .glowBottom,
   .ctaButton,
   .floatStack,
   .socialFixed,
+  .pdfButton,
+  .pdfButtonCta,
   .lightbox {
-    display: none;
+    display: none !important;
   }
   .page {
     background: #fff;
