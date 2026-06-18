@@ -1625,7 +1625,7 @@
   justify-content: center;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-btn);
+  border-radius: 0 14px 0 14px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   transition: background var(--transition), border-color var(--transition),
     transform var(--transition);
@@ -1642,13 +1642,16 @@
   filter: brightness(0) invert(1);
 }
 .backToTop {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
+  justify-content: center;
+  gap: 4px;
+  width: 60px;
+  padding: 12px 4px;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  font-size: 0.48rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
   text-transform: uppercase;
   color: var(--color-text-primary);
   background: rgba(20, 20, 20, 0.7);
@@ -1662,8 +1665,9 @@
     background var(--transition), border-color var(--transition);
 }
 .backToTop svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
   color: var(--color-accent);
 }
 .backToTopVisible {
@@ -1743,7 +1747,7 @@
 }
 /* quando o cabeçalho é só a pílula (sem h2), centraliza com o chevron */
 .mCollapseHeadCompact {
-  align-items: center;
+  align-items: flex-end;
 }
 .mCollapseHeadCompact .eyebrow {
   margin-bottom: 0;
@@ -1753,10 +1757,9 @@
 }
 
 /* ════════════ RESPONSIVO ════════════ */
-/* elementos flutuantes (redes + WhatsApp) apenas no desktop */
+/* redes fixas no topo permanecem apenas no desktop (WhatsApp aparece em ambos) */
 @media (max-width: 991px) {
-  .socialFixed,
-  .waFloat {
+  .socialFixed {
     display: none;
   }
 
