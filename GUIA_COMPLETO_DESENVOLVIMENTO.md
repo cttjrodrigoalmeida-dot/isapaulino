@@ -190,11 +190,17 @@ CREATE TABLE IF NOT EXISTS proposals (
   FOREIGN KEY(client_id) REFERENCES clients(id)
 );
 
+-- Briefing: linkado a uma proposta. Cada briefing tem 1+ blocos de imagem,
+-- e cada imagem tem perguntas posicionadas por PINOS NUMERADOS (x,y em %).
+-- O cliente responde cada pergunta e pode anexar 1 imagem de referência por pergunta.
+-- `blocks` guarda o template em JSON (ver formato no front-end: src/components/briefing/types.ts):
+--   blocks: [{ id, title, image, note?, questions: [{ id, text, pin:{x,y}, allowReference }] }]
 CREATE TABLE IF NOT EXISTS briefings (
   id TEXT PRIMARY KEY,
+  proposal_number TEXT,              -- FK lógica → propostas (puxa cliente/projeto/data)
   title TEXT NOT NULL,
-  questions TEXT,
-  allow_image_upload INTEGER DEFAULT 1,
+  intro TEXT,
+  blocks TEXT,                       -- JSON: blocos de imagem + perguntas + pinos
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -204,8 +210,8 @@ CREATE TABLE IF NOT EXISTS briefing_responses (
   briefing_id TEXT NOT NULL,
   client_email TEXT,
   client_name TEXT,
-  responses TEXT,
-  images TEXT,
+  answers TEXT,                      -- JSON: { [questionId]: "resposta em texto" }
+  reference_images TEXT,             -- JSON: { [questionId]: r2_key }  (imagens em R2)
   submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(briefing_id) REFERENCES briefings(id)
 );
@@ -407,17 +413,93 @@ FUNCIONALIDADES — IMPLEMENTE NESTA ORDEM
    - CRUD completo igual ao de contratos (sem editor avançado)
    - Campo adicional: contract_id (opcional, para vincular contrato)
 
-8. BRIEFING ONLINE
-   Admin:
-   - CRUD de briefings
-   - Cada briefing tem: title + questions (JSON array)
-   - Cada question tem: label, type(text|radio|checkbox), options, allow_image
-   
-   Página pública /briefing/[id]:
-   - Renderiza formulário a partir das questions
-   - Upload de imagem por pergunta (base64 ou link)
-   - POST /api/briefing/[id]/submit salva respostas no D1
-   - Admin vê respostas em /admin/briefing/[id]
+8. BRIEFING ONLINE (briefing sobre imagem, com pinos numerados)
+
+   >>> ATENÇÃO: o desenho deste briefing MUDOU. Não é mais um formulário genérico
+   >>> de perguntas. Agora é um briefing VISUAL, linkado a uma proposta:
+   >>> a Isabela sobe uma imagem do ambiente (render/foto) e cadastra perguntas
+   >>> posicionadas sobre pontos da imagem (PINOS NUMERADOS). O cliente vê a imagem
+   >>> com as bolinhas (1,2,3...) e responde cada pergunta no campo correspondente,
+   >>> podendo anexar 1 imagem de referência por pergunta.
+
+   >>> ORGANIZAÇÃO POR AMBIENTE: cada bloco do briefing é um AMBIENTE
+   >>> (Cozinha/Gourmet, Sala de TV, Banheiro, Quarto, etc.). A página mostra um
+   >>> bloco por ambiente (imagem + perguntas) e uma TIMELINE LATERAL (desktop) que
+   >>> lista os ambientes, indica a etapa atual (scroll) e marca cada ambiente como
+   >>> concluído conforme o cliente responde (ETAPA 0X/0N). No admin será preciso
+   >>> CADASTRAR/SELECIONAR ambientes (adicionar "Cozinha", "Quarto", etc.).
+
+   >>> JÁ FEITO (FASE VISUAL, sem backend) — front-end + export PDF:
+   >>> - Página pública /briefing/:number (o :number = número da proposta linkada).
+   >>>   Arquivos: src/pages/Briefing.tsx, src/components/briefing/{BriefingView.tsx,
+   >>>   BriefingView.module.css, types.ts, sampleBriefing.ts}.
+   >>> - Modelo de dados editável em src/components/briefing/types.ts:
+   >>>     Briefing { number, proposalNumber, title, sections[], contact, studioEmail? }
+   >>>     BriefingSection { id, kind: "info" | "ambiente", title, titleLines?, intro?,
+   >>>                       image? (só ambiente), questions[] }
+   >>>     BriefingQuestion { id, text, hint?, note?, type? (text | longtext | radio |
+   >>>                        select | checklist | maquete), options?, placeholder?,
+   >>>                        pin?{x,y em %, label?}, required? (default true),
+   >>>                        allowReference?, quickFills? }
+   >>> - Seção "Informações Iniciais" (kind "info", sem imagem) cobre os vários tipos de
+   >>>   pergunta (texto, rádio, checklist de múltipla escolha, card de maquete com
+   >>>   e-mail/WhatsApp clicáveis). Cada AMBIENTE (kind "ambiente") = imagem + pinos.
+   >>>   Pinos em cor "melancia" (#f0506e) com rótulo opcional abaixo do número (pin.label).
+   >>> - Linkagem com a proposta via getProposalByNumber() em
+   >>>   src/components/proposal/proposalsRegistry.ts (puxa cliente, projeto, data).
+   >>> - TODAS as perguntas são obrigatórias por padrão (required != false); só o
+   >>>   anexo de referência é opcional. Ao clicar "Enviar briefing", valida e
+   >>>   destaca em vermelho a(s) pergunta(s) pendente(s), rolando até a primeira.
+   >>> - Desktop: imagem dá ZOOM ao passar o mouse (transform-origin segue o cursor);
+   >>>   timeline lateral animada por progresso; redes fixas no topo-direito e
+   >>>   botões flutuantes WhatsApp + Topo (iguais à proposta). Mobile mantém a
+   >>>   responsividade (timeline/redes ocultas, blocos empilhados).
+   >>> - Respostas do cliente ficam em estado local (texto persiste em localStorage
+   >>>   = "salvamento automático"); imagens de referência ficam em memória (object
+   >>>   URL). SEM persistência em servidor ainda.
+   >>> - Export PDF reutiliza o padrão da proposta (PrintContext + window.print()
+   >>>   + @media print): cliente preenche → exporta PDF → envia pra Isabela (WhatsApp).
+   >>>   O botão "Exportar PDF" funciona SEMPRE (não é bloqueado pela validação).
+   >>> - Botão "Enviar briefing": valida obrigatórias e, se ok, abre o WhatsApp com uma
+   >>>   MENSAGEM CURTA avisando que o briefing foi concluído (NÃO manda as respostas
+   >>>   inteiras pelo WhatsApp — só o aviso; o conteúdo completo vai pelo PDF/futuro
+   >>>   backend). Hoje a "contabilização" é só local: grava um timestamp em
+   >>>   localStorage (briefing:<number>:submitted) e mostra "Envio registrado em ..."
+   >>>   no rodapé do formulário. Isso NÃO é visível pra Isabela em lugar nenhum — é só
+   >>>   feedback pro cliente. Contabilizar de fato pro lado da Isabela depende do
+   >>>   backend (ver abaixo).
+
+   >>> A FAZER NESTA FASE (backend + admin):
+   Admin (/admin/briefing):
+   - CRUD de briefings; cada briefing é LINKADO a uma proposta (selecionar a proposta
+     → puxa número/cliente/projeto).
+   - Gerenciar AMBIENTES do briefing: adicionar/remover ambientes (Cozinha, Quarto…),
+     cada um com sua imagem e seu conjunto de perguntas.
+   - >>> CRIAR AMBIENTE DIRETO PELA LINHA DO TEMPO: na timeline lateral, um botão
+     >>> "+ adicionar ambiente" cria uma nova etapa; as perguntas de cada ambiente são
+     >>> construídas de forma personalizada (texto, escolha, checklist, etc.) SEMPRE
+     >>> mantendo o mesmo layout de card mostrado no front (ver tipos em types.ts:
+     >>> QuestionType = text | longtext | radio | select | checklist | maquete).
+   - Editor visual por ambiente: subir imagem, escrever perguntas e POSICIONAR os pinos
+     (clicar na imagem grava x,y em %), definir rótulo do pino (pin.label), marcar se a
+     pergunta é obrigatória e se aceita referência.
+   - >>> FORMULÁRIO HOJE É FIXO — tornar EDITÁVEL: a Isabela deve poder ADICIONAR e
+     >>> EXCLUIR perguntas de cada ambiente (reordenar também seria ideal). Hoje as
+     >>> perguntas vêm fixas no sampleBriefing.ts; no admin isso vira CRUD de perguntas.
+   - Salvar template em briefings.sections (JSON, formato igual ao types.ts do front).
+   - Ver respostas recebidas em /admin/briefing/[id] (texto + imagens de referência do R2),
+     incluindo SE E QUANDO o cliente clicou em "Enviar briefing" (status respondido +
+     data/hora) — é isso que torna o envio "contabilizado no sistema" de fato (hoje só
+     existe um aviso local pro cliente, ver acima; sem backend a Isabela não vê nada).
+
+   Página pública /briefing/[id] (evoluir a página já existente):
+   - Já renderiza ambientes + imagem + pinos + caixas de resposta a partir do template.
+   - Trocar a fonte dos dados (sample → fetch por número) e ADICIONAR submit:
+     - Upload das imagens de referência para o R2 (hoje só preview local).
+     - POST /api/briefing/[id]/submit salva answers + reference_images no D1 E marca
+       briefings.status = "respondido" + submitted_at (isso é a contabilização real).
+   - MANTER SEMPRE o botão "Exportar PDF" (já existe) e a validação de obrigatórias.
+   - MANTER a mensagem de WhatsApp curta (não enviar as respostas inteiras por lá).
 
 9. PÁGINAS PÚBLICAS
    /contrato/[id]:

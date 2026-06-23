@@ -404,17 +404,6 @@
   z-index: 2;
   pointer-events: none;
 }
-/* linha decorativa vertical na direita da foto */
-.lineRight {
-  position: absolute;
-  top: 0;
-  right: -16px;
-  width: 1px;
-  height: 100%;
-  background: var(--color-border-strong);
-  z-index: 2;
-  pointer-events: none;
-}
 /* linha decorativa horizontal na base da foto */
 .lineBottom {
   position: absolute;

@@ -462,7 +462,6 @@ export default function ProposalView({ proposal: p }: Props) {
                 <div className={styles.aboutMedia}>
                   <div className={styles.photoContainer}>
                     <span className={styles.cornerAccent} aria-hidden />
-                    <span className={styles.lineRight} aria-hidden />
                     <span className={styles.lineBottom} aria-hidden />
                     <img src={about.photo} alt="Isabela Paulino" className={styles.aboutPhoto} />
                     {/* card flutuante sobre a foto (igual à hero) */}
