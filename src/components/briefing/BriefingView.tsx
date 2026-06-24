@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Briefing, BriefingSection, BriefingQuestion } from "./types";
 import { getProposalByNumber } from "../proposal/proposalsRegistry";
+import CustomCursor from "../CustomCursor";
 import styles from "./BriefingView.module.css";
 
 // Modo impressão: desliga zoom/animações e troca controles por texto fixo.
@@ -89,8 +90,6 @@ const IconCheck = () => (
 
 // estrela da página BIO (glifo ✦)
 const STAR = "✦";
-// separador interno das respostas de múltipla escolha (checklist)
-const MULTI_SEP = ", ";
 
 // divisor com estrela no meio (igual ao mockup)
 const StarDivider = () => (
@@ -136,6 +135,18 @@ interface Props {
 const isRequired = (q: BriefingQuestion) => q.required !== false;
 const isAnswered = (q: BriefingQuestion, answers: Answers) =>
   (answers[q.id] ?? "").trim().length > 0;
+// uma pergunta fica bloqueada quando outra pergunta tem `locksQuestionIds`
+// apontando pra ela e a resposta atual dessa outra está em `alertOptions`.
+const isLockedQuestion = (
+  q: BriefingQuestion,
+  allQuestions: BriefingQuestion[],
+  answers: Answers
+) =>
+  allQuestions.some(
+    (other) =>
+      other.locksQuestionIds?.includes(q.id) &&
+      (other.alertOptions ?? []).includes(answers[other.id] ?? "")
+  );
 
 // ── Pergunta individual ───────────────────────────────────────
 function QuestionItem({
@@ -148,6 +159,7 @@ function QuestionItem({
   onPickRef,
   onRemoveRef,
   pending,
+  locked,
   registerRef,
   contact,
   studioEmail,
@@ -161,6 +173,7 @@ function QuestionItem({
   onPickRef: (file: File) => void;
   onRemoveRef: () => void;
   pending: boolean;
+  locked: boolean;
   registerRef: (el: HTMLDivElement | null) => void;
   contact: Briefing["contact"];
   studioEmail?: string;
@@ -171,6 +184,7 @@ function QuestionItem({
   const allowReference = question.allowReference ?? sectionKind === "ambiente";
   const required = isRequired(question);
   const wantsTemplateAttach = type === "radio" && answer.startsWith("Anexar");
+  const hasAlertAnswer = (question.alertOptions ?? []).includes(answer);
   const placeholder = question.hint
     ? `+ ${question.hint}`
     : "Escreva sua resposta aqui…";
@@ -215,11 +229,12 @@ function QuestionItem({
               {(question.options ?? []).map((opt) => {
                 const sel = answer === opt;
                 const attach = opt.startsWith("Anexar");
+                const isAlert = sel && hasAlertAnswer;
                 return (
                   <button
                     key={opt}
                     type="button"
-                    className={`${styles.optionBtn} ${sel ? styles.optionBtnSel : ""}`}
+                    className={`${styles.optionBtn} ${question.dashedOptions ? styles.optionBtnDashed : ""} ${sel ? styles.optionBtnSel : ""} ${isAlert ? styles.optionBtnAlert : ""}`}
                     onClick={() => onAnswer(opt)}
                   >
                     {attach && <IconImage />}
@@ -247,28 +262,25 @@ function QuestionItem({
           </>
         );
       case "checklist": {
-        const selected = answer ? answer.split(MULTI_SEP) : [];
-        const toggle = (opt: string) => {
-          const set = new Set(selected);
-          if (set.has(opt)) set.delete(opt);
-          else set.add(opt);
-          const next = (question.options ?? []).filter((o) => set.has(o));
-          onAnswer(next.join(MULTI_SEP));
-        };
         return (
           <div className={styles.checklist}>
+            {locked && (
+              <p className={`${styles.qNote} ${styles.qNoteAlert}`}>
+                Disponível quando o projeto estiver totalmente definido.
+              </p>
+            )}
             <div className={styles.checklistHead}>
-              <span className={styles.plus}>+</span> {question.placeholder ?? "selecione"}{" "}
-              <span className={styles.checklistHint}>(múltipla escolha)</span>
+              <span className={styles.plus}>+</span> {question.placeholder ?? "selecione"}
             </div>
             {(question.options ?? []).map((opt) => {
-              const sel = selected.includes(opt);
+              const sel = answer === opt;
               return (
                 <button
                   key={opt}
                   type="button"
-                  className={`${styles.checklistRow} ${sel ? styles.checklistRowSel : ""}`}
-                  onClick={() => toggle(opt)}
+                  disabled={locked}
+                  className={`${styles.checklistRow} ${sel ? styles.checklistRowSel : ""} ${locked ? styles.checklistRowLocked : ""}`}
+                  onClick={() => onAnswer(sel ? "" : opt)}
                 >
                   <span className={styles.checklistMark}>
                     {sel ? <IconCheck /> : "–"}
@@ -330,7 +342,7 @@ function QuestionItem({
                 <button
                   key={opt}
                   type="button"
-                  className={`${styles.optionBtn} ${answer === opt ? styles.optionBtnSel : ""}`}
+                  className={`${styles.optionBtn} ${question.dashedOptions ? styles.optionBtnDashed : ""} ${answer === opt ? styles.optionBtnSel : ""}`}
                   onClick={() => onAnswer(opt)}
                 >
                   {opt}
@@ -358,13 +370,17 @@ function QuestionItem({
         <span className={styles.qNum}>{String(index + 1).padStart(2, "0")}</span>
         <span className={styles.qText}>
           {question.text}
-          {required && <span className={styles.reqMark}>*</span>}
+          {required && !locked && <span className={styles.reqMark}>*</span>}
         </span>
       </div>
 
       {renderControl()}
 
-      {question.note && <p className={styles.qNote}>{question.note}</p>}
+      {question.note && (
+        <p className={`${styles.qNote} ${hasAlertAnswer ? styles.qNoteAlert : ""}`}>
+          {question.note}
+        </p>
+      )}
 
       {pending && !printing && (
         <span className={styles.pendingMsg}>Esta pergunta é obrigatória.</span>
@@ -411,26 +427,53 @@ function QuestionItem({
 }
 
 // ── Imagem com pinos + zoom no hover (desktop) ────────────────
+// distância máxima de zoom no pinça (mobile) — mesmo nível do hover (desktop)
+const PINCH_MAX_SCALE = 2.2;
+
 function SectionFigure({ section }: { section: BriefingSection }) {
   const printing = useContext(PrintContext);
-  const [zoom, setZoom] = useState<{ on: boolean; x: number; y: number }>({
-    on: false,
-    x: 50,
-    y: 50,
-  });
+  const [isTouch] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
+  );
+  const [zoom, setZoom] = useState({ on: false, x: 50, y: 50, scale: 1.9 });
+  const pinch = useRef<{ dist: number; scale: number } | null>(null);
   if (!section.image) return null;
 
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (printing) return;
+    if (printing || isTouch) return;
     const r = e.currentTarget.getBoundingClientRect();
     setZoom({
       on: true,
       x: ((e.clientX - r.left) / r.width) * 100,
       y: ((e.clientY - r.top) / r.height) * 100,
+      scale: 1.9,
     });
   };
+
+  // zoom por pinça (dois dedos) — o toque simples não amplia (evita ficar travado)
+  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (printing || e.touches.length !== 2) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const [t1, t2] = [e.touches[0], e.touches[1]];
+    const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    const midX = ((t1.clientX + t2.clientX) / 2 - r.left) / r.width * 100;
+    const midY = ((t1.clientY + t2.clientY) / 2 - r.top) / r.height * 100;
+    if (!pinch.current) {
+      pinch.current = { dist, scale: zoom.scale };
+      return;
+    }
+    const scale = Math.min(
+      PINCH_MAX_SCALE,
+      Math.max(1, pinch.current.scale * (dist / pinch.current.dist))
+    );
+    setZoom({ on: scale > 1.03, x: midX, y: midY, scale });
+  };
+  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length < 2) pinch.current = null;
+  };
+
   const innerStyle = zoom.on
-    ? { transform: "scale(1.9)", transformOrigin: `${zoom.x}% ${zoom.y}%` }
+    ? { transform: `scale(${zoom.scale})`, transformOrigin: `${zoom.x}% ${zoom.y}%` }
     : undefined;
 
   return (
@@ -439,6 +482,8 @@ function SectionFigure({ section }: { section: BriefingSection }) {
         className={styles.figureViewport}
         onMouseMove={onMove}
         onMouseLeave={() => setZoom((z) => ({ ...z, on: false }))}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
         <div className={styles.figureInner} style={innerStyle}>
           <img src={section.image} alt={section.title} className={styles.image} />
@@ -458,7 +503,7 @@ function SectionFigure({ section }: { section: BriefingSection }) {
       </div>
       <figcaption className={styles.figureHint}>
         <span className={styles.figureHintDesktop}>Passe o mouse sobre a imagem para ampliar.</span>
-        <span className={styles.figureHintMobile}>Toque na imagem para ampliar.</span>
+        <span className={styles.figureHintMobile}>Use dois dedos (pinça) para ampliar.</span>
       </figcaption>
     </figure>
   );
@@ -551,16 +596,24 @@ export default function BriefingView({ briefing: b }: Props) {
 
   const questionEls = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // ── Progresso por seção ──
+  // todas as perguntas (achatado), usado pra resolver bloqueios entre perguntas
+  const allQuestions = useMemo(
+    () => b.sections.flatMap((s) => s.questions),
+    [b.sections]
+  );
+
+  // ── Progresso por seção (pergunta bloqueada não conta como obrigatória) ──
   const progress = useMemo(() => {
     const map: Record<string, { total: number; done: number; complete: boolean }> = {};
     b.sections.forEach((s) => {
-      const req = s.questions.filter(isRequired);
+      const req = s.questions.filter(
+        (q) => isRequired(q) && !isLockedQuestion(q, allQuestions, answers)
+      );
       const done = req.filter((q) => isAnswered(q, answers)).length;
       map[s.id] = { total: req.length, done, complete: req.length > 0 && done === req.length };
     });
     return map;
-  }, [b.sections, answers]);
+  }, [b.sections, answers, allQuestions]);
   const totalReq = Object.values(progress).reduce((s, p) => s + p.total, 0);
   const totalDone = Object.values(progress).reduce((s, p) => s + p.done, 0);
 
@@ -617,11 +670,16 @@ export default function BriefingView({ briefing: b }: Props) {
     const miss: string[] = [];
     b.sections.forEach((s) =>
       s.questions.forEach((q) => {
-        if (isRequired(q) && !isAnswered(q, answers)) miss.push(q.id);
+        if (
+          isRequired(q) &&
+          !isLockedQuestion(q, allQuestions, answers) &&
+          !isAnswered(q, answers)
+        )
+          miss.push(q.id);
       })
     );
     return miss;
-  }, [b.sections, answers]);
+  }, [b.sections, answers, allQuestions]);
 
   const waLink = `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(
     `Olá, Isabela! Acabei de concluir e enviar o briefing da proposta Nº ${b.number}.`
@@ -659,6 +717,7 @@ export default function BriefingView({ briefing: b }: Props) {
       onPickRef={(file) => pickRef(q.id, file)}
       onRemoveRef={() => removeRef(q.id)}
       pending={pending.has(q.id)}
+      locked={isLockedQuestion(q, allQuestions, answers)}
       registerRef={(el) => {
         questionEls.current[q.id] = el;
       }}
@@ -670,6 +729,7 @@ export default function BriefingView({ briefing: b }: Props) {
   return (
     <PrintContext.Provider value={printing}>
       <div className={styles.page}>
+        {!printing && <CustomCursor />}
         <div className={styles.ambient} aria-hidden />
 
         {/* redes sociais fixas (topo-direito, desktop) — 2x2 */}

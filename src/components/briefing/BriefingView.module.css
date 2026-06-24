@@ -507,9 +507,8 @@
   font-weight: 700;
   color: #fff;
   background: #f0506e;
-  border: 2px solid #fff;
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 .pinLabel {
   font-family: var(--font-mono);
@@ -670,11 +669,6 @@
   border-radius: var(--border-radius-sm);
   padding: 11px 16px;
 }
-.checklistHint {
-  color: var(--color-text-muted);
-  text-transform: none;
-  letter-spacing: 0;
-}
 .checklistRow {
   display: flex;
   align-items: center;
@@ -717,6 +711,14 @@
 .checklistRowSel .checklistMark {
   color: var(--color-accent);
 }
+.checklistRowLocked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.checklistRowLocked:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-strong);
+}
 /* opções (radio/maquete) — pílulas selecionáveis */
 .options {
   display: flex;
@@ -750,12 +752,26 @@
   color: var(--color-text-primary);
 }
 .optionBtnSel {
-  color: #141414;
-  background: var(--color-accent);
+  color: var(--color-text-primary);
+  background: rgba(212, 197, 176, 0.08);
   border-color: var(--color-accent);
 }
 .optionBtnSel svg {
-  color: #141414;
+  color: var(--color-accent);
+}
+/* visual tracejado/mono (igual "anexar referência"), usado nas perguntas 04/05 */
+.optionBtnDashed {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-style: dashed;
+  border-color: rgba(212, 197, 176, 0.4);
+}
+/* alerta (ex.: pergunta 02 ao indicar que o projeto não está definido) */
+.optionBtnAlert {
+  border-color: #f0506e !important;
+  box-shadow: 0 0 0 1px rgba(240, 80, 110, 0.4);
 }
 /* observação/aviso da pergunta (ex.: 02) */
 .qNote {
@@ -769,6 +785,9 @@
   padding: 10px 14px;
   border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
 }
+.qNoteAlert {
+  border-left-color: #f0506e;
+}
 /* preenchimento rápido (À DEFINIR / NÃO SE APLICA) */
 .quickFill {
   display: inline-flex;
@@ -781,7 +800,7 @@
   color: var(--color-text-secondary);
   background: transparent;
   border: 1px dashed var(--color-border-strong);
-  border-radius: var(--border-radius-btn);
+  border-radius: var(--border-radius-sm);
   padding: 8px 14px;
   cursor: pointer;
   transition: color var(--transition), border-color var(--transition),
@@ -954,7 +973,7 @@
 /* padrão de bordas em xadrez, contando todos os botões da linha
    (anexar referência + preenchimentos rápidos) na ordem em que aparecem */
 .refRow > button:nth-of-type(even) {
-  border-radius: 0 14px 0 14px;
+  border-radius: 0 8px 0 8px;
 }
 .refBtn {
   display: inline-flex;
@@ -968,7 +987,7 @@
   color: var(--color-text-secondary);
   background: transparent;
   border: 1px dashed rgba(212, 197, 176, 0.4);
-  border-radius: var(--border-radius-btn);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
   transition: color var(--transition), border-color var(--transition),
     background var(--transition);
@@ -1099,6 +1118,8 @@
   border-color: var(--color-accent);
 }
 .sendBtn {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -1112,11 +1133,37 @@
   border: 1px solid var(--color-accent);
   border-radius: var(--border-radius-btn);
   cursor: pointer;
-  transition: background var(--transition), transform var(--transition);
+  transition: background var(--transition), transform var(--transition),
+    box-shadow var(--transition);
+  box-shadow: 0 0 40px -10px rgba(212, 197, 176, 0.6);
+}
+/* mesma faixa de luz do botão final da proposta */
+.sendBtn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.45) 30%,
+    transparent 40%
+  );
+  background-size: 200% 100%;
+  animation: sendSweep 3.5s infinite linear;
 }
 .sendBtn:hover {
   background: #e3d6c2;
   transform: translateY(-1px);
+  box-shadow: 0 0 56px -10px rgba(212, 197, 176, 0.85);
+}
+@keyframes sendSweep {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
 }
 
 /* ════════════ STACK FLUTUANTE (WhatsApp + Topo) ════════════ */
@@ -1270,6 +1317,9 @@
   }
   .figureViewport {
     cursor: default;
+    /* deixa o gesto de pinça (2 dedos) livre pro JS, sem o navegador
+       competir com zoom/scroll nativo da página */
+    touch-action: none;
   }
   .figureHintDesktop {
     display: none;

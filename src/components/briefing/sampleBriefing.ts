@@ -39,6 +39,8 @@ export const SAMPLE_BRIEFING: Briefing = {
           ],
           note: "Para iniciarmos o detalhamento, é importante que o projeto esteja totalmente definido. Alterações posteriores podem gerar retrabalho, impactar prazos e resultar em custos adicionais.",
           allowReference: false,
+          alertOptions: ["Não, ainda existem definições pendentes."],
+          locksQuestionIds: ["info-03"],
         },
         {
           id: "info-03",
@@ -52,8 +54,9 @@ export const SAMPLE_BRIEFING: Briefing = {
           id: "info-04",
           text: "VOCÊ POSSUI UM TEMPLATE PADRÃO DO SEU ESCRITÓRIO?",
           type: "radio",
-          options: ["Já enviei", "Anexar template", "Não tenho template"],
+          options: ["Anexar template", "Já enviei", "Não tenho template"],
           allowReference: false,
+          dashedOptions: true,
         },
         {
           id: "info-05",
@@ -61,6 +64,7 @@ export const SAMPLE_BRIEFING: Briefing = {
           type: "maquete",
           options: ["Já enviei", "Não existe", "Sem preferência."],
           allowReference: false,
+          dashedOptions: true,
         },
         {
           id: "info-06",

@@ -10,6 +10,7 @@ import {
   DEFAULT_NOT_INCLUDED,
 } from "./proposalDefaults";
 import { faqs } from "../FAQ";
+import CustomCursor from "../CustomCursor";
 import styles from "./ProposalView.module.css";
 
 // Durante a exportação em PDF, desligamos as animações e abrimos
@@ -335,6 +336,7 @@ export default function ProposalView({ proposal: p }: Props) {
   return (
     <PrintContext.Provider value={printing}>
     <div className={styles.page}>
+      {!printing && <CustomCursor />}
       {/* fundo ambiente sutil (fixo) + glows de destaque */}
       <div className={styles.ambient} aria-hidden />
       <div className={styles.glowTop} aria-hidden />
