@@ -711,14 +711,6 @@
 .checklistRowSel .checklistMark {
   color: var(--color-accent);
 }
-.checklistRowLocked {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.checklistRowLocked:hover {
-  color: var(--color-text-secondary);
-  border-color: var(--color-border-strong);
-}
 /* opções (radio/maquete) — pílulas selecionáveis */
 .options {
   display: flex;
@@ -799,7 +791,7 @@
   text-transform: uppercase;
   color: var(--color-text-secondary);
   background: transparent;
-  border: 1px dashed var(--color-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-sm);
   padding: 8px 14px;
   cursor: pointer;

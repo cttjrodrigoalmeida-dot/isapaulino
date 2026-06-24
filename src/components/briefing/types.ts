@@ -47,15 +47,18 @@ export interface BriefingQuestion {
   allowReference?: boolean;
   /** Botões de preenchimento rápido (ex.: ["À DEFINIR", "NÃO SE APLICA"]). */
   quickFills?: string[];
-  /** Se true, as opções usam o visual tracejado/mono (igual "anexar referência"). */
-  dashedOptions?: boolean;
   /**
    * Opções que, quando selecionadas, deixam o próprio botão em alerta (borda
-   * vermelha) e bloqueiam as perguntas listadas em `locksQuestionIds`.
+   * vermelha) e bloqueiam outras perguntas (ver `locksQuestionIds` /
+   * `locksAllOtherQuestions`).
    */
   alertOptions?: string[];
   /** Ids de outras perguntas que ficam bloqueadas enquanto uma opção de `alertOptions` estiver selecionada. */
   locksQuestionIds?: string[];
+  /** Se true, bloqueia TODAS as outras perguntas do briefing (exceto as listadas em `lockExceptIds`). */
+  locksAllOtherQuestions?: boolean;
+  /** Ids que ficam de fora do bloqueio quando `locksAllOtherQuestions` for true. */
+  lockExceptIds?: string[];
 }
 
 export interface BriefingSection {

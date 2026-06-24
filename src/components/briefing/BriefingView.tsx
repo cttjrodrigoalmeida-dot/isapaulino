@@ -135,18 +135,22 @@ interface Props {
 const isRequired = (q: BriefingQuestion) => q.required !== false;
 const isAnswered = (q: BriefingQuestion, answers: Answers) =>
   (answers[q.id] ?? "").trim().length > 0;
-// uma pergunta fica bloqueada quando outra pergunta tem `locksQuestionIds`
-// apontando pra ela e a resposta atual dessa outra está em `alertOptions`.
+// uma pergunta fica bloqueada quando outra pergunta, com a resposta atual
+// dentro de `alertOptions`, aponta pra ela via `locksQuestionIds` — ou via
+// `locksAllOtherQuestions` (bloqueia tudo, exceto `lockExceptIds`).
 const isLockedQuestion = (
   q: BriefingQuestion,
   allQuestions: BriefingQuestion[],
   answers: Answers
 ) =>
-  allQuestions.some(
-    (other) =>
-      other.locksQuestionIds?.includes(q.id) &&
-      (other.alertOptions ?? []).includes(answers[other.id] ?? "")
-  );
+  allQuestions.some((other) => {
+    if (other.id === q.id) return false;
+    if (!(other.alertOptions ?? []).includes(answers[other.id] ?? "")) return false;
+    if (other.locksAllOtherQuestions) {
+      return !(other.lockExceptIds ?? []).includes(q.id);
+    }
+    return other.locksQuestionIds?.includes(q.id) ?? false;
+  });
 
 // ── Pergunta individual ───────────────────────────────────────
 function QuestionItem({
@@ -210,6 +214,13 @@ function QuestionItem({
     if (printing) {
       return <div className={styles.answerPrint}>{answer || " "}</div>;
     }
+    if (locked) {
+      return (
+        <p className={`${styles.qNote} ${styles.qNoteAlert}`}>
+          Disponível quando o projeto estiver totalmente definido.
+        </p>
+      );
+    }
     switch (type) {
       case "text":
         return (
@@ -234,7 +245,7 @@ function QuestionItem({
                   <button
                     key={opt}
                     type="button"
-                    className={`${styles.optionBtn} ${question.dashedOptions ? styles.optionBtnDashed : ""} ${sel ? styles.optionBtnSel : ""} ${isAlert ? styles.optionBtnAlert : ""}`}
+                    className={`${styles.optionBtn} ${attach ? styles.optionBtnDashed : ""} ${sel ? styles.optionBtnSel : ""} ${isAlert ? styles.optionBtnAlert : ""}`}
                     onClick={() => onAnswer(opt)}
                   >
                     {attach && <IconImage />}
@@ -264,11 +275,6 @@ function QuestionItem({
       case "checklist": {
         return (
           <div className={styles.checklist}>
-            {locked && (
-              <p className={`${styles.qNote} ${styles.qNoteAlert}`}>
-                Disponível quando o projeto estiver totalmente definido.
-              </p>
-            )}
             <div className={styles.checklistHead}>
               <span className={styles.plus}>+</span> {question.placeholder ?? "selecione"}
             </div>
@@ -278,8 +284,7 @@ function QuestionItem({
                 <button
                   key={opt}
                   type="button"
-                  disabled={locked}
-                  className={`${styles.checklistRow} ${sel ? styles.checklistRowSel : ""} ${locked ? styles.checklistRowLocked : ""}`}
+                  className={`${styles.checklistRow} ${sel ? styles.checklistRowSel : ""}`}
                   onClick={() => onAnswer(sel ? "" : opt)}
                 >
                   <span className={styles.checklistMark}>
@@ -338,16 +343,19 @@ function QuestionItem({
               </div>
             </div>
             <div className={styles.options}>
-              {(question.options ?? []).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  className={`${styles.optionBtn} ${question.dashedOptions ? styles.optionBtnDashed : ""} ${answer === opt ? styles.optionBtnSel : ""}`}
-                  onClick={() => onAnswer(opt)}
-                >
-                  {opt}
-                </button>
-              ))}
+              {(question.options ?? []).map((opt) => {
+                const attach = opt.startsWith("Anexar");
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`${styles.optionBtn} ${attach ? styles.optionBtnDashed : ""} ${answer === opt ? styles.optionBtnSel : ""}`}
+                    onClick={() => onAnswer(opt)}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
             </div>
           </>
         );
@@ -386,7 +394,7 @@ function QuestionItem({
         <span className={styles.pendingMsg}>Esta pergunta é obrigatória.</span>
       )}
 
-      {(question.quickFills?.length || allowReference) && !printing && (
+      {(question.quickFills?.length || allowReference) && !printing && !locked && (
         <div className={styles.refRow}>
           {allowReference &&
             (refImage ? (
