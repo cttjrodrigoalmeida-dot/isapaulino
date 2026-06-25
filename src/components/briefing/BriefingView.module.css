@@ -806,9 +806,12 @@
   border-color: rgba(212, 197, 176, 0.5);
 }
 .quickFillSel {
-  color: #141414;
-  background: var(--color-accent);
+  color: var(--color-text-primary);
+  background: rgba(212, 197, 176, 0.08);
   border-color: var(--color-accent);
+}
+.quickFillSel svg {
+  color: var(--color-accent);
 }
 /* cards de "como enviar a maquete" */
 .maqueteCards {

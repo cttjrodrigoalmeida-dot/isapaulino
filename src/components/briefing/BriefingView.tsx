@@ -10,6 +10,7 @@ import {
 import type { Briefing, BriefingSection, BriefingQuestion } from "./types";
 import { getProposalByNumber } from "../proposal/proposalsRegistry";
 import CustomCursor from "../CustomCursor";
+import FadeIn from "../FadeIn";
 import styles from "./BriefingView.module.css";
 
 // Modo impressão: desliga zoom/animações e troca controles por texto fixo.
@@ -714,24 +715,25 @@ export default function BriefingView({ briefing: b }: Props) {
   const missingCount = pending.size;
 
   const renderQuestion = (section: BriefingSection, q: BriefingQuestion, i: number) => (
-    <QuestionItem
-      key={q.id}
-      question={q}
-      index={i}
-      sectionKind={section.kind}
-      answer={answers[q.id] ?? ""}
-      onAnswer={(v) => setAnswer(q.id, v)}
-      refImage={refs[q.id]}
-      onPickRef={(file) => pickRef(q.id, file)}
-      onRemoveRef={() => removeRef(q.id)}
-      pending={pending.has(q.id)}
-      locked={isLockedQuestion(q, allQuestions, answers)}
-      registerRef={(el) => {
-        questionEls.current[q.id] = el;
-      }}
-      contact={contact}
-      studioEmail={b.studioEmail}
-    />
+    <FadeIn key={q.id} delay={i * 0.05}>
+      <QuestionItem
+        question={q}
+        index={i}
+        sectionKind={section.kind}
+        answer={answers[q.id] ?? ""}
+        onAnswer={(v) => setAnswer(q.id, v)}
+        refImage={refs[q.id]}
+        onPickRef={(file) => pickRef(q.id, file)}
+        onRemoveRef={() => removeRef(q.id)}
+        pending={pending.has(q.id)}
+        locked={isLockedQuestion(q, allQuestions, answers)}
+        registerRef={(el) => {
+          questionEls.current[q.id] = el;
+        }}
+        contact={contact}
+        studioEmail={b.studioEmail}
+      />
+    </FadeIn>
   );
 
   return (
@@ -807,57 +809,61 @@ export default function BriefingView({ briefing: b }: Props) {
         </nav>
 
         <header className={styles.hero}>
-          <div className={styles.heroTopbar}>
-            <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.heroLogo} />
-            <div className={styles.heroActions}>
-              <span className={styles.autosave}>
-                <span className={styles.autosaveDot} /> Salvamento automático
-              </span>
-              <button type="button" onClick={exportPdf} className={styles.pdfButton} aria-label="Exportar briefing em PDF">
-                <IconDownload />
-                <span>Exportar PDF</span>
-              </button>
+          <FadeIn>
+            <div className={styles.heroTopbar}>
+              <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.heroLogo} />
+              <div className={styles.heroActions}>
+                <span className={styles.autosave}>
+                  <span className={styles.autosaveDot} /> Salvamento automático
+                </span>
+                <button type="button" onClick={exportPdf} className={styles.pdfButton} aria-label="Exportar briefing em PDF">
+                  <IconDownload />
+                  <span>Exportar PDF</span>
+                </button>
+              </div>
             </div>
-          </div>
+          </FadeIn>
 
-          <div className={styles.heroBody}>
-            <span className={styles.eyebrow}>BRIEFING · Nº {b.number}</span>
-            <h1 className={styles.heroTitle}>
-              {titleHead && (
-                <>
-                  {titleHead}
-                  <br />
-                </>
-              )}
-              {titleTail}
-            </h1>
-            {projectTags.length > 0 && (
-              <div className={styles.heroTags}>
-                {projectTags.map((t) => (
-                  <span key={t} className={styles.tag}>
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className={styles.heroMeta}>
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>Cliente</span>
-                <span className={styles.metaValue}>{clientName}</span>
-              </div>
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>Projeto</span>
-                <span className={styles.metaValue}>{projectTitle}</span>
-              </div>
-              {displayDate && (
-                <div className={styles.metaItem}>
-                  <span className={styles.metaLabel}>Data</span>
-                  <span className={styles.metaValue}>{displayDate}</span>
+          <FadeIn delay={0.2}>
+            <div className={styles.heroBody}>
+              <span className={styles.eyebrow}>BRIEFING · Nº {b.number}</span>
+              <h1 className={styles.heroTitle}>
+                {titleHead && (
+                  <>
+                    {titleHead}
+                    <br />
+                  </>
+                )}
+                {titleTail}
+              </h1>
+              {projectTags.length > 0 && (
+                <div className={styles.heroTags}>
+                  {projectTags.map((t) => (
+                    <span key={t} className={styles.tag}>
+                      {t}
+                    </span>
+                  ))}
                 </div>
               )}
+
+              <div className={styles.heroMeta}>
+                <div className={styles.metaItem}>
+                  <span className={styles.metaLabel}>Cliente</span>
+                  <span className={styles.metaValue}>{clientName}</span>
+                </div>
+                <div className={styles.metaItem}>
+                  <span className={styles.metaLabel}>Projeto</span>
+                  <span className={styles.metaValue}>{projectTitle}</span>
+                </div>
+                {displayDate && (
+                  <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Data</span>
+                    <span className={styles.metaValue}>{displayDate}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </FadeIn>
         </header>
 
         <main className={styles.container}>
@@ -875,25 +881,31 @@ export default function BriefingView({ briefing: b }: Props) {
                     section.kind === "ambiente" ? styles.sectionAmbiente : ""
                   }`}
                 >
-                  <div className={styles.sectionHead}>
-                    <h2 className={styles.sectionTitle}>
-                      <span className={styles.sectionStar}>{STAR}</span>
-                      <span className={styles.sectionTitleText}>
-                        {lines.map((line, li) => (
-                          <span
-                            key={li}
-                            className={li === 0 ? styles.titleLine : styles.titleLineMuted}
-                          >
-                            {line}
-                          </span>
-                        ))}
-                      </span>
-                    </h2>
-                    {section.intro && <p className={styles.sectionIntro}>{section.intro}</p>}
-                  </div>
+                  <FadeIn>
+                    <div className={styles.sectionHead}>
+                      <h2 className={styles.sectionTitle}>
+                        <span className={styles.sectionStar}>{STAR}</span>
+                        <span className={styles.sectionTitleText}>
+                          {lines.map((line, li) => (
+                            <span
+                              key={li}
+                              className={li === 0 ? styles.titleLine : styles.titleLineMuted}
+                            >
+                              {line}
+                            </span>
+                          ))}
+                        </span>
+                      </h2>
+                      {section.intro && <p className={styles.sectionIntro}>{section.intro}</p>}
+                    </div>
+                  </FadeIn>
 
                   {/* imagem no topo (full-width) + perguntas abaixo — igual ao PDF */}
-                  {section.kind === "ambiente" && <SectionFigure section={section} />}
+                  {section.kind === "ambiente" && (
+                    <FadeIn delay={0.1}>
+                      <SectionFigure section={section} />
+                    </FadeIn>
+                  )}
                   <div className={styles.questionsWide}>
                     {section.questions.map((q, i) => renderQuestion(section, q, i))}
                   </div>
