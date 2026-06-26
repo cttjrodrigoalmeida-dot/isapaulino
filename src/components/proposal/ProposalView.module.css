@@ -1,7 +1,8 @@
 /* ============================================================
    ProposalView — Proposta Isabela Paulino Studio
-   Identidade: fundo escuro + acento creme (#d4c5b0) + Kinn/Inter/Space Mono
-   Layout inspirado no modelo de proposta scroll-único, vestido na ID dela.
+   Identidade: fundo escuro com glow creme SÓ no fundo (.ambient/.glow*);
+   conteúdo em tons neutros (cinza/branco) + acento melancia (#f0506e) pontual.
+   Tipografia Kinn/Inter/Space Mono. (--color-accent é sobrescrito em .page p/ cinza.)
    ============================================================ */
 
 .page {
@@ -11,6 +12,8 @@
   color: var(--color-text-primary);
   overflow: hidden;
   padding-bottom: 0;
+  /* Identidade neutra (cinza) no conteúdo — o creme fica só no fundo (.ambient/.glow*). */
+  --color-accent: #cccccc;
 }
 
 /* fundo ambiente fixo — luz suave em qualquer ponto da rolagem (na cor de acento) */
@@ -24,7 +27,6 @@
     radial-gradient(760px 560px at 100% 26%, rgba(212, 197, 176, 0.055), transparent 60%),
     radial-gradient(760px 560px at 0% 78%, rgba(212, 197, 176, 0.05), transparent 60%);
 }
-
 /* glows de fundo (sutis, na cor de acento) */
 .glowTop,
 .glowBottom {
@@ -76,9 +78,9 @@
   text-transform: uppercase;
   color: var(--color-accent);
   padding: 7px 16px;
-  border: 1px solid rgba(212, 197, 176, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--border-radius-sm);
-  background: rgba(212, 197, 176, 0.05);
+  background: rgba(255, 255, 255, 0.05);
   margin-bottom: 22px;
 }
 
@@ -173,7 +175,7 @@
   text-transform: uppercase;
   color: var(--color-text-primary);
   background: rgba(20, 20, 20, 0.5);
-  border: 1px solid rgba(212, 197, 176, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: var(--border-radius-btn);
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition),
@@ -183,7 +185,7 @@
   color: var(--color-accent);
 }
 .pdfButton:hover {
-  background: rgba(212, 197, 176, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--color-accent);
 }
 @media (max-width: 540px) {
@@ -208,7 +210,7 @@
   text-transform: uppercase;
   color: var(--color-text-primary);
   background: rgba(20, 20, 20, 0.5);
-  border: 1px solid rgba(212, 197, 176, 0.35);
+  border: 1px dashed rgba(255, 255, 255, 0.35);
   border-radius: var(--border-radius-btn);
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition),
@@ -218,7 +220,7 @@
   color: var(--color-accent);
 }
 .pdfButtonCta:hover {
-  background: rgba(212, 197, 176, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--color-accent);
 }
 
@@ -497,15 +499,17 @@
   font-size: clamp(1.6rem, 3.1vw, 2.3rem);
   letter-spacing: -0.02em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-text-primary);
+  padding-bottom: 22px;
   margin-bottom: 22px;
+  border-bottom: 1px solid var(--color-border);
 }
 .letterIntro {
   font-family: var(--font-body);
   font-weight: 300;
   font-size: 1.05rem;
   line-height: 1.8;
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
   margin-bottom: 14px;
 }
 .chips {
@@ -520,10 +524,10 @@
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   padding: 8px 14px;
-  border-radius: 0 14px 0 14px; /* 1ª: sup-dir + inf-esq redondos */
+  border-radius: 0 6px 0 6px; /* 1ª: sup-dir + inf-esq redondos */
 }
 .chip:nth-child(even) {
-  border-radius: 14px 0 14px 0; /* espelhada */
+  border-radius: 6px 0 6px 0; /* espelhada */
 }
 
 /* ════════════ PROCESSO ════════════ */
@@ -552,11 +556,12 @@
 }
 .stepNumber {
   display: block;
-  font-family: var(--font-title);
-  font-weight: 200;
-  font-size: 2.4rem;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 1.3rem;
   line-height: 1;
-  color: rgba(212, 197, 176, 0.45);
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
   margin-bottom: 14px;
 }
 .stepTitle {
@@ -566,6 +571,7 @@
   line-height: 1.25;
   text-transform: uppercase;
   letter-spacing: -0.01em;
+  text-align: center;
   color: var(--color-text-primary);
   margin-bottom: 18px;
 }
@@ -577,6 +583,7 @@
 .stepItem {
   display: flex;
   gap: 12px;
+  text-align: justify;
   font-family: var(--font-body);
   font-weight: 300;
   font-size: 0.85rem;
@@ -701,8 +708,8 @@
 .totalCard {
   position: relative;
   margin-top: 24px;
-  background: linear-gradient(135deg, rgba(212, 197, 176, 0.14), rgba(212, 197, 176, 0.02));
-  border: 1px solid rgba(212, 197, 176, 0.3);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--border-radius-standard);
   padding: clamp(28px, 4vw, 44px);
   overflow: hidden;
@@ -713,10 +720,10 @@
   gap: 10px;
   margin-bottom: 22px;
   padding: 10px 18px;
-  background: rgba(212, 197, 176, 0.14);
-  border: 1px solid rgba(212, 197, 176, 0.45);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 0 14px 0 14px;
-  box-shadow: 0 0 30px -12px rgba(212, 197, 176, 0.7);
+  box-shadow: 0 0 30px -12px rgba(255, 255, 255, 0.7);
 }
 .comboStar {
   color: var(--color-accent);
@@ -847,9 +854,9 @@
 
 /* card em destaque — "brilho" pulsante + faixa de luz que atravessa */
 .payPlanGlow {
-  border-color: rgba(212, 197, 176, 0.55);
+  border-color: rgba(255, 255, 255, 0.16);
   background:
-    linear-gradient(150deg, rgba(212, 197, 176, 0.12), rgba(212, 197, 176, 0.015)),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.008)),
     var(--color-surface);
   animation: payGlowPulse 6.5s ease-in-out infinite;
 }
@@ -860,7 +867,7 @@
   background: linear-gradient(
     115deg,
     transparent 36%,
-    rgba(212, 197, 176, 0.08) 48%,
+    rgba(255, 255, 255, 0.045) 48%,
     transparent 60%
   );
   background-size: 250% 100%;
@@ -876,13 +883,13 @@
   0%,
   100% {
     box-shadow:
-      inset 0 1px 0 rgba(212, 197, 176, 0.14),
-      0 0 34px -18px rgba(212, 197, 176, 0.28);
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 26px -20px rgba(255, 255, 255, 0.12);
   }
   50% {
     box-shadow:
-      inset 0 1px 0 rgba(212, 197, 176, 0.24),
-      0 0 50px -14px rgba(212, 197, 176, 0.4);
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 0 38px -16px rgba(255, 255, 255, 0.18);
   }
 }
 @keyframes paySheen {
@@ -942,7 +949,7 @@
   line-height: 1;
   color: var(--color-accent);
   padding: 6px 12px;
-  border: 1px solid rgba(212, 197, 176, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 14px 0 14px 0;
 }
 .pixSave {
@@ -969,7 +976,7 @@
   font-size: clamp(1.05rem, 2.4vw, 1.4rem);
   color: var(--color-text-muted);
   text-decoration: line-through;
-  text-decoration-color: rgba(212, 197, 176, 0.45);
+  text-decoration-color: rgba(255, 255, 255, 0.45);
 }
 .pixPay {
   display: block;
@@ -1076,8 +1083,8 @@
   height: 46px;
   flex-shrink: 0;
   color: var(--color-accent);
-  background: rgba(212, 197, 176, 0.06);
-  border: 1px solid rgba(212, 197, 176, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 0 14px 0 14px;
 }
 .pixBarText {
@@ -1134,16 +1141,16 @@
 }
 .copyBtn:hover {
   color: var(--color-accent);
-  border-color: rgba(212, 197, 176, 0.4);
-  background: rgba(212, 197, 176, 0.06);
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.06);
 }
 .copyBtn svg {
   flex-shrink: 0;
 }
 .copyBtnDone {
   color: var(--color-accent);
-  border-color: rgba(212, 197, 176, 0.5);
-  background: rgba(212, 197, 176, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* ════════════ PORTFÓLIO / GALERIA ════════════ */
@@ -1242,8 +1249,8 @@
 .prazoHighlight {
   position: relative;
   overflow: hidden;
-  border-color: rgba(212, 197, 176, 0.3);
-  box-shadow: 0 0 22px -16px rgba(212, 197, 176, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 22px -16px rgba(255, 255, 255, 0.4);
 }
 .prazoHighlight::after {
   content: "";
@@ -1433,16 +1440,23 @@
 }
 .xmark {
   flex-shrink: 0;
-  color: var(--color-accent);
+  color: #f0506e;
   font-size: 1rem;
   line-height: 1.4;
+}
+/* pílula "O QUE NÃO ESTÁ INCLUSO": texto branco, fundo melancia sutil,
+   borda melancia mais escura */
+.notIncludedCard .eyebrow {
+  color: var(--color-text-primary);
+  border: 1px solid #8f2f44;
+  background: rgba(240, 80, 110, 0.05);
 }
 
 /* ════════════ CTA / VALIDADE ════════════ */
 .ctaCard {
   text-align: center;
-  background: linear-gradient(160deg, rgba(212, 197, 176, 0.1), transparent 70%);
-  border: 1px solid rgba(212, 197, 176, 0.25);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.1), transparent 70%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: var(--border-radius-standard);
   padding: clamp(40px, 7vw, 80px) clamp(24px, 5vw, 48px);
   display: flex;
@@ -1463,7 +1477,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-accent);
-  border: 1px solid rgba(212, 197, 176, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--border-radius-sm);
   padding: 7px 16px;
 }
@@ -1507,8 +1521,8 @@
 .ctaTitle {
   font-family: var(--font-title);
   font-weight: 200;
-  font-size: clamp(2rem, 5vw, 3.4rem);
-  line-height: 1.05;
+  font-size: clamp(1.7rem, 3.4vw, 2.6rem);
+  line-height: 1.12;
   letter-spacing: -0.03em;
   text-transform: uppercase;
   color: var(--color-text-primary);
@@ -1533,12 +1547,12 @@
   font-size: 0.78rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-bg);
-  background: var(--color-accent);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   padding: 17px 34px;
   border-radius: var(--border-radius-btn);
-  transition: transform var(--transition), box-shadow var(--transition);
-  box-shadow: 0 0 40px -10px rgba(212, 197, 176, 0.6);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
 /* mesma faixa de luz do botão da hero */
 .ctaButton::after {
@@ -1553,11 +1567,11 @@
     transparent 40%
   );
   background-size: 200% 100%;
-  animation: sweep 3.5s infinite linear;
+  animation: sweep 7s infinite linear;
 }
 .ctaButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 56px -10px rgba(212, 197, 176, 0.85);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 .ctaHint {
   margin-top: 16px;
@@ -1644,16 +1658,16 @@
 /* xadrez 2x2: linha de baixo inverte a de cima */
 .socialFixedBtn:nth-child(4n + 1),
 .socialFixedBtn:nth-child(4n) {
-  border-radius: 0 10px 0 10px;
+  border-radius: 0 5px 0 5px;
 }
 .socialFixedBtn:nth-child(4n + 2),
 .socialFixedBtn:nth-child(4n + 3) {
-  border-radius: 10px 0 10px 0;
+  border-radius: 5px 0 5px 0;
 }
 .socialFixedBtn:hover {
   color: var(--color-accent);
-  background: rgba(212, 197, 176, 0.12);
-  border-color: rgba(212, 197, 176, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 .socialFixedBtn svg {
   width: 16px;
@@ -1710,7 +1724,7 @@
   color: var(--color-text-primary);
   background: rgba(20, 20, 20, 0.7);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(212, 197, 176, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: var(--border-radius-btn);
   opacity: 0;
   transform: translateY(8px);
@@ -1730,7 +1744,7 @@
   pointer-events: auto;
 }
 .backToTop:hover {
-  background: rgba(212, 197, 176, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--color-accent);
 }
 
@@ -1831,14 +1845,14 @@
     height: 40px;
     margin-top: 2px;
     color: var(--color-accent);
-    background: rgba(212, 197, 176, 0.05);
-    border: 1px solid rgba(212, 197, 176, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: var(--border-radius-btn);
     transition: transform var(--transition), background var(--transition);
   }
   .mCollapseChevronOpen {
     transform: rotate(180deg);
-    background: rgba(212, 197, 176, 0.12);
+    background: rgba(255, 255, 255, 0.12);
   }
 }
 

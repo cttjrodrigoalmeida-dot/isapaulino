@@ -504,7 +504,7 @@ export default function ProposalView({ proposal: p }: Props) {
                 <div className={styles.chips}>
                   {p.ambientes.map((a) => (
                     <span key={a} className={styles.chip}>
-                      {a}
+                      AMBIENTE
                     </span>
                   ))}
                 </div>
@@ -609,7 +609,9 @@ export default function ProposalView({ proposal: p }: Props) {
         <section className={styles.section}>
           <Reveal>
             <SectionLabel>INVESTIMENTO</SectionLabel>
-            <h2 className={styles.h2}>Investimento do projeto</h2>
+            <h2 className={styles.h2}>
+              Investimento<span className={styles.h2Muted}> do projeto</span>
+            </h2>
             {p.investimentoIntro && (
               <p className={styles.paragraph}>{p.investimentoIntro}</p>
             )}
@@ -1011,7 +1013,7 @@ export default function ProposalView({ proposal: p }: Props) {
               aria-label="Exportar proposta em PDF"
             >
               <IconDownload />
-              <span>Exportar esta proposta em PDF</span>
+              <span>Baixar essa proposta em PDF</span>
             </button>
 
             <div className={styles.socialRow}>
