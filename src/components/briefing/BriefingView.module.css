@@ -536,11 +536,14 @@
   padding: 16px 18px;
   background: #141414;
   border: 1px solid #1e1e1e;
+  /* espelhado: ímpar de um jeito, par invertido, e assim por diante.
+     A parità vem da classe .qItemMirror (via index no TSX) porque cada card
+     está dentro do seu próprio wrapper <FadeIn>, então :nth-child não alterna. */
   border-radius: 8px 0 8px 0;
   scroll-margin-top: 90px;
   transition: border-color var(--transition);
 }
-.qItem:nth-child(even) {
+.qItemMirror {
   border-radius: 0 8px 0 8px;
 }
 .qItemPending {
@@ -1304,6 +1307,9 @@
 }
 
 /* ════════════ IMPRESSÃO / PDF ════════════ */
+/* NB: a regra universal NÃO reseta transform de propósito — os pinos e o zoom
+   da figura dependem dele. print-color-adjust:exact mantém o tema escuro da
+   marca (fundos + cores) no PDF, senão o texto claro sairia "em branco". */
 @media print {
   *,
   *::before,
@@ -1311,6 +1317,12 @@
     opacity: 1 !important;
     transition: none !important;
     animation: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  html,
+  body {
+    background: var(--color-bg) !important;
   }
   .figureInner {
     transform: none !important;
@@ -1334,28 +1346,14 @@
     display: none !important;
   }
   .page {
-    background: #fff;
-    color: #111;
+    overflow: visible !important;
+    background: var(--color-bg) !important;
   }
   .section,
   .qItem {
     break-inside: avoid;
   }
-  .figureViewport,
-  .image,
-  .answer,
-  .answerPrint,
-  .qItem,
-  .refImg {
-    border-color: #ccc !important;
-  }
-  .answerPrint,
-  .qText,
-  .qHint,
-  .sectionTitle,
-  .sectionIntro,
-  .heroTitle,
-  .metaValue {
-    color: #111 !important;
-  }
+}
+@page {
+  margin: 12mm;
 }

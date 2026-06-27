@@ -374,7 +374,12 @@ function QuestionItem({
   };
 
   return (
-    <div ref={registerRef} className={`${styles.qItem} ${pending ? styles.qItemPending : ""}`}>
+    <div
+      ref={registerRef}
+      className={`${styles.qItem} ${index % 2 === 1 ? styles.qItemMirror : ""} ${
+        pending ? styles.qItemPending : ""
+      }`}
+    >
       <div className={styles.qHead}>
         <span className={styles.qNum}>{String(index + 1).padStart(2, "0")}</span>
         <span className={styles.qText}>

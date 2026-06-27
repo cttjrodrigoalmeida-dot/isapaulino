@@ -853,12 +853,12 @@
   border-radius: var(--border-radius-standard);
 }
 
-/* card em destaque — mantém o tom mais claro, mas sem brilho animado */
+/* card em destaque — mesmo degradê do "Investimento total" (#535454→#161616),
+   porém ~40% menos intenso (tom claro puxado p/ #3b3b3b) pra não brigar por
+   atenção. Sem brilho animado. */
 .payPlanGlow {
   border-color: rgba(255, 255, 255, 0.16);
-  background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.008)),
-    #141414;
+  background: linear-gradient(135deg, #3b3b3b, #161616);
 }
 
 .payPlanHead {
@@ -1866,7 +1866,9 @@
 /* ════════════ IMPRESSÃO / PDF ════════════ */
 @media print {
   /* o framer-motion deixa elementos fora da tela em opacity:0 (estilo inline);
-     na impressão forçamos tudo visível, senão o PDF sai em branco */
+     na impressão forçamos tudo visível. print-color-adjust:exact mantém o tema
+     escuro da marca (fundos + cores) no PDF — sem ele, texto claro em fundo
+     branco sairia "em branco". */
   *,
   *::before,
   *::after {
@@ -1874,6 +1876,12 @@
     transform: none !important;
     transition: none !important;
     animation: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  html,
+  body {
+    background: var(--color-bg) !important;
   }
   .ambient,
   .glowTop,
@@ -1887,11 +1895,14 @@
     display: none !important;
   }
   .page {
-    background: #fff;
-    color: #111;
+    overflow: visible !important;
+    background: var(--color-bg) !important;
   }
   .section {
     break-inside: avoid;
     padding: 24px 0;
   }
+}
+@page {
+  margin: 12mm;
 }
