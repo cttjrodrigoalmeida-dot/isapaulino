@@ -1,6 +1,6 @@
 /* ============================================================
    BriefingView — Briefing Isabela Paulino Studio
-   Mesma identidade da proposta: fundo escuro + acento creme (#d4c5b0)
+   Mesma identidade da proposta: fundo escuro neutro + acento cinza (#cccccc)
    + Kinn/Inter/Space Mono. Imagem com pinos numerados (melancia) +
    caixas de resposta, timeline lateral animada e zoom no hover.
    ============================================================ */
@@ -11,6 +11,8 @@
   background: var(--color-bg);
   color: var(--color-text-primary);
   overflow: hidden;
+  /* Identidade neutra (cinza), igual à Proposta — sem creme. */
+  --color-accent: #cccccc;
 }
 
 .ambient {
@@ -18,10 +20,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(900px 620px at 50% -8%, rgba(212, 197, 176, 0.1), transparent 62%),
-    radial-gradient(760px 560px at 100% 26%, rgba(212, 197, 176, 0.055), transparent 60%),
-    radial-gradient(760px 560px at 0% 78%, rgba(212, 197, 176, 0.05), transparent 60%);
+  background: none;
 }
 
 /* ════════════ REDES FIXAS (topo-direito, desktop) ════════════ */
@@ -57,8 +56,8 @@
 }
 .socialFixedBtn:hover {
   color: var(--color-accent);
-  background: rgba(212, 197, 176, 0.12);
-  border-color: rgba(212, 197, 176, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 .socialFixedBtn svg {
   width: 16px;
@@ -150,12 +149,12 @@
 }
 /* "acesa": já passou por ela na rolagem */
 .timelineDotLit {
-  background: rgba(212, 197, 176, 0.35);
+  background: rgba(255, 255, 255, 0.35);
   border-color: var(--color-accent);
 }
 .timelineDotActive {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 4px rgba(212, 197, 176, 0.14);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.14);
 }
 .timelineDotDone {
   background: var(--color-accent);
@@ -245,11 +244,11 @@
   font-size: 0.68rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: #7f7f7f;
   padding: 7px 16px;
-  border: 1px solid rgba(212, 197, 176, 0.3);
+  border: 1px solid #191919;
   border-radius: var(--border-radius-sm);
-  background: rgba(212, 197, 176, 0.05);
+  background: #141414;
   margin-bottom: 22px;
 }
 .heroTitle {
@@ -318,9 +317,9 @@
   font-size: 0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-text-primary);
-  background: rgba(20, 20, 20, 0.5);
-  border: 1px solid rgba(212, 197, 176, 0.35);
+  color: #ffffff;
+  background: #191919;
+  border: 1px solid #262626;
   border-radius: var(--border-radius-btn);
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition),
@@ -330,7 +329,7 @@
   color: var(--color-accent);
 }
 .pdfButton:hover {
-  background: rgba(212, 197, 176, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--color-accent);
 }
 
@@ -535,8 +534,8 @@
   flex-direction: column;
   gap: 10px;
   padding: 16px 18px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #141414;
+  border: 1px solid #1e1e1e;
   border-radius: 8px 0 8px 0;
   scroll-margin-top: 90px;
   transition: border-color var(--transition);
@@ -692,7 +691,7 @@
 }
 .checklistRow:hover {
   color: var(--color-text-primary);
-  border-color: rgba(212, 197, 176, 0.6);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 .checklistMark {
   flex-shrink: 0;
@@ -706,7 +705,7 @@
 .checklistRowSel {
   color: var(--color-text-primary);
   border-color: var(--color-accent);
-  background: rgba(212, 197, 176, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 .checklistRowSel .checklistMark {
   color: var(--color-accent);
@@ -740,12 +739,12 @@
   color: var(--color-accent);
 }
 .optionBtn:hover {
-  border-color: rgba(212, 197, 176, 0.5);
+  border-color: rgba(255, 255, 255, 0.5);
   color: var(--color-text-primary);
 }
 .optionBtnSel {
   color: var(--color-text-primary);
-  background: rgba(212, 197, 176, 0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-color: var(--color-accent);
 }
 .optionBtnSel svg {
@@ -758,7 +757,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   border-style: dashed;
-  border-color: rgba(212, 197, 176, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 /* alerta (ex.: pergunta 02 ao indicar que o projeto não está definido) */
 .optionBtnAlert {
@@ -772,8 +771,8 @@
   font-size: 0.8rem;
   line-height: 1.55;
   color: var(--color-text-muted);
-  background: rgba(212, 197, 176, 0.05);
-  border-left: 2px solid rgba(212, 197, 176, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 2px solid rgba(255, 255, 255, 0.4);
   padding: 10px 14px;
   border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
 }
@@ -803,11 +802,11 @@
 }
 .quickFill:hover {
   color: var(--color-text-primary);
-  border-color: rgba(212, 197, 176, 0.5);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 .quickFillSel {
   color: var(--color-text-primary);
-  background: rgba(212, 197, 176, 0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-color: var(--color-accent);
 }
 .quickFillSel svg {
@@ -826,8 +825,8 @@
   text-align: center;
   gap: 8px;
   padding: 26px 22px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #141414;
+  border: 1px solid #1e1e1e;
   border-radius: 0 14px 0 14px;
 }
 .maqueteCard:nth-child(even) {
@@ -841,7 +840,7 @@
   height: 48px;
   margin-bottom: 2px;
   color: var(--color-accent);
-  border: 1px solid rgba(212, 197, 176, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--border-radius-sm);
 }
 .maqueteCardTitle {
@@ -877,7 +876,7 @@
 .maqueteBtn:hover {
   color: var(--color-accent);
   border-color: var(--color-accent);
-  background: rgba(212, 197, 176, 0.06);
+  background: rgba(255, 255, 255, 0.06);
 }
 .maqueteDivider {
   width: 100%;
@@ -915,7 +914,7 @@
 }
 .maqueteFieldValue:hover {
   text-decoration: underline;
-  color: #e3d6c2;
+  color: #ffffff;
 }
 .copyBtn {
   flex-shrink: 0;
@@ -981,7 +980,7 @@
   text-transform: uppercase;
   color: var(--color-text-secondary);
   background: transparent;
-  border: 1px dashed rgba(212, 197, 176, 0.4);
+  border: 1px dashed rgba(255, 255, 255, 0.4);
   border-radius: var(--border-radius-sm);
   cursor: pointer;
   transition: color var(--transition), border-color var(--transition),
@@ -993,7 +992,7 @@
 .refBtn:hover {
   color: var(--color-text-primary);
   border-color: var(--color-accent);
-  background: rgba(212, 197, 176, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 .refOpt {
   color: var(--color-text-muted);
@@ -1097,9 +1096,9 @@
   font-size: 0.64rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-text-primary);
-  background: rgba(20, 20, 20, 0.5);
-  border: 1px solid rgba(212, 197, 176, 0.35);
+  color: #ffffff;
+  background: #191919;
+  border: 1px solid #262626;
   border-radius: var(--border-radius-btn);
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition),
@@ -1109,12 +1108,10 @@
   color: var(--color-accent);
 }
 .pdfButtonCta:hover {
-  background: rgba(212, 197, 176, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--color-accent);
 }
 .sendBtn {
-  position: relative;
-  overflow: hidden;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -1128,37 +1125,11 @@
   border: 1px solid var(--color-accent);
   border-radius: var(--border-radius-btn);
   cursor: pointer;
-  transition: background var(--transition), transform var(--transition),
-    box-shadow var(--transition);
-  box-shadow: 0 0 40px -10px rgba(212, 197, 176, 0.6);
-}
-/* mesma faixa de luz do botão final da proposta */
-.sendBtn::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    120deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.45) 30%,
-    transparent 40%
-  );
-  background-size: 200% 100%;
-  animation: sendSweep 3.5s infinite linear;
+  transition: background var(--transition), transform var(--transition);
 }
 .sendBtn:hover {
-  background: #e3d6c2;
+  background: #ffffff;
   transform: translateY(-1px);
-  box-shadow: 0 0 56px -10px rgba(212, 197, 176, 0.85);
-}
-@keyframes sendSweep {
-  0% {
-    background-position: 200% center;
-  }
-  100% {
-    background-position: -200% center;
-  }
 }
 
 /* ════════════ STACK FLUTUANTE (WhatsApp + Topo) ════════════ */
@@ -1211,7 +1182,7 @@
   color: var(--color-text-primary);
   background: rgba(20, 20, 20, 0.7);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(212, 197, 176, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: var(--border-radius-btn);
   opacity: 0;
   transform: translateY(8px);
@@ -1231,7 +1202,7 @@
   pointer-events: auto;
 }
 .backToTop:hover {
-  background: rgba(212, 197, 176, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--color-accent);
 }
 

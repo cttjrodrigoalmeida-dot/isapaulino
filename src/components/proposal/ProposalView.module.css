@@ -22,10 +22,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(900px 620px at 50% -8%, rgba(212, 197, 176, 0.1), transparent 62%),
-    radial-gradient(760px 560px at 100% 26%, rgba(212, 197, 176, 0.055), transparent 60%),
-    radial-gradient(760px 560px at 0% 78%, rgba(212, 197, 176, 0.05), transparent 60%);
+  background: none;
 }
 /* glows de fundo (sutis, na cor de acento) */
 .glowTop,
@@ -42,14 +39,14 @@
   transform: translateX(-50%);
   width: 720px;
   height: 720px;
-  background: rgba(212, 197, 176, 0.08);
+  background: transparent;
 }
 .glowBottom {
   bottom: 8%;
   right: -200px;
   width: 520px;
   height: 520px;
-  background: rgba(212, 197, 176, 0.05);
+  background: transparent;
 }
 
 /* ── Container ── */
@@ -712,7 +709,7 @@
 .totalCard {
   position: relative;
   margin-top: 24px;
-  background: linear-gradient(135deg, #535454, #282121);
+  background: linear-gradient(135deg, #535454, #161616);
   border: none;
   border-radius: var(--border-radius-standard);
   padding: clamp(28px, 4vw, 44px);
@@ -1166,6 +1163,10 @@
   border-radius: var(--border-radius-standard);
   padding: clamp(28px, 5vw, 48px);
 }
+/* pílula "Prazo de entrega" — borda um pouco mais clara */
+.prazoCard .eyebrow {
+  border-color: #2a2a2a;
+}
 .prazoRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1178,7 +1179,7 @@
   gap: 8px;
   padding: 22px;
   background: #141414;
-  border: 1px solid #191919;
+  border: 1px solid #2a2a2a;
   border-radius: 0 14px 0 14px;
 }
 .prazoItem:nth-child(even) {
