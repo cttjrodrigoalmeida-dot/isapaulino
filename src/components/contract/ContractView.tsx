@@ -95,9 +95,11 @@ const IconInfo = () => (
     <path d="M12 11v5M12 7.6v.01" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const IconDollarSign = () => (
-  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-    <path d="M12 3v18M8.5 7.5c0-1.3 1.4-2.3 3.5-2.3s3.5.9 3.5 2.1c0 1.3-1.4 1.8-3.5 2.3-2.1.5-3.5 1-3.5 2.3 0 1.2 1.4 2.1 3.5 2.1s3.5-1 3.5-2.4" strokeLinecap="round" />
+const IconPercent = () => (
+  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <line x1="19" y1="5" x2="5" y2="19" />
+    <circle cx="6.5" cy="6.5" r="2.5" />
+    <circle cx="17.5" cy="17.5" r="2.5" />
   </svg>
 );
 const IconPix = () => (
@@ -105,10 +107,11 @@ const IconPix = () => (
     <path d="M16 2.6l4.7 4.7-4.7 4.7-4.7-4.7L16 2.6zM7.3 11.3l4.7 4.7-4.7 4.7L2.6 16l4.7-4.7zm17.4 0L29.4 16l-4.7 4.7L20 16l4.7-4.7zM16 20l4.7 4.7L16 29.4l-4.7-4.7L16 20z" />
   </svg>
 );
-const IconReceipt = () => (
-  <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-    <path d="M5 2.5h11.5l2.5 2.5v14.5l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1V3a.5.5 0 01.5-.5z" strokeLinejoin="round" />
-    <path d="M12 6.5v11M9.5 8.3c0-.9 1.1-1.6 2.5-1.6s2.5.7 2.5 1.5c0 .9-1.1 1.3-2.5 1.6-1.4.3-2.5.7-2.5 1.6 0 .8 1.1 1.5 2.5 1.5s2.5-.7 2.5-1.6" strokeLinecap="round" />
+const IconWallet = () => (
+  <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+    <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4Z" />
   </svg>
 );
 const IconLock = () => (
@@ -209,7 +212,12 @@ function SectionCard({
 }) {
   return (
     <div className={styles.cardWrap}>
-      <span className={`${styles.cardTab} ${tabVariant === "pink" ? styles.cardTabPink : ""}`}>{tab}</span>
+      <span className={`${styles.cardTab} ${
+        tabVariant === "pink" ? styles.cardTabPink
+        : /CONTRATADA/i.test(tab) ? styles.cardTabContratada
+        : /CONTRATANTE/i.test(tab) ? styles.cardTabContratante
+        : ""
+      }`}>{tab}</span>
       <div className={bare ? className : `${styles.card} ${className ?? ""}`}>{children}</div>
     </div>
   );
@@ -269,7 +277,7 @@ function PartyCard({ party }: { party: ContractParty }) {
   return (
     <div className={styles.partyCard}>
       <span className={styles.partyIcon}><IconUser /></span>
-      <span className={styles.partyTag}>{party.label}</span>
+      <span className={`${styles.partyTag} ${/CONTRATADA/i.test(party.label) ? styles.partyTagContratada : styles.partyTagContratante}`}>{party.label}</span>
       <h3 className={styles.partyName}>{party.name}</h3>
       <span className={styles.partyRole}>{party.role}</span>
       <div className={styles.partyRule} aria-hidden />
@@ -406,7 +414,7 @@ function SixPagamento({ doc }: { doc: ContractDoc }) {
     <div className={styles.sixWrap}>
       <div className={styles.payCard}>
         <div className={styles.payCardLeft}>
-          <span className={styles.payCardIcon}><IconReceipt /></span>
+          <span className={styles.payCardIcon}><IconWallet /></span>
           <div>
             <span className={styles.payTotalLabel}>VALOR TOTAL DO CONTRATO</span>
             <span className={styles.payTotalValue}>{p.valorTotal}</span>
@@ -422,7 +430,7 @@ function SixPagamento({ doc }: { doc: ContractDoc }) {
               return (
                 <li key={i}>
                   <span className={`${styles.payResumoIcon} ${isLast ? styles.payResumoIconCream : ""}`}>
-                    {isLast ? <IconDollarSign /> : <IconCheck />}
+                    {isLast ? <IconPercent /> : <IconCheck />}
                   </span>
                   {r}
                 </li>
@@ -659,7 +667,7 @@ function SigPartyCard({
   const signed = doc.signature.status === "assinado";
   return (
     <div className={styles.sigPartyCard}>
-      <span className={styles.partyTag}>{isContratante ? "CONTRATANTE" : "CONTRATADA"}</span>
+      <span className={`${styles.partyTag} ${isContratante ? styles.partyTagContratante : styles.partyTagContratada}`}>{isContratante ? "CONTRATANTE" : "CONTRATADA"}</span>
       <h4 className={styles.sigPartyCardName}>{name}</h4>
       <span className={styles.partyRole}>{role}</span>
 

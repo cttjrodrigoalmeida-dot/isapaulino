@@ -6,7 +6,10 @@ import { requireAuth } from "../_lib/auth";
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const session = await requireAuth(request, env);
-    return json({ user: { username: session.sub } });
+    const row = await env.DB.prepare("SELECT name FROM admin_users WHERE username = ?")
+      .bind(session.sub)
+      .first<{ name: string | null }>();
+    return json({ user: { username: session.sub, name: row?.name ?? "" } });
   } catch (e) {
     return toErrorResponse(e);
   }

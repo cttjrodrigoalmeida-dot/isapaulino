@@ -7,6 +7,7 @@ import Bio from './pages/Bio'
 import Proposta from './pages/Proposta'
 import Briefing from './pages/Briefing'
 import Contrato from './pages/Contrato'
+import AreaCliente from './pages/AreaCliente'
 import { CMSApp } from './cms/CMSApp'
 // Painel admin (com recharts, pesado) carregado sob demanda — fica fora do
 // bundle das páginas públicas.
@@ -42,6 +43,7 @@ function App() {
         <Route path="/proposta/:number" element={<Proposta />} />
         <Route path="/briefing/:number" element={<Briefing />} />
         <Route path="/contrato/:slug" element={<Contrato />} />
+        <Route path="/area" element={<AreaCliente />} />
         <Route path="/cms" element={<CMSApp />} />
         <Route
           path="/admin"

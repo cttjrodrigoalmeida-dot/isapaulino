@@ -31,6 +31,8 @@ export interface BriefingResponse {
 
 export interface AdminUser {
   username: string;
+  /** Nome de exibição (topo do painel); vazio = usa o username. */
+  name?: string;
 }
 
 export interface Client {
@@ -42,6 +44,11 @@ export interface Client {
   address: string | null;
   city: string | null;
   state: string | null;
+  /** Profissão/papel (ex.: "ARQUITETO E URBANISTA") — usado no contrato. */
+  role: string | null;
+  nacionalidade: string | null;
+  /** Nascimento (texto livre). */
+  birth_date: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,8 +56,39 @@ export interface Client {
 /** Campos editáveis de um cliente (sem id/timestamps). */
 export type ClientInput = Pick<
   Client,
-  "name" | "cpf_cnpj" | "email" | "phone" | "address" | "city" | "state"
+  "name" | "cpf_cnpj" | "email" | "phone" | "address" | "city" | "state" | "role" | "nacionalidade" | "birth_date"
 >;
+
+// ── Histórico Financeiro (HF) ──
+export type HistoryStatus = "pending" | "charged" | "paid" | "cancelled";
+export type HistoryKind = "adicional" | "retrabalho" | "hora-tecnica" | "outro";
+
+export interface HistoryItem {
+  id: string;
+  clientId: string;
+  contractId: string | null;
+  date: string;
+  description: string;
+  amount: number;
+  kind: HistoryKind;
+  status: HistoryStatus;
+  asaasPaymentId: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+export interface HistoryTotals {
+  pending: number;
+  charged: number;
+  paid: number;
+}
+export interface HistoryInput {
+  description: string;
+  amount: number;
+  kind?: HistoryKind;
+  contract_id?: string | null;
+  date?: string | null;
+  status?: HistoryStatus;
+}
 
 export type ContractStatus = "draft" | "published" | "signed" | "cancelled";
 
@@ -231,6 +269,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
+  getProfile: () => req<{ username: string; name: string }>("/api/auth/profile"),
+  updateProfile: (input: {
+    name?: string;
+    username?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }) =>
+    req<{ ok: true; username: string; name: string }>("/api/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
 
   // ── dashboard ──
   dashboardOverview: () => req<DashboardOverview>("/api/dashboard/overview"),
@@ -326,6 +375,41 @@ export const api = {
     }),
   deleteClient: (id: string) =>
     req<{ ok: true }>(`/api/clients/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // ── Histórico Financeiro (HF) do cliente ──
+  listClientHistory: (clientId: string) =>
+    req<{ items: HistoryItem[]; totals: HistoryTotals }>(
+      `/api/clients/${encodeURIComponent(clientId)}/history`
+    ),
+  createClientHistory: (clientId: string, input: HistoryInput) =>
+    req<{ ok: true; id: string }>(`/api/clients/${encodeURIComponent(clientId)}/history`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateClientHistory: (clientId: string, hid: string, input: Partial<HistoryInput>) =>
+    req<{ ok: true; id: string; status: HistoryStatus }>(
+      `/api/clients/${encodeURIComponent(clientId)}/history/${encodeURIComponent(hid)}`,
+      { method: "PUT", body: JSON.stringify(input) }
+    ),
+  deleteClientHistory: (clientId: string, hid: string) =>
+    req<{ ok: true }>(
+      `/api/clients/${encodeURIComponent(clientId)}/history/${encodeURIComponent(hid)}`,
+      { method: "DELETE" }
+    ),
+  generateHistoryAsaas: (clientId: string, hid: string) =>
+    req<{ ok: true; asaasPaymentId: string; url?: string; message?: string }>(
+      `/api/clients/${encodeURIComponent(clientId)}/history/${encodeURIComponent(hid)}/generate-asaas`,
+      { method: "POST" }
+    ),
+
+  // ── Acesso do cliente à Área do Cliente (Fase 3) ──
+  getClientAccess: (clientId: string) =>
+    req<{ enabled: boolean; link: string }>(`/api/clients/${encodeURIComponent(clientId)}/access`),
+  setClientAccess: (clientId: string, enabled: boolean) =>
+    req<{ ok: true; enabled: boolean }>(`/api/clients/${encodeURIComponent(clientId)}/access`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }),
 
   // ── contratos ──
   listContracts: (status?: string) =>

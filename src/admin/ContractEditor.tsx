@@ -11,6 +11,7 @@ import {
   InfoCardsEditor,
   ParcelasEditor,
   ClausesEditor,
+  TabelaCustosEditor,
 } from "./ContractFieldEditors";
 import styles from "./Admin.module.css";
 
@@ -127,6 +128,9 @@ export default function ContractEditor({
       contratante: {
         ...doc.contratante,
         name: c.name || doc.contratante.name,
+        role: c.role || doc.contratante.role,
+        nacionalidade: c.nacionalidade || doc.contratante.nacionalidade,
+        nascimento: c.birth_date || doc.contratante.nascimento,
         cpfCnpj: c.cpf_cnpj || doc.contratante.cpfCnpj,
         email: c.email || doc.contratante.email,
         contato: c.phone || doc.contratante.contato,
@@ -134,7 +138,11 @@ export default function ContractEditor({
       },
       signature: {
         ...doc.signature,
-        contratante: { ...doc.signature.contratante, name: c.name || doc.signature.contratante.name },
+        contratante: {
+          ...doc.signature.contratante,
+          name: c.name || doc.signature.contratante.name,
+          role: c.role || doc.signature.contratante.role,
+        },
       },
     });
     setNotice("Dados do cliente aplicados à CONTRATANTE.");
@@ -459,13 +467,17 @@ export default function ContractEditor({
               </>
             ) : (
               <>
-                <Area label="Introdução da tabela" value={tc.intro ?? ""} onChange={(v) => setTc({ intro: v })} rows={3} />
+                <Area label="Introdução da tabela (opcional)" value={tc.intro ?? ""} onChange={(v) => setTc({ intro: v })} rows={3} placeholder="Texto de abertura da tabela." />
                 <div className={styles.field}>
-                  <label className={styles.label}>Observações</label>
-                  <ParagraphList items={tc.observacoes ?? []} onChange={(v) => setTc({ observacoes: v })} rows={2} />
+                  <label className={styles.label}>Tabelas de custos</label>
+                  <div className={styles.placeholderHint} style={{ marginBottom: 8 }}>
+                    Cada <strong>bloco</strong> é uma seção da tabela (ex.: “Plantas Executivas”). Dentro do bloco, cada <strong>linha</strong> tem serviço, descrição e valor.
+                  </div>
+                  <TabelaCustosEditor tabelas={tc.tabelas} onChange={(v) => setTc({ tabelas: v })} />
                 </div>
-                <div className={styles.placeholderHint}>
-                  As tabelas detalhadas (linhas/valores) são editáveis na aba <strong>JSON avançado</strong> (campo <code>sixTabelaCustos.tabelas</code>).
+                <div className={styles.field}>
+                  <label className={styles.label}>Observações gerais (opcional)</label>
+                  <ParagraphList items={tc.observacoes ?? []} onChange={(v) => setTc({ observacoes: v })} rows={2} />
                 </div>
               </>
             )}

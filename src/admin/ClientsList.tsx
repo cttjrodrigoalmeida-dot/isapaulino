@@ -6,9 +6,11 @@ import styles from "./Admin.module.css";
 export default function ClientsList({
   onNew,
   onEdit,
+  onHistory,
 }: {
   onNew: () => void;
   onEdit: (id: string) => void;
+  onHistory: (id: string, name: string, phone: string | null) => void;
 }) {
   const [items, setItems] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +126,9 @@ export default function ClientsList({
                   <div className={styles.rowActions}>
                     <button className={styles.btn} onClick={() => onEdit(c.id)}>
                       Editar
+                    </button>
+                    <button className={styles.btn} onClick={() => onHistory(c.id, c.name, c.phone)}>
+                      Histórico
                     </button>
                     <button
                       className={`${styles.btn} ${styles.btnDanger}`}

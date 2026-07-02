@@ -1001,6 +1001,63 @@ Após o deploy, volte ao ASAAS e atualize a URL do webhook para produção:
 
 ---
 
+## 🧾 FEATURE: Histórico Financeiro (HF) do Cliente
+
+> **O que é:** um registro por **cliente** de serviços/alterações **fora do escopo do contrato**
+> (retrabalho, adicionais, hora técnica, etc.). Cada lançamento tem descrição + valor; o sistema
+> **soma automaticamente** os pendentes e permite **gerar cobrança no ASAAS** de um item ou do
+> total acumulado. É genérico e reaproveitável em qualquer projeto com clientes + cobranças.
+>
+> *Ex.: o cliente pediu uma alteração além do contrato → lança-se no HF (descrição + valor); ao
+> acumular, o total aparece somado; um clique gera a cobrança ASAAS e o pagamento é rastreado pelo
+> mesmo webhook das parcelas.* (No contrato-padrão isso já é citado como "Histórico Financeiro (HF)".)
+
+### Tabela no D1 (adicionar ao schema de pagamentos)
+```sql
+CREATE TABLE IF NOT EXISTS client_history (
+  id               TEXT PRIMARY KEY,                  -- uuid
+  client_id        TEXT NOT NULL,                     -- dono do lançamento
+  contract_id      TEXT,                              -- opcional: vincula a um contrato
+  date             TEXT NOT NULL DEFAULT (date('now')),
+  description      TEXT NOT NULL,                     -- "Alteração de layout do quarto 02"
+  amount           REAL NOT NULL DEFAULT 0,           -- valor do lançamento
+  kind             TEXT NOT NULL DEFAULT 'adicional', -- adicional | retrabalho | hora-tecnica | outro
+  status           TEXT NOT NULL DEFAULT 'pending',   -- pending | charged | paid | cancelled
+  asaas_payment_id TEXT,                              -- cobrança ASAAS gerada (quando houver)
+  paid_at          TEXT,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (client_id)   REFERENCES clients(id),
+  FOREIGN KEY (contract_id) REFERENCES contracts(id)
+);
+CREATE INDEX IF NOT EXISTS idx_client_history_client ON client_history(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_history_status ON client_history(status);
+```
+
+### Endpoints (Pages Functions)
+- `GET    /api/clients/:id/history` → lista lançamentos + **totais** (pendente / cobrado / pago).
+- `POST   /api/clients/:id/history` → cria `{ description, amount, kind, contract_id? }`.
+- `PUT    /api/clients/history/:hid` → edita (descrição / valor / status).
+- `DELETE /api/clients/history/:hid` → remove.
+- `POST   /api/clients/history/:hid/generate-asaas` → gera a cobrança ASAAS do item;
+  (opcional `POST /api/clients/:id/history/charge-total` → cobra o total pendente numa cobrança só).
+  Reusa `functions/api/_lib/asaas.ts` (`findOrCreateCustomer` + `createPayment`) e é rastreado pelo
+  **mesmo webhook** `/api/webhooks/asaas` (casa pelo `asaas_payment_id` → marca `paid`).
+
+### UI (Admin)
+- Nova aba **"Histórico"** na tela do cliente (e atalho na tela do contrato).
+- Tabela: data · descrição · tipo · valor · status · ações (editar / cobrar no ASAAS / WhatsApp).
+- Rodapé com **soma automática dos pendentes** ("Total a cobrar: R$ X") + botão "Cobrar total no ASAAS".
+- Botão "Cobrar no WhatsApp" (mesmo padrão das parcelas), usando o link da cobrança gerada.
+
+### Integração e finanças
+- Cada lançamento vira uma cobrança ASAAS como uma parcela (billingType UNDEFINED → PIX/boleto/cartão).
+- Ao pagar, o webhook do ASAAS casa pelo `asaas_payment_id` e marca o HF como `paid`.
+- Os valores do HF entram no **Dashboard Financeiro** junto das parcelas (faturado / recebido / a receber).
+
+> **Onde encaixa:** extensão da Fase 2 (cobranças). Pode ser construída junto da Fase 2 ou como
+> incremento depois; não depende da Área do Cliente, mas aparece nela quando existir (Fase 3).
+
 ---
 
 # ═══════════════════════════════════════════

@@ -66,6 +66,7 @@ export default function ContractPayments({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [client, setClient] = useState<{ name: string; phone: string | null } | null>(null);
 
   // form
   const [totalValue, setTotalValue] = useState<number | null>(null);
@@ -90,6 +91,16 @@ export default function ContractPayments({
         setTotalValue(config.totalValue);
         setDownPayment(config.downPayment || null);
         setCountStr(String(config.installmentsCount));
+      }
+      // Dados do cliente (para o botão "Cobrar no WhatsApp").
+      try {
+        const { contract } = await api.getContract(contractId);
+        if (contract.clientId) {
+          const { client } = await api.getClient(contract.clientId);
+          setClient({ name: client.name, phone: client.phone });
+        }
+      } catch {
+        /* opcional — sem cliente, o botão do WhatsApp só não aparece */
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -175,6 +186,23 @@ export default function ContractPayments({
     } finally {
       setBusy(false);
     }
+  };
+
+  // Link de cobrança no WhatsApp (manual): abre a conversa com uma mensagem pronta,
+  // incluindo o link de pagamento do ASAAS quando a cobrança já foi gerada.
+  const waLink = (inst: Installment): string => {
+    const digits = (client?.phone ?? "").replace(/\D+/g, "");
+    const num = digits.length > 0 && digits.length <= 11 ? `55${digits}` : digits;
+    const parcela = inst.installmentNumber === 0 ? "entrada" : `${inst.installmentNumber}ª parcela`;
+    const invoice = inst.asaasPaymentId ? `https://www.asaas.com/i/${inst.asaasPaymentId}` : "";
+    const msg = [
+      `Olá${client?.name ? " " + client.name.split(" ")[0] : ""}! Tudo bem? 🙂`,
+      ``,
+      `Passando para lembrar da sua ${parcela} no valor de ${formatBRL(inst.amount)}, com vencimento em ${fmtDate(inst.dueDate)}.`,
+      invoice ? `\nVocê pode pagar (PIX, boleto ou cartão) por aqui:\n${invoice}` : "",
+      `\nQualquer dúvida, estou à disposição!`,
+    ].filter(Boolean).join("\n");
+    return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   };
 
   if (loading) return <div className={styles.loading}>Carregando pagamentos…</div>;
@@ -279,6 +307,9 @@ export default function ContractPayments({
                       <div className={styles.rowActions}>
                         {inst.status !== "received" && inst.status !== "deleted" && (
                           <button className={styles.btn} onClick={() => openPay(inst)} disabled={busy}>Marcar como pago</button>
+                        )}
+                        {inst.status !== "received" && inst.status !== "deleted" && client?.phone && (
+                          <a className={`${styles.btn} ${styles.btnGhost}`} href={waLink(inst)} target="_blank" rel="noopener noreferrer">Cobrar no WhatsApp</a>
                         )}
                         {inst.asaasPaymentId && (
                           <a className={`${styles.btn} ${styles.btnGhost}`} href={`https://www.asaas.com/i/${inst.asaasPaymentId}`} target="_blank" rel="noopener noreferrer">Ver no ASAAS</a>

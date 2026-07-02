@@ -8,6 +8,7 @@ import type {
   ClauseBlock,
   InfoCard,
   ContractInstallmentRow,
+  CostTable,
 } from "../components/contract/types";
 import ListEditor from "./ListEditor";
 import styles from "./Admin.module.css";
@@ -349,6 +350,81 @@ export function ClausesEditor({
         onClick={() => onChange([...clauses, { number: "", title: "", blocks: [{ type: "p", text: "" }] }])}
       >
         + adicionar cláusula
+      </button>
+    </div>
+  );
+}
+
+// ── Tabela de custos (Seção 06 · variante tabela-custos) ──────────
+// Editor 100% visual: blocos (ex.: "PLANTAS EXECUTIVAS") + linhas
+// (serviço · descrição · valor). Didático para a cliente — sem JSON.
+export function TabelaCustosEditor({
+  tabelas,
+  onChange,
+}: {
+  tabelas: CostTable[];
+  onChange: (t: CostTable[]) => void;
+}) {
+  const setTable = (i: number, patch: Partial<CostTable>) => {
+    const next = tabelas.slice();
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  const setRow = (ti: number, ri: number, patch: Partial<CostTable["linhas"][number]>) => {
+    const linhas = tabelas[ti].linhas.slice();
+    linhas[ri] = { ...linhas[ri], ...patch };
+    setTable(ti, { linhas });
+  };
+  const moveTable = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= tabelas.length) return;
+    const next = tabelas.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  return (
+    <div className={styles.lineList}>
+      {tabelas.map((t, ti) => (
+        <div key={ti} className={styles.blockCard}>
+          <div className={styles.blockHead}>
+            <span className={styles.blockTag}>Bloco {ti + 1}</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="button" className={styles.iconBtn} onClick={() => moveTable(ti, -1)} aria-label="Subir">↑</button>
+              <button type="button" className={styles.iconBtn} onClick={() => moveTable(ti, 1)} aria-label="Descer">↓</button>
+              <button type="button" className={styles.iconBtn} onClick={() => onChange(tabelas.filter((_, i) => i !== ti))} aria-label="Remover bloco">×</button>
+            </div>
+          </div>
+          <Txt label="Título do bloco" value={t.titulo} onChange={(v) => setTable(ti, { titulo: v })} placeholder="ex.: • PLANTAS EXECUTIVAS" />
+          <Txt label="Nota do bloco (opcional)" value={t.nota ?? ""} onChange={(v) => setTable(ti, { nota: v || undefined })} placeholder="ex.: valor mínimo de R$ 510,00…" />
+
+          <label className={styles.label} style={{ marginTop: 4 }}>Linhas (serviço · descrição · valor)</label>
+          {t.linhas.map((r, ri) => (
+            <div key={ri} className={styles.blockCard} style={{ marginTop: 8 }}>
+              <div className={styles.blockHead}>
+                <span className={styles.blockTag}>Linha {ri + 1}</span>
+                <button type="button" className={styles.iconBtn} onClick={() => setTable(ti, { linhas: t.linhas.filter((_, i) => i !== ri) })} aria-label="Remover linha">×</button>
+              </div>
+              <Txt label="Serviço" value={r.servico} onChange={(v) => setRow(ti, ri, { servico: v })} placeholder="ex.: Planta Layout" />
+              <Area label="Descrição" value={r.descricao ?? ""} onChange={(v) => setRow(ti, ri, { descricao: v || undefined })} rows={2} placeholder="ex.: Representação técnica da disposição dos ambientes." />
+              <Txt label="Valor" value={r.valor} onChange={(v) => setRow(ti, ri, { valor: v })} mono placeholder="ex.: R$ 140,00" />
+            </div>
+          ))}
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnGhost}`}
+            onClick={() => setTable(ti, { linhas: [...t.linhas, { servico: "", descricao: "", valor: "" }] })}
+          >
+            + adicionar linha
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={`${styles.btn} ${styles.btnGhost}`}
+        onClick={() => onChange([...tabelas, { titulo: "", linhas: [{ servico: "", descricao: "", valor: "" }] }])}
+      >
+        + adicionar bloco / tabela
       </button>
     </div>
   );

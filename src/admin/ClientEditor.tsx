@@ -11,6 +11,9 @@ const EMPTY: ClientInput = {
   address: "",
   city: "",
   state: "",
+  role: "",
+  nacionalidade: "",
+  birth_date: "",
 };
 
 export default function ClientEditor({
@@ -27,6 +30,9 @@ export default function ClientEditor({
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [access, setAccess] = useState<{ enabled: boolean; link: string } | null>(null);
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isNew) return;
@@ -43,7 +49,16 @@ export default function ClientEditor({
           address: client.address ?? "",
           city: client.city ?? "",
           state: client.state ?? "",
+          role: client.role ?? "",
+          nacionalidade: client.nacionalidade ?? "",
+          birth_date: client.birth_date ?? "",
         });
+        try {
+          const a = await api.getClientAccess(id!);
+          if (alive) setAccess(a);
+        } catch {
+          /* acesso é opcional na tela */
+        }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
       } finally {
@@ -75,6 +90,27 @@ export default function ClientEditor({
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleAccess = async () => {
+    if (isNew) return;
+    setError(null);
+    setAccessBusy(true);
+    try {
+      await api.setClientAccess(id!, !access?.enabled);
+      setAccess(await api.getClientAccess(id!));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao alterar o acesso.");
+    } finally {
+      setAccessBusy(false);
+    }
+  };
+  const copyLink = () => {
+    if (!access?.link) return;
+    navigator.clipboard?.writeText(access.link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
   };
 
   if (loading) return <div className={styles.loading}>Carregando cliente…</div>;
@@ -141,6 +177,40 @@ export default function ClientEditor({
           />
         </div>
 
+        <div className={styles.row2}>
+          <div className={styles.field}>
+            <label className={styles.label}>Profissão / papel</label>
+            <input
+              className={styles.input}
+              value={form.role ?? ""}
+              onChange={(e) => set("role", e.target.value)}
+              placeholder="ex.: Arquiteto e Urbanista"
+            />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label}>Nacionalidade</label>
+            <input
+              className={styles.input}
+              value={form.nacionalidade ?? ""}
+              onChange={(e) => set("nacionalidade", e.target.value)}
+              placeholder="ex.: Brasileiro(a)"
+            />
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Data de nascimento</label>
+          <input
+            className={styles.input}
+            value={form.birth_date ?? ""}
+            onChange={(e) => set("birth_date", e.target.value)}
+            placeholder="ex.: 21/08/1995"
+          />
+          <div className={styles.pageHint} style={{ marginTop: 6 }}>
+            Profissão, nacionalidade e nascimento são usados para preencher o contrato automaticamente.
+          </div>
+        </div>
+
         <div className={styles.field}>
           <label className={styles.label}>Endereço</label>
           <input
@@ -181,6 +251,35 @@ export default function ClientEditor({
           </button>
         </div>
       </div>
+
+      {!isNew && (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Área do Cliente</div>
+          <div className={styles.pageHint} style={{ marginBottom: 12 }}>
+            Libere o acesso e envie o <strong>link exclusivo</strong> ao cliente (WhatsApp/e-mail). Ele entra sem senha e vê só o próprio contrato, pagamentos e histórico. O acesso também é liberado automaticamente ao <strong>publicar um contrato</strong>.
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <button
+              className={`${styles.btn} ${access?.enabled ? styles.btnGhost : styles.btnPrimary}`}
+              onClick={toggleAccess}
+              disabled={accessBusy}
+            >
+              {accessBusy ? "…" : access?.enabled ? "Bloquear acesso" : "Liberar acesso"}
+            </button>
+            <span className={`${styles.badge} ${access?.enabled ? styles.badgePublished : styles.badgeDraft}`}>
+              {access?.enabled ? "Acesso liberado" : "Sem acesso"}
+            </span>
+          </div>
+          {access?.enabled && access.link && (
+            <div className={styles.publicLinkBox} style={{ marginTop: 12 }}>
+              <span className={styles.publicLinkUrl}>{access.link}</span>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={copyLink}>
+                {copied ? "Copiado!" : "Copiar link"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

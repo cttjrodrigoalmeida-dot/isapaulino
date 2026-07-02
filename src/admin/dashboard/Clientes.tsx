@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import ClientsList from "../ClientsList";
 import ClientEditor from "../ClientEditor";
+import ClientHistory from "../ClientHistory";
 
-type View = { name: "list" } | { name: "editor"; id: string | null };
+type View =
+  | { name: "list" }
+  | { name: "editor"; id: string | null }
+  | { name: "history"; id: string; clientName: string; phone: string | null };
 
 export default function Clientes({ requestNew }: { requestNew?: number | null }) {
   const [view, setView] = useState<View>({ name: "list" });
@@ -22,10 +26,22 @@ export default function Clientes({ requestNew }: { requestNew?: number | null })
     );
   }
 
+  if (view.name === "history") {
+    return (
+      <ClientHistory
+        clientId={view.id}
+        clientName={view.clientName}
+        clientPhone={view.phone}
+        onBack={() => setView({ name: "list" })}
+      />
+    );
+  }
+
   return (
     <ClientsList
       onNew={() => setView({ name: "editor", id: null })}
       onEdit={(id) => setView({ name: "editor", id })}
+      onHistory={(id, name, phone) => setView({ name: "history", id, clientName: name, phone })}
     />
   );
 }

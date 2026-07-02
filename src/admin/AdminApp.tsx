@@ -16,7 +16,7 @@ import Projetos from "./dashboard/Projetos";
 import Financeiro from "./dashboard/Financeiro";
 import Armazenamento from "./dashboard/Armazenamento";
 import Placeholder from "./dashboard/Placeholder";
-import ChangePassword from "./dashboard/ChangePassword";
+import MinhaConta from "./dashboard/MinhaConta";
 import { SECTIONS, type SectionId } from "./dashboard/sections";
 
 export default function AdminApp() {
@@ -24,7 +24,7 @@ export default function AdminApp() {
   const [checking, setChecking] = useState(true);
   const [section, setSection] = useState<SectionId>("visao");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pwOpen, setPwOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [comercialNew, setComercialNew] = useState<{ area: "proposals" | "briefings"; n: number } | null>(null);
   const [clientesNew, setClientesNew] = useState<number | null>(null);
@@ -143,10 +143,10 @@ export default function AdminApp() {
         <div className={dash.main}>
           <div className={dash.stickyHeader}>
             <Topbar
-              username={user.username}
+              username={user.name || user.username}
               theme={theme}
               onToggleTheme={toggle}
-              onChangePassword={() => setPwOpen(true)}
+              onAccount={() => setAccountOpen(true)}
               onLogout={logout}
               onToggleSidebar={() => setSidebarOpen((o) => !o)}
             />
@@ -156,7 +156,7 @@ export default function AdminApp() {
         </div>
       </div>
 
-      {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
+      {accountOpen && <MinhaConta onClose={() => setAccountOpen(false)} onSaved={(u) => setUser(u)} />}
       {toast && <div className={dash.toast}>{toast}</div>}
     </div>
   );

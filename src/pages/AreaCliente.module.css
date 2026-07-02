@@ -1,0 +1,94 @@
+/* Área do Cliente — tema claro, limpo, com o acento da marca. */
+.page {
+  min-height: 100vh;
+  background: #f6f5f2;
+  color: #1a1a1a;
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
+  font-weight: 300;
+}
+.center {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #0f0f0f;
+  color: #cfcfcf;
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
+  padding: 24px;
+}
+
+/* ── Portão (sem acesso) ── */
+.gate {
+  max-width: 420px;
+  text-align: center;
+  background: #161616;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px 0 24px 0;
+  padding: 48px 36px;
+}
+.gateLogo { height: 40px; width: auto; object-fit: contain; margin-bottom: 26px; }
+.gateTitle { font-family: var(--font-ui, sans-serif); font-size: 20px; font-weight: 600; color: #fff; margin: 0 0 14px; }
+.gateText { font-size: 14px; line-height: 1.7; color: rgba(255, 255, 255, 0.6); margin: 0; }
+.err { font-size: 13px; color: #f0506e; background: rgba(240, 80, 110, 0.1); border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; }
+
+/* ── Topo ── */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px clamp(18px, 5vw, 48px);
+  background: #161616;
+}
+.topLogo { height: 30px; width: auto; object-fit: contain; }
+.topRight { display: flex; align-items: center; gap: 16px; }
+.topName { font-family: var(--font-mono, monospace); font-size: 12px; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.7); }
+.logout {
+  font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  background: none; border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px 0 8px 0; padding: 7px 14px; cursor: pointer;
+}
+.logout:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* ── Conteúdo ── */
+.main { max-width: 820px; margin: 0 auto; padding: clamp(24px, 5vw, 48px) clamp(18px, 5vw, 32px) 80px; }
+.hello { font-family: var(--font-title, var(--font-ui, sans-serif)); font-size: clamp(26px, 4vw, 34px); font-weight: 600; margin: 0 0 6px; color: #161616; }
+.sub { font-size: 14px; color: #6b6b6b; margin: 0 0 8px; }
+
+.section { margin-top: 34px; }
+.h2 {
+  font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: #9c8a6c; margin: 0 0 14px;
+}
+.empty { font-size: 14px; color: #8a8a8a; background: #fff; border: 1px dashed rgba(0, 0, 0, 0.14); border-radius: 16px 0 16px 0; padding: 22px; text-align: center; }
+
+.card { background: #fff; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 22px 0 22px 0; padding: 22px 24px; margin-bottom: 12px; }
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.cardTitle { font-size: 16px; font-weight: 600; color: #161616; margin-bottom: 8px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* linhas (parcelas / HF) */
+.row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px dashed rgba(0, 0, 0, 0.1); flex-wrap: wrap; }
+.row:last-child { border-bottom: none; padding-bottom: 0; }
+.row:first-child { padding-top: 0; }
+.rowMain { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 3px; }
+.rowLabel { font-size: 14px; font-weight: 500; color: #161616; }
+.rowSub { font-family: var(--font-mono, monospace); font-size: 11px; color: #8a8a8a; }
+.rowValue { font-family: var(--font-mono, monospace); font-size: 15px; font-weight: 600; color: #161616; min-width: 96px; }
+.rowAction { min-width: 90px; text-align: right; }
+
+/* botões */
+.btn {
+  display: inline-block; font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  text-decoration: none; color: #161616; background: #fff; border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 10px 0 10px 0; padding: 9px 16px; cursor: pointer;
+}
+.btn:hover { background: #f4f1ea; }
+.btnPrimary { background: #161616; color: #fff; border-color: #161616; }
+.btnPrimary:hover { background: #000; }
+
+/* badges de status */
+.badge { display: inline-block; font-family: var(--font-mono, monospace); font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 11px; border-radius: 6px 0 6px 0; }
+.stPending { background: #f1efe9; color: #8a7856; }
+.stPaid { background: #e4f3e7; color: #2f7a3f; }
+.stOverdue { background: rgba(240, 80, 110, 0.12); color: #b23a56; }
+
+.footer { margin-top: 48px; text-align: center; font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.16em; color: #b3b3b3; }

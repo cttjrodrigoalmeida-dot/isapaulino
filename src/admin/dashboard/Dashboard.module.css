@@ -123,6 +123,8 @@
 
 /* ── Topbar ── */
 .topbar {
+  position: relative;
+  z-index: 2; /* acima da quicknav p/ o menu do usuário não ficar cortado */
   display: flex;
   align-items: center;
   gap: 16px;
@@ -644,6 +646,8 @@
 
 /* ════════ QUICK NAV (barra de atalhos no topo) ════════ */
 .quicknav {
+  position: relative;
+  z-index: 1; /* abaixo da topbar (o menu do usuário sobrepõe a quicknav) */
   display: flex;
   align-items: center;
   gap: 8px;

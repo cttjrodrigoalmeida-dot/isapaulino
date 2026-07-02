@@ -17,14 +17,14 @@ export default function Topbar({
   username,
   theme,
   onToggleTheme,
-  onChangePassword,
+  onAccount,
   onLogout,
   onToggleSidebar,
 }: {
   username: string;
   theme: AdminTheme;
   onToggleTheme: () => void;
-  onChangePassword: () => void;
+  onAccount: () => void;
   onLogout: () => void;
   onToggleSidebar: () => void;
 }) {
@@ -71,8 +71,8 @@ export default function Topbar({
 
           {menuOpen && (
             <div className={s.menu}>
-              <button className={s.menuItem} onClick={() => { setMenuOpen(false); onChangePassword(); }}>
-                <IcLock /> Alterar senha
+              <button className={s.menuItem} onClick={() => { setMenuOpen(false); onAccount(); }}>
+                <IcLock /> Minha conta
               </button>
               <a className={s.menuItem} href="/" target="_blank" rel="noopener noreferrer">
                 <IcExternal /> Ver site

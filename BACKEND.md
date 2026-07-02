@@ -98,6 +98,15 @@ Webhooks a cadastrar em cada serviço (apontando para o site em produção):
 
 (No `npm run pages:dev` local, coloque os mesmos valores no `.dev.vars`.)
 
+> **✅ Produção (jul/2026) — já configurados.** Os secrets `SESSION_SECRET`, `WEBHOOK_SECRET`,
+> `ASAAS_API_KEY`, `AUTENTIQUE_TOKEN` e `AUTENTIQUE_WEBHOOK_SECRET` já estão no cofre da Cloudflare
+> (Pages → isapaulino → Settings → Environment variables / Secrets). **⚠️ Os VALORES NÃO ficam neste
+> repositório** (é segredo de produção — a chave ASAAS movimenta dinheiro real). Guarde-os no seu
+> **gerenciador de senhas**; a Cloudflare guarda criptografado e não deixa lê-los de volta, então o
+> backup pessoal é o que evita perdê-los. Trocar um secret exige um novo deploy para valer.
+> - Webhook ASAAS: **cadastrado** (`/api/webhooks/asaas`, token = `WEBHOOK_SECRET`).
+> - Webhook Autentique: cadastrar no painel → `https://isabelapaulino.com.br/api/webhooks/autentique?secret=<AUTENTIQUE_WEBHOOK_SECRET>`, evento `document.finished`.
+
 ---
 
 ## ✅ Testar local

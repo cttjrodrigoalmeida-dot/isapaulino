@@ -56,6 +56,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       ).bind(newStatus, paymentDate, installmentId).run();
     }
 
+    // Histórico Financeiro (HF): a mesma cobrança pode ser de um lançamento do HF.
+    if (asaasPaymentId) {
+      if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
+        const paidDate = body.payment?.paymentDate ?? new Date().toISOString().slice(0, 10);
+        await env.DB.prepare(
+          "UPDATE client_history SET status = 'paid', paid_at = COALESCE(paid_at, ?), updated_at = datetime('now') WHERE asaas_payment_id = ?"
+        ).bind(paidDate, asaasPaymentId).run();
+      } else if (event === "PAYMENT_DELETED") {
+        await env.DB.prepare(
+          "UPDATE client_history SET status = 'cancelled', updated_at = datetime('now') WHERE asaas_payment_id = ?"
+        ).bind(asaasPaymentId).run();
+      }
+    }
+
     return json({ ok: true });
   } catch (e) {
     return toErrorResponse(e);

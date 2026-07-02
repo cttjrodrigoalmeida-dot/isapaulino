@@ -9,9 +9,12 @@
 CREATE TABLE IF NOT EXISTS admin_users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   username      TEXT NOT NULL UNIQUE,
+  name          TEXT,                          -- nome de exibição (topo do painel)
   password_hash TEXT NOT NULL,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- NOTA (migração de bancos já criados): rodar UMA vez:
+--   ALTER TABLE admin_users ADD COLUMN name TEXT;
 
 -- Propostas. Em vez de normalizar o objeto Proposal (muito aninhado) em
 -- dezenas de tabelas, guardamos algumas colunas indexadas para LISTAR e
@@ -64,17 +67,26 @@ CREATE INDEX IF NOT EXISTS idx_responses_submitted ON briefing_responses(submitt
 -- Clientes do estúdio. Campos planos (sem JSON aninhado), CRUD pelo painel.
 -- cpf_cnpj e email são opcionais, mas validados quando preenchidos.
 CREATE TABLE IF NOT EXISTS clients (
-  id         TEXT PRIMARY KEY,            -- uuid
-  name       TEXT NOT NULL,
-  cpf_cnpj   TEXT,
-  email      TEXT,
-  phone      TEXT,
-  address    TEXT,
-  city       TEXT,
-  state      TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  id            TEXT PRIMARY KEY,            -- uuid
+  name          TEXT NOT NULL,
+  cpf_cnpj      TEXT,
+  email         TEXT,
+  phone         TEXT,
+  address       TEXT,
+  city          TEXT,
+  state         TEXT,
+  role          TEXT,                        -- profissão/papel (ex.: "ARQUITETO E URBANISTA")
+  nacionalidade TEXT,                        -- ex.: "Brasileiro(a)"
+  birth_date    TEXT,                        -- nascimento (texto livre)
+  access_enabled INTEGER NOT NULL DEFAULT 0, -- 1 = acesso à Área do Cliente liberado
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- NOTA (migração de bancos já criados): rodar UMA vez em bancos existentes:
+--   ALTER TABLE clients ADD COLUMN role TEXT;
+--   ALTER TABLE clients ADD COLUMN nacionalidade TEXT;
+--   ALTER TABLE clients ADD COLUMN birth_date TEXT;
+--   ALTER TABLE clients ADD COLUMN access_enabled INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
 CREATE INDEX IF NOT EXISTS idx_clients_updated ON clients(updated_at DESC);
@@ -161,6 +173,29 @@ CREATE TABLE IF NOT EXISTS asaas_logs (
   payload          TEXT,
   processed_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Histórico Financeiro (HF): lançamentos de serviços/alterações FORA do contrato,
+-- por cliente (retrabalho, adicionais, hora técnica…). Somados no admin e podem
+-- virar cobrança no ASAAS (asaas_payment_id), rastreada pelo mesmo webhook.
+CREATE TABLE IF NOT EXISTS client_history (
+  id               TEXT PRIMARY KEY,                  -- uuid
+  client_id        TEXT NOT NULL,
+  contract_id      TEXT,                              -- opcional: vincula a um contrato
+  date             TEXT NOT NULL DEFAULT (date('now')),
+  description      TEXT NOT NULL,
+  amount           REAL NOT NULL DEFAULT 0,
+  kind             TEXT NOT NULL DEFAULT 'adicional', -- adicional|retrabalho|hora-tecnica|outro
+  status           TEXT NOT NULL DEFAULT 'pending',   -- pending|charged|paid|cancelled
+  asaas_payment_id TEXT UNIQUE,
+  paid_at          TEXT,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (client_id)   REFERENCES clients(id),
+  FOREIGN KEY (contract_id) REFERENCES contracts(id)
+);
+CREATE INDEX IF NOT EXISTS idx_client_history_client ON client_history(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_history_status ON client_history(status);
+CREATE INDEX IF NOT EXISTS idx_client_history_asaas ON client_history(asaas_payment_id);
 
 -- Agenda do painel: tarefas e compromissos por dia (calendário da dashboard).
 CREATE TABLE IF NOT EXISTS calendar_events (

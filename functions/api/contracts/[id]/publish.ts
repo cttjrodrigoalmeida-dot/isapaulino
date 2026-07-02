@@ -26,6 +26,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
        WHERE id = ?`
     ).bind(slug, id).run();
 
+    // Fase 3: publicar um contrato libera o acesso do cliente à Área do Cliente.
+    await env.DB.prepare(
+      "UPDATE clients SET access_enabled = 1, updated_at = datetime('now') WHERE id = (SELECT client_id FROM contracts WHERE id = ?)"
+    ).bind(id).run();
+
     return json({ ok: true, slug, status: "published" });
   } catch (e) {
     return toErrorResponse(e);
