@@ -147,7 +147,7 @@ query Document($id: UUID!) {
   document(id: $id) {
     id
     name
-    signatures { public_id email name signed { created_at } rejected { created_at } }
+    signatures { public_id email name signed { created_at } rejected { created_at } link { short_link } }
   }
 }`;
 
@@ -160,6 +160,7 @@ export interface AutentiqueDocStatus {
     name: string | null;
     signed: { created_at: string } | null;
     rejected: { created_at: string } | null;
+    link?: { short_link: string } | null;
   }[];
 }
 

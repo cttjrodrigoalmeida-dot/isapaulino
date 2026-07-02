@@ -54,6 +54,10 @@ export default function ContractEditor({
   const [slug, setSlug] = useState<string | null>(null);
   const [autentiqueDocId, setAutentiqueDocId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [signers, setSigners] = useState<
+    { name: string | null; email: string | null; signed: boolean; signedAt: string | null; rejected: boolean }[] | null
+  >(null);
 
   const [tab, setTab] = useState<Tab>("campos");
   const [jsonText, setJsonText] = useState("");
@@ -246,6 +250,30 @@ export default function ContractEditor({
       setError(err instanceof ApiError ? err.message : "Erro ao enviar para a Autentique.");
     } finally {
       setSending(false);
+    }
+  };
+
+  // Reconsulta a Autentique na hora (não depende da entrega do webhook).
+  const refreshSignature = async () => {
+    if (!contractId) return;
+    setError(null);
+    setNotice(null);
+    setRefreshing(true);
+    try {
+      const r = await api.refreshSignature(contractId);
+      setSigners(r.signers);
+      if (r.autentiqueUrl) patch({ autentiqueUrl: r.autentiqueUrl });
+      if (r.status === "signed") {
+        setStatus("signed");
+        setNotice("Contrato assinado por todas as partes! Status atualizado para “assinado”.");
+      } else {
+        const pend = r.signers.filter((s) => !s.signed).length;
+        setNotice(`Status atualizado. Faltam ${pend} assinatura(s) para concluir.`);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao consultar a Autentique.");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -569,6 +597,25 @@ export default function ContractEditor({
               <div className={styles.field}>
                 <label className={styles.label}>Documento na Autentique (id)</label>
                 <input className={`${styles.input} ${styles.mono}`} value={autentiqueDocId} readOnly />
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                  <button type="button" className={`${styles.btn} ${styles.btnGhost}`} disabled={refreshing} onClick={refreshSignature}>
+                    {refreshing ? "Consultando…" : "Atualizar status da assinatura"}
+                  </button>
+                  <span className={styles.pageHint}>Reconsulta a Autentique agora (não depende do webhook).</span>
+                </div>
+                {signers && (
+                  <ul style={{ margin: "12px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+                    {signers.map((s, i) => (
+                      <li key={i} className={styles.mono} style={{ fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}>
+                        <span>{s.signed ? "✅" : s.rejected ? "❌" : "⏳"}</span>
+                        <span>{s.name || s.email || "signatário"}</span>
+                        <span style={{ opacity: 0.6 }}>
+                          {s.signed ? `assinou${s.signedAt ? " em " + s.signedAt.slice(0, 10) : ""}` : s.rejected ? "recusou" : "pendente"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
             {!contractId ? (

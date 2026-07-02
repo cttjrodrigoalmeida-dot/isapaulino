@@ -450,6 +450,17 @@ export const api = {
     return body as { ok: true; documentId: string; url: string };
   },
 
+  // Reconsulta a Autentique na hora (mesma lógica do webhook) e devolve o status
+  // por signatário; marca 'signed' se todos assinaram.
+  refreshSignature: (id: string) =>
+    req<{
+      ok: true;
+      fullySigned: boolean;
+      status: string;
+      autentiqueUrl: string | null;
+      signers: { name: string | null; email: string | null; signed: boolean; signedAt: string | null; rejected: boolean; link: string | null }[];
+    }>(`/api/contracts/${encodeURIComponent(id)}/refresh-signature`, { method: "POST" }),
+
   // ── pagamentos / parcelas ──
   getContractPayments: (contractId: string) =>
     req<{ config: ContractPaymentConfig | null; installments: Installment[] }>(
