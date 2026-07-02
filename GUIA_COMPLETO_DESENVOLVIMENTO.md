@@ -507,6 +507,31 @@ FUNCIONALIDADES — IMPLEMENTE NESTA ORDEM
    - Layout profissional: dados do cliente, texto do contrato
    - Botão "Assinar Contrato" → abre link autentique_url (se preenchido)
    - Botão "Download PDF" (placeholder por ora, será Fase 4)
+
+   ┌──────────────────────────────────────────────────────────────────────┐
+   │ ⏳ FUTURO — AUTOMATIZAR A AUTENTIQUE VIA API (decisão registrada)       │
+   │                                                                        │
+   │ HOJE (Fase 1): a Autentique é só um CAMPO DE URL (autentique_url) que  │
+   │ a Isabela cola manualmente + botão "Assinar Contrato". SEM API/login   │
+   │ de plataforma. Motivo: aguardando a cliente liberar as credenciais.    │
+   │                                                                        │
+   │ QUANDO HOUVER CONTA + TOKEN, dá para automatizar tudo:                 │
+   │ - API GraphQL (https://docs.autentique.com.br/api):                    │
+   │     mutation createDocument(document, signers[], file) → retorna o     │
+   │     `id` e, por signatário, `link.short_link` (link de assinatura).    │
+   │     Upload do arquivo é multipart (PDF; máx 5MB grátis / 20MB pro).    │
+   │ - Webhooks: eventos `document.finished` / `signature.accepted`, com    │
+   │     header `x-autentique-signature` (HMAC-SHA256) para validar.        │
+   │                                                                        │
+   │ PRÉ-REQUISITOS p/ implementar:                                         │
+   │   (a) gerar o PDF do contrato (hoje é placeholder/Fase 4);             │
+   │   (b) secret AUTENTIQUE_TOKEN no Cloudflare;                           │
+   │   (c) functions/api/contracts/webhook.ts validando o HMAC e marcando   │
+   │       status='signed' automaticamente; o signatário é o e-mail do      │
+   │       cliente (clients.email).                                         │
+   │ O schema atual (autentique_url + status 'signed') já comporta isso     │
+   │ sem migração.                                                          │
+   └──────────────────────────────────────────────────────────────────────┘
    
    /proposta/[id]:
    - Layout similar ao contrato

@@ -1038,6 +1038,174 @@
   display: none;
 }
 
+/* chip de referência por link (quando não é imagem) */
+.refLinkChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 240px;
+  padding: 7px 10px 7px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+}
+.refLinkChip a {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.refLinkChip a:hover {
+  text-decoration: underline;
+}
+.refChipRemove {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.refChipRemove:hover {
+  color: var(--color-accent);
+}
+
+/* ── Modal "Anexar referência" (imagem ou link) ── */
+.refModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+.refModal {
+  width: min(420px, 100%);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.refModalTitle {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+.refModalImgBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.refModalImgBtn svg {
+  color: var(--color-accent);
+}
+.refModalImgBtn:hover {
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.06);
+}
+.refModalDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.refModalDivider::before,
+.refModalDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+.refModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.refModalInput {
+  width: 100%;
+  padding: 11px 13px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--border-radius-sm);
+  outline: none;
+}
+.refModalInput:focus {
+  border-color: var(--color-accent);
+}
+.refModalActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.refModalCancel,
+.refModalConfirm {
+  padding: 9px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition),
+    color var(--transition);
+}
+.refModalCancel {
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+.refModalCancel:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-secondary);
+}
+.refModalConfirm {
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+.refModalConfirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ════════════ CTA FINAL ════════════ */
 .ctaWrap {
   padding: clamp(30px, 5vw, 56px) 0;

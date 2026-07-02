@@ -162,6 +162,7 @@ function QuestionItem({
   onAnswer,
   refImage,
   onPickRef,
+  onPickLink,
   onRemoveRef,
   pending,
   locked,
@@ -176,6 +177,7 @@ function QuestionItem({
   onAnswer: (value: string) => void;
   refImage?: string;
   onPickRef: (file: File) => void;
+  onPickLink: (url: string) => void;
   onRemoveRef: () => void;
   pending: boolean;
   locked: boolean;
@@ -185,6 +187,11 @@ function QuestionItem({
 }) {
   const printing = useContext(PrintContext);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [refModalOpen, setRefModalOpen] = useState(false);
+  const [linkValue, setLinkValue] = useState("");
+  // Uma referência é "link" quando não é um preview local (blob:) nem um upload
+  // nosso (/api/files/...). Nesse caso mostramos um chip clicável em vez da imagem.
+  const refIsLink = !!refImage && !refImage.startsWith("blob:") && !refImage.startsWith("/api/files/");
   const type = question.type ?? "longtext";
   const allowReference = question.allowReference ?? sectionKind === "ambiente";
   const required = isRequired(question);
@@ -404,15 +411,26 @@ function QuestionItem({
         <div className={styles.refRow}>
           {allowReference &&
             (refImage ? (
-              <span className={styles.refPreview}>
-                <img src={refImage} alt="Referência anexada" className={styles.refImg} />
-                <button type="button" className={styles.refRemove} onClick={onRemoveRef} aria-label="Remover referência">
-                  ×
-                </button>
-              </span>
+              refIsLink ? (
+                <span className={styles.refLinkChip}>
+                  <a href={refImage} target="_blank" rel="noopener noreferrer">
+                    {refImage.replace(/^https?:\/\//, "")}
+                  </a>
+                  <button type="button" className={styles.refChipRemove} onClick={onRemoveRef} aria-label="Remover referência">
+                    ×
+                  </button>
+                </span>
+              ) : (
+                <span className={styles.refPreview}>
+                  <img src={refImage} alt="Referência anexada" className={styles.refImg} />
+                  <button type="button" className={styles.refRemove} onClick={onRemoveRef} aria-label="Remover referência">
+                    ×
+                  </button>
+                </span>
+              )
             ) : (
               <>
-                <button type="button" className={styles.refBtn} onClick={() => fileRef.current?.click()}>
+                <button type="button" className={styles.refBtn} onClick={() => setRefModalOpen(true)}>
                   <span className={styles.plus}>+</span> ANEXAR REFERÊNCIA
                 </button>
                 {attachInput}
@@ -431,13 +449,92 @@ function QuestionItem({
         </div>
       )}
 
-      {printing && refImage && (
-        <span className={styles.refPreview}>
-          <img src={refImage} alt="Referência anexada" className={styles.refImg} />
-        </span>
+      {printing && refImage &&
+        (refIsLink ? (
+          <span className={styles.refLinkChip}>
+            <a href={refImage}>{refImage.replace(/^https?:\/\//, "")}</a>
+          </span>
+        ) : (
+          <span className={styles.refPreview}>
+            <img src={refImage} alt="Referência anexada" className={styles.refImg} />
+          </span>
+        ))}
+
+      {refModalOpen && (
+        <div
+          className={styles.refModalOverlay}
+          onClick={() => setRefModalOpen(false)}
+          role="presentation"
+        >
+          <div className={styles.refModal} onClick={(e) => e.stopPropagation()}>
+            <span className={styles.refModalTitle}>Anexar referência</span>
+
+            <button
+              type="button"
+              className={styles.refModalImgBtn}
+              onClick={() => {
+                setRefModalOpen(false);
+                fileRef.current?.click();
+              }}
+            >
+              <IconImage /> Anexar imagem
+            </button>
+
+            <span className={styles.refModalDivider}>ou</span>
+
+            <div className={styles.refModalField}>
+              <input
+                type="url"
+                className={styles.refModalInput}
+                value={linkValue}
+                onChange={(e) => setLinkValue(e.target.value)}
+                placeholder="Cole o link da referência (ex.: Pinterest)"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && linkValue.trim()) {
+                    e.preventDefault();
+                    onPickLink(normalizeLink(linkValue));
+                    setLinkValue("");
+                    setRefModalOpen(false);
+                  }
+                }}
+              />
+              <div className={styles.refModalActions}>
+                <button
+                  type="button"
+                  className={styles.refModalCancel}
+                  onClick={() => {
+                    setLinkValue("");
+                    setRefModalOpen(false);
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className={styles.refModalConfirm}
+                  disabled={!linkValue.trim()}
+                  onClick={() => {
+                    onPickLink(normalizeLink(linkValue));
+                    setLinkValue("");
+                    setRefModalOpen(false);
+                  }}
+                >
+                  Adicionar link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
+}
+
+// Garante um protocolo no link colado (ex.: "pinterest.com" → "https://pinterest.com").
+function normalizeLink(url: string): string {
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 // ── Imagem com pinos + zoom no hover (desktop) ────────────────
@@ -527,7 +624,7 @@ export default function BriefingView({ briefing: b }: Props) {
   const linked = getProposalByNumber(b.proposalNumber);
   const clientName = linked?.client ?? b.client ?? "—";
   const projectTitle = linked?.serviceTitle ?? b.serviceTitle ?? b.title;
-  const projectTags = linked?.serviceTags ?? [];
+  const projectTags = linked?.serviceTags ?? b.serviceTags ?? [];
   const displayDate = linked?.date ?? b.date ?? "";
   const contact = b.contact;
   const storageKey = `briefing:${b.number}`;
@@ -567,10 +664,14 @@ export default function BriefingView({ briefing: b }: Props) {
     }
   });
 
-  // ── Imagens de referência — só em memória ──
+  // ── Imagens de referência — preview (blob:) + arquivo original p/ enviar ao R2 ──
   const [refs, setRefs] = useState<Refs>({});
   const refsRef = useRef(refs);
   refsRef.current = refs;
+  const refFiles = useRef<Record<string, File>>({});
+  // Referências por link (URL externa) — não têm arquivo para subir ao R2,
+  // mas precisam ir junto nas respostas enviadas.
+  const refLinks = useRef<Record<string, string>>({});
   useEffect(() => {
     return () => {
       Object.values(refsRef.current).forEach((url) => {
@@ -593,13 +694,26 @@ export default function BriefingView({ briefing: b }: Props) {
   };
   const pickRef = (qid: string, file: File) => {
     const url = URL.createObjectURL(file);
+    refFiles.current[qid] = file;
+    delete refLinks.current[qid];
     setRefs((prev) => {
       const old = prev[qid];
       if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
       return { ...prev, [qid]: url };
     });
   };
-  const removeRef = (qid: string) =>
+  const pickLink = (qid: string, link: string) => {
+    delete refFiles.current[qid];
+    refLinks.current[qid] = link;
+    setRefs((prev) => {
+      const old = prev[qid];
+      if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
+      return { ...prev, [qid]: link };
+    });
+  };
+  const removeRef = (qid: string) => {
+    delete refFiles.current[qid];
+    delete refLinks.current[qid];
     setRefs((prev) => {
       const old = prev[qid];
       if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
@@ -607,6 +721,7 @@ export default function BriefingView({ briefing: b }: Props) {
       delete next[qid];
       return next;
     });
+  };
 
   const questionEls = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -714,7 +829,46 @@ export default function BriefingView({ briefing: b }: Props) {
     } catch {
       /* indisponível — ignora */
     }
+    // Abre o WhatsApp já (gesto do usuário, evita bloqueio de pop-up);
+    // o envio ao servidor — incluindo upload dos anexos — segue em background.
     window.open(waLink, "_blank", "noopener,noreferrer");
+    void sendResponses();
+  };
+
+  // Sobe os anexos pro R2 e envia as respostas + URLs (best-effort).
+  const sendResponses = async () => {
+    const refImages: Record<string, string> = {};
+    await Promise.all(
+      Object.entries(refFiles.current).map(async ([qid, file]) => {
+        try {
+          const fd = new FormData();
+          fd.append("file", file);
+          const res = await fetch(`/api/briefings/${encodeURIComponent(b.number)}/upload`, {
+            method: "POST",
+            body: fd,
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { url?: string };
+            if (data.url) refImages[qid] = data.url;
+          }
+        } catch {
+          /* anexo é best-effort — não bloqueia o envio das respostas */
+        }
+      })
+    );
+    // Referências por link entram direto (sem upload).
+    Object.entries(refLinks.current).forEach(([qid, url]) => {
+      refImages[qid] = url;
+    });
+    try {
+      await fetch(`/api/briefings/${encodeURIComponent(b.number)}/responses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers, client: b.client ?? linked?.client, refImages }),
+      });
+    } catch {
+      /* best-effort */
+    }
   };
 
   const missingCount = pending.size;
@@ -729,6 +883,7 @@ export default function BriefingView({ briefing: b }: Props) {
         onAnswer={(v) => setAnswer(q.id, v)}
         refImage={refs[q.id]}
         onPickRef={(file) => pickRef(q.id, file)}
+        onPickLink={(url) => pickLink(q.id, url)}
         onRemoveRef={() => removeRef(q.id)}
         pending={pending.has(q.id)}
         locked={isLockedQuestion(q, allQuestions, answers)}

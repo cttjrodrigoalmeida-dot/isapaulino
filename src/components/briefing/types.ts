@@ -92,8 +92,11 @@ export interface Briefing {
   /** E-mail de envio exibido no card de maquete. */
   studioEmail?: string;
 
-  // ── Fallback de exibição caso a proposta linkada não seja encontrada ──
+  // ── Snapshot da proposta vinculada (puxado ao vincular no admin) ──
+  // Usado para exibir cliente/projeto/data/tags sem depender de buscar a
+  // proposta de novo na hora de renderizar o briefing.
   client?: string;
   serviceTitle?: string;
+  serviceTags?: string[];
   date?: string;
 }

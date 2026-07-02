@@ -40,6 +40,7 @@
   --font-subtitle: 'Space Mono', monospace;   /* Eurostile MN Extended → Space Mono */
   --font-body: 'Inter', sans-serif;           /* Helvetica Neue LT Pro 43 → Inter 300 */
   --font-mono: 'Space Mono', monospace;       /* ARAME-MONO → Space Mono */
+  --font-ui: 'Inter', sans-serif;             /* títulos do SISTEMA/painel (legível); a marca (Kinn) fica só nos documentos */
 
   --border-radius-standard: 40px 0 40px 0;
   --border-radius-mirror: 0 40px 0 40px;

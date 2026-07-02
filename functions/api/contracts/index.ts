@@ -1,0 +1,92 @@
+// /api/contracts
+//   GET  ?status=...  → lista (admin), com nome do cliente (JOIN).
+//   POST              → cria contrato (admin). client_id + title obrigatórios.
+import type { Env } from "../_lib/types";
+import { json, error, readJson, toErrorResponse, HttpError } from "../_lib/http";
+import { requireAuth } from "../_lib/auth";
+
+export interface ContractInput {
+  client_id?: string;
+  title?: string;
+  content?: string;
+  /** JSON do ContractDoc (documento rico). */
+  data?: string | null;
+  value?: number | null;
+  deadline?: string | null;
+  autentique_url?: string | null;
+  status?: string;
+}
+
+const STATUSES = ["draft", "published", "signed", "cancelled"];
+
+// Colunas de listagem + nome do cliente.
+const LIST_COLS = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title,
+  c.value, c.status, c.slug, c.updated_at AS updatedAt, c.published_at AS publishedAt`;
+
+function opt(v: unknown): string | null {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s ? s : null;
+}
+
+// Valida o JSON do ContractDoc: devolve a string se parsear, null se vazia,
+// e lança 400 se vier preenchida mas malformada (para não perder o documento).
+export function optContractData(v: unknown): string | null {
+  if (typeof v !== "string" || !v.trim()) return null;
+  try {
+    JSON.parse(v);
+    return v;
+  } catch {
+    throw new HttpError(400, "Documento do contrato (data) inválido: JSON malformado.");
+  }
+}
+
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const url = new URL(request.url);
+    const status = url.searchParams.get("status");
+
+    let query = `SELECT ${LIST_COLS} FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id`;
+    const binds: string[] = [];
+    if (status && STATUSES.includes(status)) {
+      query += " WHERE c.status = ?";
+      binds.push(status);
+    }
+    query += " ORDER BY c.updated_at DESC";
+
+    const { results } = await env.DB.prepare(query).bind(...binds).all();
+    return json({ contracts: results ?? [] });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+};
+
+export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson<ContractInput>(request);
+
+    const clientId = (body.client_id ?? "").trim();
+    const title = (body.title ?? "").trim();
+    if (!clientId) return error(400, "Selecione o cliente do contrato.");
+    if (!title) return error(400, "Informe o título do contrato.");
+
+    const client = await env.DB.prepare("SELECT id FROM clients WHERE id = ?").bind(clientId).first();
+    if (!client) return error(400, "Cliente não encontrado.");
+
+    const value = typeof body.value === "number" && Number.isFinite(body.value) ? body.value : null;
+    const data = optContractData(body.data);
+    const id = crypto.randomUUID();
+
+    await env.DB.prepare(
+      `INSERT INTO contracts (id, client_id, title, content, data, value, deadline, autentique_url, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+    )
+      .bind(id, clientId, title, opt(body.content) ?? "", data, value, opt(body.deadline), opt(body.autentique_url))
+      .run();
+
+    return json({ ok: true, id }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+};

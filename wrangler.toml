@@ -1,0 +1,30 @@
+# ============================================================
+# Cloudflare Pages + Pages Functions + D1 (Isabela Paulino Studio)
+#
+# O site é um SPA Vite (build em `dist/`). As rotas /api/* são servidas
+# por Pages Functions (pasta `functions/`). O banco é o Cloudflare D1.
+#
+# PASSOS MANUAIS (ver BACKEND.md): criar o D1 com `wrangler d1 create`,
+# colar o database_id abaixo, e definir o segredo SESSION_SECRET.
+# ============================================================
+
+name = "isapaulino"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"
+
+# Banco D1 — binding fica disponível nas Functions como `env.DB`.
+[[d1_databases]]
+binding = "DB"
+database_name = "isapaulino-db"
+database_id = "514cf658-a613-4898-8af9-bd2f7d432ead"
+
+# Armazenamento de arquivos R2 — binding `env.R2` (imagens dos ambientes).
+# Local: simulado pelo `wrangler pages dev`. Produção: exige habilitar o R2 no
+# painel e criar o bucket `isapaulino-files` (ver BACKEND.md).
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "isapaulino-files"
+
+# Variáveis NÃO sensíveis (as sensíveis vão como Secret, ver BACKEND.md).
+[vars]
+SITE_URL = "https://isabelapaulino.com.br"

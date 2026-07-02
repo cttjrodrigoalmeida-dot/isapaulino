@@ -1,0 +1,246 @@
+// GET /api/dashboard/overview
+//   Métricas agregadas do painel, calculadas no servidor a partir dos dados
+//   reais existentes (propostas, briefings, respostas). Autenticado.
+//   Módulos ainda não construídos (financeiro/ASAAS, contratos, clientes,
+//   projetos) retornam zerados — o front exibe estado vazio/placeholder.
+import type { Env } from "../_lib/types";
+import { json, toErrorResponse } from "../_lib/http";
+import { requireAuth } from "../_lib/auth";
+
+// "R$ 1.900,00" → 1900. Não parseável (ex.: "a combinar") → 0.
+function parseBRL(v: unknown): number {
+  if (typeof v !== "string") return 0;
+  const cleaned = v.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// "18/05/2026" → { y: 2026, m: 5 }  (m = 1..12). Inválido → null.
+function parseDateBR(v: unknown): { y: number; m: number } | null {
+  if (typeof v !== "string") return null;
+  const mm = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!mm) return null;
+  const m = parseInt(mm[2], 10);
+  const y = parseInt(mm[3], 10);
+  if (m < 1 || m > 12) return null;
+  return { y, m };
+}
+
+const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+interface ProposalRow {
+  number: string;
+  client: string | null;
+  date: string | null;
+  status: string;
+  data: string;
+  updated_at: string;
+}
+interface BriefingRow {
+  number: string;
+  title: string | null;
+  status: string;
+  updated_at: string;
+}
+
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+
+    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes] = await Promise.all([
+      env.DB.prepare(
+        "SELECT number, client, date, status, data, updated_at FROM proposals"
+      ).all<ProposalRow>(),
+      env.DB.prepare(
+        "SELECT number, title, status, updated_at FROM briefings"
+      ).all<BriefingRow>(),
+      env.DB.prepare(
+        "SELECT briefing_number, COUNT(*) AS c FROM briefing_responses GROUP BY briefing_number"
+      ).all<{ briefing_number: string; c: number }>(),
+      env.DB.prepare(
+        "SELECT briefing_number, client, submitted_at FROM briefing_responses ORDER BY submitted_at DESC LIMIT 8"
+      ).all<{ briefing_number: string; client: string | null; submitted_at: string }>(),
+      env.DB.prepare("SELECT COALESCE(SUM(total_value), 0) AS faturado FROM contract_payments").first<{ faturado: number }>(),
+      env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM installments GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
+      env.DB.prepare("SELECT substr(payment_date, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM installments WHERE status = 'received' AND payment_date IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
+      env.DB.prepare("SELECT COUNT(*) AS c FROM contracts").first<{ c: number }>(),
+    ]);
+
+    const proposals = propsRes.results ?? [];
+    const briefings = briefsRes.results ?? [];
+    const respCounts = new Map<string, number>(
+      (respCountRes.results ?? []).map((r) => [r.briefing_number, r.c])
+    );
+    const responsesTotal = (respCountRes.results ?? []).reduce((s, r) => s + r.c, 0);
+
+    // ── Propostas: status, valores, ranking, faturamento por mês ──
+    let pDraft = 0;
+    let pPublished = 0;
+    let totalValue = 0;
+    const byClient = new Map<string, { total: number; count: number }>();
+
+    // 12 baldes mensais terminando no mês atual
+    const now = new Date();
+    const buckets: { key: string; label: string; value: number }[] = [];
+    const bucketIndex = new Map<string, number>();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      bucketIndex.set(key, buckets.length);
+      buckets.push({ key, label: MONTHS_PT[d.getMonth()], value: 0 });
+    }
+
+    for (const p of proposals) {
+      if (p.status === "published") pPublished++;
+      else pDraft++;
+
+      let value = 0;
+      try {
+        const parsed = JSON.parse(p.data) as { total?: string };
+        value = parseBRL(parsed.total);
+      } catch {
+        /* JSON inválido — ignora valor */
+      }
+      totalValue += value;
+
+      const clientName = (p.client ?? "Sem cliente").trim() || "Sem cliente";
+      const agg = byClient.get(clientName) ?? { total: 0, count: 0 };
+      agg.total += value;
+      agg.count += 1;
+      byClient.set(clientName, agg);
+
+      const dt = parseDateBR(p.date);
+      if (dt) {
+        const key = `${dt.y}-${String(dt.m).padStart(2, "0")}`;
+        const idx = bucketIndex.get(key);
+        if (idx !== undefined) buckets[idx].value += value;
+      }
+    }
+
+    const proposalsTotal = proposals.length;
+    const avgTicket = proposalsTotal > 0 ? totalValue / proposalsTotal : 0;
+
+    const clientRanking = [...byClient.entries()]
+      .map(([client, v]) => ({ client, total: v.total, count: v.count }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    // ── Briefings ──
+    let bDraft = 0;
+    let bPublished = 0;
+    let withoutResponse = 0;
+    for (const b of briefings) {
+      if (b.status === "published") bPublished++;
+      else bDraft++;
+      if ((respCounts.get(b.number) ?? 0) === 0) withoutResponse++;
+    }
+
+    // ── Atividades recentes (propostas + briefings + respostas) ──
+    type Activity = { at: string; type: string; title: string; sub: string };
+    const activity: Activity[] = [];
+    for (const p of proposals) {
+      activity.push({
+        at: p.updated_at,
+        type: "proposta",
+        title: `Proposta #${p.number}`,
+        sub: p.client ?? "—",
+      });
+    }
+    for (const b of briefings) {
+      activity.push({
+        at: b.updated_at,
+        type: "briefing",
+        title: `Briefing #${b.number}`,
+        sub: b.title ?? "—",
+      });
+    }
+    for (const r of recentRespRes.results ?? []) {
+      activity.push({
+        at: r.submitted_at,
+        type: "resposta",
+        title: `Briefing #${r.briefing_number} respondido`,
+        sub: r.client ?? "Cliente",
+      });
+    }
+    activity.sort((a, b) => (a.at < b.at ? 1 : -1));
+    const recentActivity = activity.slice(0, 8);
+
+    // ── Atenção hoje (pendências reais) ──
+    const pendencias: { kind: string; count: number; label: string }[] = [];
+    if (withoutResponse > 0)
+      pendencias.push({
+        kind: "briefing",
+        count: withoutResponse,
+        label: withoutResponse === 1 ? "Briefing aguardando resposta" : "Briefings aguardando resposta",
+      });
+    if (pDraft > 0)
+      pendencias.push({
+        kind: "proposta",
+        count: pDraft,
+        label: pDraft === 1 ? "Proposta em rascunho" : "Propostas em rascunho",
+      });
+
+    // ── Financeiro (parcelas/contratos) ──
+    const faturado = faturadoRes?.faturado ?? 0;
+    const byStatus = new Map<string, { amt: number; cnt: number }>(
+      (instByStatusRes.results ?? []).map((r) => [r.status, { amt: r.amt, cnt: r.cnt }])
+    );
+    const recebido = byStatus.get("received")?.amt ?? 0;
+    const aReceber =
+      (byStatus.get("pending")?.amt ?? 0) +
+      (byStatus.get("confirmed")?.amt ?? 0) +
+      (byStatus.get("overdue")?.amt ?? 0);
+    const atrasados = byStatus.get("overdue")?.cnt ?? 0;
+
+    // Recebido por mês — reusa os 12 baldes mensais já montados.
+    const recvIndex = new Map(buckets.map((b, i) => [b.key, i]));
+    const receivedByMonth = buckets.map((b) => ({ key: b.key, label: b.label, value: 0 }));
+    for (const r of recvByMonthRes.results ?? []) {
+      const idx = recvIndex.get(r.ym);
+      if (idx !== undefined) receivedByMonth[idx].value = r.amt;
+    }
+
+    const contratosTotal = contractsCountRes?.c ?? 0;
+
+    return json({
+      generatedAt: new Date().toISOString(),
+      finance: {
+        faturado,
+        recebido,
+        aReceber,
+        atrasados,
+        receivedByMonth,
+      },
+      proposals: {
+        total: proposalsTotal,
+        draft: pDraft,
+        published: pPublished,
+        totalValue,
+        avgTicket,
+      },
+      briefings: {
+        total: briefings.length,
+        draft: bDraft,
+        published: bPublished,
+        responsesTotal,
+        withoutResponse,
+      },
+      // funil: só Propostas e Briefings têm dado real; o resto depende de
+      // módulos futuros (leads/contratos/projetos/entregas).
+      funnel: {
+        leads: 0,
+        briefings: briefings.length,
+        propostas: proposalsTotal,
+        contratos: contratosTotal,
+        projetos: 0,
+        entregues: 0,
+      },
+      revenueByMonth: buckets,
+      clientRanking,
+      recentActivity,
+      pendencias,
+    });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+};
