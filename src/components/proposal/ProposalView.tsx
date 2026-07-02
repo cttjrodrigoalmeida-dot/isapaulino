@@ -504,7 +504,7 @@ export default function ProposalView({ proposal: p }: Props) {
                 <div className={styles.chips}>
                   {p.ambientes.map((a) => (
                     <span key={a} className={styles.chip}>
-                      AMBIENTE
+                      {a}
                     </span>
                   ))}
                 </div>
