@@ -54,6 +54,27 @@ export default function ContractsList({
     }
   };
 
+  // Verifica/atualiza a assinatura direto da lista (reconsulta a Autentique),
+  // sem precisar entrar no contrato. Atualiza o status na hora se já assinado.
+  const checkSignature = async (c: ContractSummary) => {
+    setBusy(c.id);
+    try {
+      const r = await api.refreshSignature(c.id);
+      if (r.status === "signed") {
+        setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "signed" } : x)));
+        alert("Contrato assinado por todas as partes! ✅");
+      } else {
+        const pend = r.signers.filter((s) => !s.signed).length;
+        const done = r.signers.filter((s) => s.signed).map((s) => s.name || s.email).join(", ");
+        alert(`Ainda faltam ${pend} assinatura(s) para concluir.` + (done ? `\nJá assinaram: ${done}` : ""));
+      }
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Erro ao consultar a Autentique.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const duplicate = async (c: ContractSummary) => {
     setBusy(c.id);
     try {
@@ -141,6 +162,15 @@ export default function ContractsList({
                       <button className={styles.btn} onClick={() => onPayments(c.id, c.title)}>
                         Pagamentos
                       </button>
+                      {c.autentiqueDocumentId && c.status !== "signed" && c.status !== "cancelled" && (
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          onClick={() => checkSignature(c)}
+                          disabled={busy === c.id}
+                        >
+                          Verificar assinatura
+                        </button>
+                      )}
                       <button
                         className={`${styles.btn} ${styles.btnGhost}`}
                         onClick={() => duplicate(c)}

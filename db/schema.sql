@@ -210,3 +210,18 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_calendar_date ON calendar_events(date);
+
+-- Notificações do painel (sininho). Geradas por eventos: pagamento recebido,
+-- contrato assinado, etc. `link` aponta para a seção relevante do admin.
+CREATE TABLE IF NOT EXISTS notifications (
+  id         TEXT PRIMARY KEY,                 -- uuid
+  type       TEXT NOT NULL DEFAULT 'info',     -- payment|signature|info|...
+  title      TEXT NOT NULL,
+  body       TEXT,
+  link       TEXT,                             -- rota/âncora do admin (opcional)
+  read       INTEGER NOT NULL DEFAULT 0,       -- 0 | 1
+  dedup_key  TEXT UNIQUE,                      -- evita duplicar o mesmo evento
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);

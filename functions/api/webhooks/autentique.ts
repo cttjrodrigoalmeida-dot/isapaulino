@@ -6,6 +6,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, toErrorResponse } from "../_lib/http";
 import { autentiqueConfigured, getDocument, isFullySigned } from "../_lib/autentique";
+import { createNotification } from "../_lib/notifications";
 
 // Procura recursivamente por um id de documento no payload (JSON aninhado ou
 // chaves "document[id]" de formulário achatado).
@@ -51,8 +52,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (!documentId) return json({ ok: true, ignored: "sem document id" });
 
     const contract = await env.DB.prepare(
-      "SELECT id, status FROM contracts WHERE autentique_document_id = ?"
-    ).bind(documentId).first<{ id: string; status: string }>();
+      `SELECT c.id AS id, c.status AS status, c.title AS title, cl.name AS clientName
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id
+       WHERE c.autentique_document_id = ?`
+    ).bind(documentId).first<{ id: string; status: string; title: string | null; clientName: string | null }>();
     if (!contract) return json({ ok: true, ignored: "documento não vinculado" });
 
     // Reconsulta o documento para decidir com segurança (não confia no nome do evento).
@@ -66,6 +69,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       await env.DB.prepare(
         "UPDATE contracts SET status = 'signed', signed_at = ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(signedAt, contract.id).run();
+      await createNotification(env, {
+        type: "signature",
+        title: "Contrato assinado por todas as partes",
+        body: `${contract.clientName ?? "Cliente"} — ${contract.title ?? "contrato"}`,
+        link: "#contratos",
+        dedupKey: `signed:${contract.id}`,
+      });
       return json({ ok: true, signed: true });
     }
 

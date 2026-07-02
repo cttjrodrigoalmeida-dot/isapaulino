@@ -103,6 +103,18 @@ export interface ContractSummary {
   slug: string | null;
   updatedAt: string;
   publishedAt: string | null;
+  /** Id do documento na Autentique (preenchido quando enviado para assinatura). */
+  autentiqueDocumentId: string | null;
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: number;
+  createdAt: string;
 }
 
 /** Contrato completo (detalhe/edição). */
@@ -460,6 +472,15 @@ export const api = {
       autentiqueUrl: string | null;
       signers: { name: string | null; email: string | null; signed: boolean; signedAt: string | null; rejected: boolean; link: string | null }[];
     }>(`/api/contracts/${encodeURIComponent(id)}/refresh-signature`, { method: "POST" }),
+
+  // ── notificações (sininho) ──
+  listNotifications: () =>
+    req<{ items: AppNotification[]; unread: number }>(`/api/notifications`),
+  markNotificationsRead: (ids?: string[]) =>
+    req<{ ok: true }>(`/api/notifications`, {
+      method: "POST",
+      body: JSON.stringify(ids && ids.length ? { ids } : {}),
+    }),
 
   // ── pagamentos / parcelas ──
   getContractPayments: (contractId: string) =>

@@ -149,6 +149,9 @@ export default function AdminApp() {
               onAccount={() => setAccountOpen(true)}
               onLogout={logout}
               onToggleSidebar={() => setSidebarOpen((o) => !o)}
+              onNavigate={(sec) => {
+                if (SECTIONS.some((x) => x.id === sec)) selectSection(sec as SectionId);
+              }}
             />
             <QuickNav onAction={onQuickAction} />
           </div>

@@ -7,6 +7,7 @@ import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
 import { autentiqueConfigured, getDocument, isFullySigned } from "../../_lib/autentique";
+import { createNotification } from "../../_lib/notifications";
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
@@ -17,8 +18,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const contractId = String(params.id);
 
     const row = await env.DB.prepare(
-      "SELECT autentique_document_id AS docId, status, autentique_url AS url FROM contracts WHERE id = ?"
-    ).bind(contractId).first<{ docId: string | null; status: string; url: string | null }>();
+      `SELECT c.autentique_document_id AS docId, c.status AS status, c.autentique_url AS url,
+              c.title AS title, cl.name AS clientName
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
+    ).bind(contractId).first<{ docId: string | null; status: string; url: string | null; title: string | null; clientName: string | null }>();
     if (!row) return error(404, "Contrato não encontrado.");
     if (!row.docId) return error(400, "Este contrato ainda não foi enviado para assinatura.");
 
@@ -44,6 +47,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       await env.DB.prepare(
         "UPDATE contracts SET status = 'signed', signed_at = ?, autentique_url = COALESCE(NULLIF(?, ''), autentique_url), updated_at = datetime('now') WHERE id = ?"
       ).bind(signedAt, pendingLink, contractId).run();
+      await createNotification(env, {
+        type: "signature",
+        title: "Contrato assinado por todas as partes",
+        body: `${row.clientName ?? "Cliente"} — ${row.title ?? "contrato"}`,
+        link: "#contratos",
+        dedupKey: `signed:${contractId}`,
+      });
       status = "signed";
     } else if (!row.url && pendingLink) {
       // Ainda não fechou, mas aproveitamos para preencher o link de assinatura.
