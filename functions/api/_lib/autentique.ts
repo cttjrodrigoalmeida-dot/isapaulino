@@ -22,14 +22,35 @@ function requireToken(env: Env): string {
   return env.AUTENTIQUE_TOKEN;
 }
 
+interface GraphQLError {
+  message: string;
+  extensions?: Record<string, unknown>;
+}
 interface GraphQLResponse<T> {
   data?: T;
-  errors?: { message: string }[];
+  errors?: GraphQLError[];
+}
+
+// A Autentique devolve erros de validação como { message: "validation",
+// extensions: { validation: { "signers.0.email": ["..."] } } }. A mensagem
+// crua ("validation") não ajuda — extraímos os detalhes de campo aqui.
+function describeGraphQLError(e: GraphQLError): string {
+  let detail = e.message || "erro desconhecido";
+  const ext = e.extensions;
+  const v = ext && typeof ext === "object" ? (ext as Record<string, unknown>).validation : undefined;
+  if (v && typeof v === "object") {
+    const parts = Object.entries(v as Record<string, unknown>).map(([field, msgs]) => {
+      const text = Array.isArray(msgs) ? msgs.join(", ") : String(msgs);
+      return `${field}: ${text}`;
+    });
+    if (parts.length) detail += ` — ${parts.join(" | ")}`;
+  }
+  return detail;
 }
 
 function unwrap<T>(status: number, body: GraphQLResponse<T>): T {
   if (body.errors && body.errors.length > 0) {
-    throw new HttpError(400, `Autentique: ${body.errors[0].message}`);
+    throw new HttpError(400, `Autentique: ${describeGraphQLError(body.errors[0])}`);
   }
   if (!body.data) {
     throw new HttpError(status >= 400 ? status : 502, `Autentique: resposta inválida (${status}).`);

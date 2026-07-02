@@ -561,9 +561,9 @@ export default function ContractEditor({
           <div className={styles.card}>
             <div className={styles.cardTitle}>Assinatura digital (Autentique)</div>
             <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
-              Integração pronta, porém <strong>inativa até a chave da Autentique ser configurada</strong> (AUTENTIQUE_TOKEN).
-              Gere o PDF pelo botão “Baixar PDF” na página pública e envie-o aqui para coletar as assinaturas da
-              CONTRATANTE e da CONTRATADA (usa os e-mails das partes acima).
+              Integração <strong>ativa</strong>. Gere o PDF pelo botão “Baixar PDF” na página pública e envie-o aqui para
+              coletar as assinaturas da CONTRATANTE e da CONTRATADA (usa os e-mails das partes acima). Se houver erro, a
+              mensagem aparece no <strong>topo do editor</strong>.
             </div>
             {autentiqueDocId && (
               <div className={styles.field}>
