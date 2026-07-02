@@ -107,6 +107,13 @@ body::after {
   opacity: 0.04; /* Ruído com maior densidade e opacidade a pedido */
 }
 
+/* O grão em SVG (feTurbulence) é rasterizado pelo Chrome em CADA página ao
+   imprimir/gerar PDF, inflando o arquivo para dezenas de MB. Some na impressão
+   (é puramente decorativo) — deixa o PDF leve e vetorial p/ Autentique etc. */
+@media print {
+  body::after { display: none !important; }
+}
+
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; font-family: inherit; border: none; background: none; }
