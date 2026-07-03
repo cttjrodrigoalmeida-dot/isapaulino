@@ -159,6 +159,20 @@
   color: var(--color-text-primary);
   border-color: transparent;
 }
+/* Botão de assinatura — tom escuro (ink) para destacar do creme do "Publicar". */
+.btnSign {
+  background: #1f1a14;
+  border-color: #1f1a14;
+  color: #f4ede0;
+}
+.btnSign:hover {
+  background: #2c251b;
+  border-color: #3a3020;
+}
+.btnSign svg {
+  width: 14px;
+  height: 14px;
+}
 
 /* ── Container ── */
 .container {

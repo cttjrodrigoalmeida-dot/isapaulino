@@ -590,10 +590,9 @@ export default function ContractEditor({
           <div className={styles.card}>
             <div className={styles.cardTitle}>Assinatura digital (Autentique)</div>
             <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
-              Integração <strong>ativa</strong>. Clique em <strong>“Gerar PDF e enviar”</strong> — o sistema gera o PDF do
-              contrato automaticamente e envia para a CONTRATANTE e a CONTRATADA assinarem (usa os e-mails das partes acima).
-              O contrato precisa estar <strong>publicado</strong>. Se preferir, envie um PDF próprio no campo abaixo. Erros
-              aparecem no <strong>topo do editor</strong>.
+              Para enviar, use o botão <strong>“Enviar p/ assinatura”</strong> na <strong>barra inferior</strong> — o sistema
+              gera o PDF automaticamente e envia para as partes assinarem (o contrato precisa estar <strong>publicado</strong>).
+              Aqui você <strong>acompanha o status</strong> e, se precisar, pode enviar um PDF próprio.
             </div>
             {autentiqueDocId && (
               <div className={styles.field}>
@@ -623,30 +622,19 @@ export default function ContractEditor({
             {!contractId ? (
               <div className={styles.placeholderHint}>Salve o contrato primeiro para habilitar o envio.</div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnPrimary}`}
-                    disabled={sending}
-                    onClick={() => sendToAutentique(null)}
-                  >
-                    {sending ? "Gerando e enviando…" : "Gerar PDF e enviar para assinatura"}
-                  </button>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span className={styles.pageHint}>Ou envie um PDF próprio:</span>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    disabled={sending}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) sendToAutentique(f);
-                      e.target.value = "";
-                    }}
-                  />
-                </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span className={styles.pageHint}>Enviar um PDF próprio (opcional):</span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  disabled={sending}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) sendToAutentique(f);
+                    e.target.value = "";
+                  }}
+                />
+                {sending && <span className={styles.pageHint}>Enviando…</span>}
               </div>
             )}
           </div>
@@ -713,6 +701,20 @@ export default function ContractEditor({
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={publish} disabled={saving}>
             {slug ? "Republicar" : "Salvar e publicar"}
           </button>
+          {contractId && (
+            <button
+              className={`${styles.btn} ${styles.btnSign}`}
+              onClick={() => sendToAutentique(null)}
+              disabled={saving || sending}
+              title={slug ? "Gera o PDF e envia para as partes assinarem na Autentique" : "Publique o contrato primeiro"}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              {sending ? "Enviando…" : "Enviar p/ assinatura"}
+            </button>
+          )}
         </div>
       </div>
     </div>
