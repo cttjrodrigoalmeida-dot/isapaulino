@@ -96,10 +96,10 @@ export default function AdminApp() {
     if (a === "cliente") return goClientesNew();
     if (a === "contrato") return goContratosNew();
     if (a === "recebimento") return selectSection("financeiro");
-    const labels: Record<string, string> = {
-      projeto: "Projetos", lembrete: "Lembretes", relatorio: "Relatórios",
-    };
-    setToast(`${labels[a] ?? "Esse módulo"} — em breve neste painel.`);
+    if (a === "relatorio") return selectSection("relatorios");
+    if (a === "lembrete") return selectSection("financeiro");
+    if (a === "projeto") return selectSection("projetos");
+    setToast("Esse módulo — em breve neste painel.");
   };
 
   if (checking) {
