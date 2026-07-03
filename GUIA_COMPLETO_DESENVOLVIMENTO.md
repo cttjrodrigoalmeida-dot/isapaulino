@@ -8,6 +8,32 @@
 
 ---
 
+# 📌 STATUS ATUAL DO PROJETO (Isabela Paulino) — jul/2026
+
+> Esta seção é o **placar vivo** do que está pronto, o que está em STANDBY e o que
+> falta. Atualizar sempre que concluir/adiar algo. (O usuário pergunta com frequência
+> "está faltando alguma coisa?" — este é o lugar de responder.)
+
+**✅ PRONTO (em produção):**
+- Fase 1 (admin, clientes, contratos com editor rico, propostas, briefing, publicar link).
+- Fase 2 (ASAAS, webhook, financeiro, parcelas, cobranças).
+- Fase 3 (Área do Cliente — via **link mágico sem senha**, decisão do usuário; contrato, pagamentos, HF).
+- **Extras além do guia:** PDF automático do contrato p/ Autentique (Browser Rendering), notificações no sininho, meta anual configurável, Relatórios (KPIs + filtro por ano + comparativo + CSV), Arquivos do admin (R2), botões "Verificar assinatura" e "Sincronizar com ASAAS", Histórico Financeiro (HF).
+
+**🔨 EM ANDAMENTO / A FAZER (decisão jul/2026):**
+- **Logs de auditoria** (`audit_logs` + tela) — FAZENDO.
+- **Arquivos na Área do Cliente** (cliente baixar arquivos do projeto dele) — FAZENDO.
+
+**⏸️ STANDBY (adiado pelo usuário — fazer depois SE necessário):**
+- **Fase 4 — E-mails automáticos (SendGrid):** contrato publicado / conta criada / pagamento recebido / atraso + fila `email_queue` + cron. **Motivo do standby:** a Autentique (assinatura) e o ASAAS (cobrança/lembretes) **já enviam e-mails próprios** ao cliente, então pode não ser necessário. Reavaliar.
+- **Timeline do projeto com fotos:** cronograma de marcos com imagens (a seção "Projetos" atual é só resumo de volume, não é isso). Standby — usuário não se recorda de precisar.
+
+**⚠️ FEITO DIFERENTE DO GUIA (de propósito, não é pendência):**
+- Login do cliente: guia pedia e-mail+senha+troca na 1ª entrada; feito por **link mágico sem senha**. Logo, "troca de senha"/"1ª entrada" não se aplicam.
+- Arquitetura: guia assume Next.js/`/admin/login`/`/cliente/login`; o projeto é **SPA Vite** com painel por seções e Área do Cliente em `/area`.
+
+---
+
 ---
 
 # ═══════════════════════════════════════════

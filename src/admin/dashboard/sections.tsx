@@ -22,6 +22,7 @@ export type SectionId =
   | "calendario"
   | "relatorios"
   | "arquivos"
+  | "auditoria"
   | "armazenamento";
 
 export interface SectionDef {
@@ -43,5 +44,6 @@ export const SECTIONS: SectionDef[] = [
   { id: "calendario", label: "Calendário", sub: "Compromissos e agendas", icon: IcCalendario, ready: true },
   { id: "relatorios", label: "Relatórios", sub: "Desempenho e métricas", icon: IcRelatorios, ready: true },
   { id: "arquivos", label: "Arquivos", sub: "Pastas e documentos", icon: IcArquivos, ready: true },
+  { id: "auditoria", label: "Auditoria", sub: "Registro de ações", icon: IcRelatorios, ready: true },
   { id: "armazenamento", label: "Armazenamento", sub: "Uso do R2 e backup", icon: IcStorage, ready: true },
 ];

@@ -16,6 +16,7 @@ import Projetos from "./dashboard/Projetos";
 import Financeiro from "./dashboard/Financeiro";
 import Relatorios from "./dashboard/Relatorios";
 import Arquivos from "./dashboard/Arquivos";
+import Auditoria from "./dashboard/Auditoria";
 import Armazenamento from "./dashboard/Armazenamento";
 import Placeholder from "./dashboard/Placeholder";
 import MinhaConta from "./dashboard/MinhaConta";
@@ -133,6 +134,8 @@ export default function AdminApp() {
         return <Relatorios />;
       case "arquivos":
         return <Arquivos />;
+      case "auditoria":
+        return <Auditoria />;
       case "calendario":
         return <Calendar />;
       case "armazenamento":

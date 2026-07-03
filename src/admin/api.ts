@@ -314,6 +314,9 @@ export const api = {
   // ── relatórios (série temporal de recebimentos) ──
   reports: () => req<{ received: ReportMonth[] }>("/api/reports"),
 
+  // ── logs de auditoria ──
+  listLogs: () => req<{ logs: AuditLog[] }>("/api/logs"),
+
   // ── calendário ──
   listCalendar: (from?: string, to?: string) => {
     const qs = from && to ? `?from=${from}&to=${to}` : "";
@@ -586,6 +589,16 @@ export const api = {
     req<{ ok: true }>("/api/documents", { method: "DELETE", body: JSON.stringify({ key }) }),
   documentDownloadUrl: (key: string) => `/api/documents/download?key=${encodeURIComponent(key)}`,
 };
+
+export interface AuditLog {
+  id: string;
+  at: string;
+  user: string | null;
+  action: string;
+  method: string;
+  path: string;
+  status: number | null;
+}
 
 export interface ReportMonth {
   ym: string; // "2026-07"

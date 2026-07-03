@@ -234,3 +234,16 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value      TEXT,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Logs de auditoria: registra as ações (POST/PUT/DELETE) feitas no painel.
+-- Preenchido automaticamente por functions/api/_middleware.ts.
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id         TEXT PRIMARY KEY,                 -- uuid
+  at         TEXT NOT NULL DEFAULT (datetime('now')),
+  user       TEXT,                             -- username do admin (ou null)
+  action     TEXT NOT NULL,                    -- rótulo legível ("Publicou contrato")
+  method     TEXT NOT NULL,                    -- POST | PUT | DELETE
+  path       TEXT NOT NULL,                    -- /api/...
+  status     INTEGER                           -- código HTTP da resposta
+);
+CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_logs(at);
