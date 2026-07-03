@@ -41,7 +41,7 @@ export const SECTIONS: SectionDef[] = [
   { id: "projetos", label: "Projetos", sub: "Andamento e entregas", icon: IcProjetos, ready: true },
   { id: "financeiro", label: "Financeiro", sub: "Receitas, custos e parcelas", icon: IcFinanceiro, ready: true },
   { id: "calendario", label: "Calendário", sub: "Compromissos e agendas", icon: IcCalendario, ready: true },
-  { id: "relatorios", label: "Relatórios", sub: "Desempenho e métricas", icon: IcRelatorios, ready: false },
+  { id: "relatorios", label: "Relatórios", sub: "Desempenho e métricas", icon: IcRelatorios, ready: true },
   { id: "arquivos", label: "Arquivos", sub: "Pastas e documentos", icon: IcArquivos, ready: false },
   { id: "armazenamento", label: "Armazenamento", sub: "Uso do R2 e backup", icon: IcStorage, ready: true },
 ];
