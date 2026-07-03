@@ -208,6 +208,7 @@ export interface DashboardOverview {
     aReceber: number;
     atrasados: number;
     receivedByMonth: { key: string; label: string; value: number }[];
+    annualGoal: number;
   };
 }
 
@@ -305,6 +306,10 @@ export const api = {
 
   // ── dashboard ──
   dashboardOverview: () => req<DashboardOverview>("/api/dashboard/overview"),
+
+  // ── configurações (meta anual, etc.) ──
+  setSetting: (key: string, value: string) =>
+    req<{ ok: true }>("/api/settings", { method: "PUT", body: JSON.stringify({ key, value }) }),
 
   // ── calendário ──
   listCalendar: (from?: string, to?: string) => {

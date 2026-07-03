@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Cell } from "recharts";
 import { api, type DashboardOverview } from "../api";
 import s from "./Dashboard.module.css";
@@ -53,14 +53,33 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
 }) {
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [goalEditing, setGoalEditing] = useState(false);
+  const [goalInput, setGoalInput] = useState("");
+  const [savingGoal, setSavingGoal] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    api.dashboardOverview()
-      .then((d) => alive && setData(d))
-      .catch((e) => alive && setError(e?.message ?? "Erro ao carregar."));
-    return () => { alive = false; };
+  const load = useCallback(async () => {
+    try {
+      setData(await api.dashboardOverview());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao carregar.");
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const saveGoal = async () => {
+    const value = Math.max(0, Math.round(Number(goalInput.replace(/[^\d]/g, "")) || 0));
+    setSavingGoal(true);
+    try {
+      await api.setSetting("annual_goal", String(value));
+      setGoalEditing(false);
+      await load();
+    } catch {
+      /* silencioso */
+    } finally {
+      setSavingGoal(false);
+    }
+  };
 
   const today = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date());
 
@@ -230,10 +249,51 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
         </Card>
 
         <div className={s.goalCard}>
-          <span className={s.goalLabel}>Recebido no período</span>
-          <div className={s.goalValue}>{formatBRLShort(finance.recebido)}</div>
-          <div className={s.goalRow}><span>A receber</span><span>{formatBRLShort(finance.aReceber)}</span></div>
-          <div className={s.goalRow}><span>Meta anual</span><span>a definir</span></div>
+          <span className={s.goalLabel}>Meta do ano · Receita</span>
+          {goalEditing ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+              <input
+                autoFocus
+                inputMode="numeric"
+                value={goalInput}
+                onChange={(e) => setGoalInput(e.target.value)}
+                placeholder="Ex: 120000"
+                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--color-border)", background: "transparent", color: "inherit", fontFamily: "var(--font-mono)" }}
+                onKeyDown={(e) => { if (e.key === "Enter") saveGoal(); }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className={s.cardLink} onClick={saveGoal} disabled={savingGoal}>{savingGoal ? "Salvando…" : "Salvar"}</button>
+                <button className={s.cardLink} onClick={() => setGoalEditing(false)} style={{ opacity: 0.6 }}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className={s.goalValue}>{formatBRLShort(finance.recebido)}</div>
+              {finance.annualGoal > 0 && (
+                <div style={{ height: 8, background: "rgba(255,255,255,0.08)", borderRadius: 4, overflow: "hidden", margin: "10px 0 12px" }}>
+                  <div style={{ width: `${Math.min(100, Math.round((finance.recebido / finance.annualGoal) * 100))}%`, height: "100%", background: "var(--color-accent)", borderRadius: 4 }} />
+                </div>
+              )}
+              <div className={s.goalRow}>
+                <span>Meta anual</span>
+                <span>{finance.annualGoal > 0 ? formatBRLShort(finance.annualGoal) : "a definir"}</span>
+              </div>
+              {finance.annualGoal > 0 && (
+                <div className={s.goalRow}>
+                  <span>Progresso</span>
+                  <span>{Math.round((finance.recebido / finance.annualGoal) * 100)}%</span>
+                </div>
+              )}
+              <div className={s.goalRow}><span>A receber</span><span>{formatBRLShort(finance.aReceber)}</span></div>
+              <button
+                className={s.cardLink}
+                style={{ marginTop: 6 }}
+                onClick={() => { setGoalInput(finance.annualGoal ? String(finance.annualGoal) : ""); setGoalEditing(true); }}
+              >
+                {finance.annualGoal > 0 ? "Editar meta" : "Definir meta"} <IcArrowRight />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>

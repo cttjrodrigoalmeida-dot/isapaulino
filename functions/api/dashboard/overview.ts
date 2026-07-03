@@ -47,7 +47,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     await requireAuth(request, env);
 
-    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes] = await Promise.all([
+    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes, annualGoalRes] = await Promise.all([
       env.DB.prepare(
         "SELECT number, client, date, status, data, updated_at FROM proposals"
       ).all<ProposalRow>(),
@@ -67,6 +67,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       // Histórico Financeiro (serviços adicionais): também são receita.
       env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM client_history GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
       env.DB.prepare("SELECT substr(paid_at, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM client_history WHERE status = 'paid' AND paid_at IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
+      env.DB.prepare("SELECT value FROM app_settings WHERE key = 'annual_goal'").first<{ value: string | null }>(),
     ]);
 
     const proposals = propsRes.results ?? [];
@@ -235,6 +236,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         aReceber,
         atrasados,
         receivedByMonth,
+        annualGoal: annualGoalRes?.value ? Number(annualGoalRes.value) || 0 : 0,
       },
       proposals: {
         total: proposalsTotal,

@@ -227,3 +227,10 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
+
+-- Configurações do painel (chave→valor). Ex.: meta anual de receita.
+CREATE TABLE IF NOT EXISTS app_settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
