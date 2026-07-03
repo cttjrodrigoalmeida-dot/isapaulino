@@ -184,6 +184,12 @@ export interface DashboardOverview {
     responsesTotal: number;
     withoutResponse: number;
   };
+  contracts: {
+    total: number;
+    draft: number;
+    published: number;
+    signed: number;
+  };
   funnel: {
     leads: number;
     briefings: number;

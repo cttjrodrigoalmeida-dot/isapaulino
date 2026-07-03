@@ -63,7 +63,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       env.DB.prepare("SELECT COALESCE(SUM(total_value), 0) AS faturado FROM contract_payments").first<{ faturado: number }>(),
       env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM installments GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
       env.DB.prepare("SELECT substr(payment_date, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM installments WHERE status = 'received' AND payment_date IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
-      env.DB.prepare("SELECT COUNT(*) AS c FROM contracts").first<{ c: number }>(),
+      env.DB.prepare("SELECT status, COUNT(*) AS c FROM contracts GROUP BY status").all<{ status: string; c: number }>(),
       // Histórico Financeiro (serviços adicionais): também são receita.
       env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM client_history GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
       env.DB.prepare("SELECT substr(paid_at, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM client_history WHERE status = 'paid' AND paid_at IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
@@ -216,7 +216,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (idx !== undefined) receivedByMonth[idx].value += r.amt;
     }
 
-    const contratosTotal = contractsCountRes?.c ?? 0;
+    const contractsByStatus = new Map<string, number>(
+      (contractsCountRes.results ?? []).map((r) => [r.status, r.c])
+    );
+    const contratosTotal = (contractsCountRes.results ?? []).reduce((sum, r) => sum + r.c, 0);
+    const contractsSummary = {
+      total: contratosTotal,
+      draft: contractsByStatus.get("draft") ?? 0,
+      published: contractsByStatus.get("published") ?? 0,
+      signed: contractsByStatus.get("signed") ?? 0,
+    };
 
     return json({
       generatedAt: new Date().toISOString(),
@@ -241,6 +250,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         responsesTotal,
         withoutResponse,
       },
+      contracts: contractsSummary,
       // funil: só Propostas e Briefings têm dado real; o resto depende de
       // módulos futuros (leads/contratos/projetos/entregas).
       funnel: {

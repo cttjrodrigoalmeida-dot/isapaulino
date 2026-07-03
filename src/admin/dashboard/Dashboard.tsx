@@ -48,8 +48,8 @@ function Kpi({ icon, label, value, note, soon, badge }: {
 
 const DASH = "—";
 
-export default function Dashboard({ username, onGoComercial }: {
-  username: string; onGoComercial: () => void;
+export default function Dashboard({ username, onGoComercial, onGoContratos }: {
+  username: string; onGoComercial: () => void; onGoContratos?: () => void;
 }) {
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export default function Dashboard({ username, onGoComercial }: {
   if (error) return <div className={s.emptyMini}>Não foi possível carregar o painel: {error}</div>;
   if (!data) return <div className={s.emptyMini}>Carregando painel…</div>;
 
-  const { proposals, briefings, funnel, revenueByMonth, clientRanking, recentActivity, pendencias, finance } = data;
+  const { proposals, briefings, contracts, funnel, revenueByMonth, clientRanking, recentActivity, pendencias, finance } = data;
   const maxRevenue = Math.max(1, ...revenueByMonth.map((m) => m.value));
 
   return (
@@ -211,10 +211,16 @@ export default function Dashboard({ username, onGoComercial }: {
           </div>
         </Card>
 
-        <Card title="Contratos" sub="Resumo geral">
-          <div className={s.emptyMini}>
-            Sem contratos ainda.<br /><span className={s.soonTag}>Módulo de contrato em breve</span>
-          </div>
+        <Card title="Contratos" sub="Resumo geral" link={onGoContratos ? "Ver contratos" : undefined} onLink={onGoContratos}>
+          {contracts.total === 0 ? (
+            <div className={s.emptyMini}>Nenhum contrato ainda.</div>
+          ) : (
+            <div>
+              <div className={s.summaryRow}><span className={s.summaryNum}>{contracts.published}</span><span className={s.summaryLabel}>Publicados</span></div>
+              <div className={s.summaryRow}><span className={s.summaryNum}>{contracts.signed}</span><span className={s.summaryLabel}>Assinados</span></div>
+              <div className={s.summaryRow}><span className={s.summaryNum}>{contracts.total}</span><span className={s.summaryLabel}>Total</span></div>
+            </div>
+          )}
         </Card>
 
         <div className={s.goalCard}>
