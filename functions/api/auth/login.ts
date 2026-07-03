@@ -13,6 +13,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const { username, password } = await readJson<Body>(request);
     if (!username || !password) return error(400, "Informe usuário e senha.");
 
+    // Rate limit por IP: 5 falhas de login em 10 minutos → 429 (anti força-bruta).
+    // Usa os registros do middleware de auditoria (path + status 401 + ip).
+    const ip = request.headers.get("CF-Connecting-IP");
+    if (ip) {
+      const fails = await env.DB.prepare(
+        "SELECT COUNT(*) AS n FROM audit_logs WHERE path = '/api/auth/login' AND status = 401 AND ip = ? AND at > datetime('now', '-10 minutes')"
+      ).bind(ip).first<{ n: number }>().catch(() => null);
+      if ((fails?.n ?? 0) >= 5) {
+        return error(429, "Muitas tentativas de login. Aguarde 10 minutos e tente novamente.");
+      }
+    }
+
     const row = await env.DB.prepare(
       "SELECT username, password_hash FROM admin_users WHERE username = ?"
     )

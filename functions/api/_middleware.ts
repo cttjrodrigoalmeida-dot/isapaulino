@@ -43,12 +43,13 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
       const path = new URL(request.url).pathname;
       if (!SKIP.some((re) => re.test(path))) {
         const session = await getSession(request, env).catch(() => null);
+        const ip = request.headers.get("CF-Connecting-IP") ?? null;
         // registra assíncrono, sem segurar a resposta
         ctx.waitUntil(
           env.DB.prepare(
-            "INSERT INTO audit_logs (id, user, action, method, path, status) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO audit_logs (id, user, action, method, path, status, ip) VALUES (?, ?, ?, ?, ?, ?, ?)"
           )
-            .bind(crypto.randomUUID(), session?.sub ?? null, describe(method, path), method, path, res.status)
+            .bind(crypto.randomUUID(), session?.sub ?? null, describe(method, path), method, path, res.status, ip)
             .run()
             .catch(() => {})
         );

@@ -244,6 +244,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   action     TEXT NOT NULL,                    -- rótulo legível ("Publicou contrato")
   method     TEXT NOT NULL,                    -- POST | PUT | DELETE
   path       TEXT NOT NULL,                    -- /api/...
-  status     INTEGER                           -- código HTTP da resposta
+  status     INTEGER,                          -- código HTTP da resposta
+  ip         TEXT                              -- CF-Connecting-IP (rate limit login)
 );
 CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_logs(at);

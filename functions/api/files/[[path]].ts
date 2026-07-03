@@ -1,11 +1,16 @@
 // GET /api/files/<key> → serve um arquivo do R2 (público; imagens dos ambientes).
+// SEGURANÇA: só serve prefixos PÚBLICOS. Documentos (docs/) são privados e saem
+// apenas por /api/documents/download (admin) ou /api/client/download (dono).
 import type { Env } from "../_lib/types";
 import { error } from "../_lib/http";
+
+const PUBLIC_PREFIXES = ["uploads/", "briefing-refs/"];
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   const parts = params.path;
   const key = Array.isArray(parts) ? parts.join("/") : String(parts ?? "");
   if (!key) return error(400, "Caminho inválido.");
+  if (!PUBLIC_PREFIXES.some((p) => key.startsWith(p))) return error(404, "Arquivo não encontrado.");
 
   const obj = await env.R2.get(key);
   if (!obj) return error(404, "Arquivo não encontrado.");

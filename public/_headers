@@ -1,0 +1,7 @@
+# Cabeçalhos de segurança (Cloudflare Pages lê este arquivo do build).
+# CSP fica de fora por ora (o site usa GA inline + Google Fonts); avaliar depois.
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
