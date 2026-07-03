@@ -47,7 +47,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     await requireAuth(request, env);
 
-    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes] = await Promise.all([
+    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes] = await Promise.all([
       env.DB.prepare(
         "SELECT number, client, date, status, data, updated_at FROM proposals"
       ).all<ProposalRow>(),
@@ -64,6 +64,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM installments GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
       env.DB.prepare("SELECT substr(payment_date, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM installments WHERE status = 'received' AND payment_date IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
       env.DB.prepare("SELECT COUNT(*) AS c FROM contracts").first<{ c: number }>(),
+      // Histórico Financeiro (serviços adicionais): também são receita.
+      env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM client_history GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
+      env.DB.prepare("SELECT substr(paid_at, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM client_history WHERE status = 'paid' AND paid_at IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
     ]);
 
     const proposals = propsRes.results ?? [];
@@ -180,24 +183,37 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         label: pDraft === 1 ? "Proposta em rascunho" : "Propostas em rascunho",
       });
 
-    // ── Financeiro (parcelas/contratos) ──
-    const faturado = faturadoRes?.faturado ?? 0;
+    // ── Financeiro (parcelas/contratos + Histórico Financeiro) ──
     const byStatus = new Map<string, { amt: number; cnt: number }>(
       (instByStatusRes.results ?? []).map((r) => [r.status, { amt: r.amt, cnt: r.cnt }])
     );
-    const recebido = byStatus.get("received")?.amt ?? 0;
+    // HF: 'paid' entra no recebido; 'charged' (cobrado, aguardando) entra no a receber.
+    const hfByStatus = new Map<string, { amt: number; cnt: number }>(
+      (hfByStatusRes.results ?? []).map((r) => [r.status, { amt: r.amt, cnt: r.cnt }])
+    );
+    const hfPaid = hfByStatus.get("paid")?.amt ?? 0;
+    const hfCharged = hfByStatus.get("charged")?.amt ?? 0;
+
+    // Faturado = valor dos contratos + serviços adicionais já cobrados/pagos.
+    const faturado = (faturadoRes?.faturado ?? 0) + hfCharged + hfPaid;
+    const recebido = (byStatus.get("received")?.amt ?? 0) + hfPaid;
     const aReceber =
       (byStatus.get("pending")?.amt ?? 0) +
       (byStatus.get("confirmed")?.amt ?? 0) +
-      (byStatus.get("overdue")?.amt ?? 0);
+      (byStatus.get("overdue")?.amt ?? 0) +
+      hfCharged;
     const atrasados = byStatus.get("overdue")?.cnt ?? 0;
 
-    // Recebido por mês — reusa os 12 baldes mensais já montados.
+    // Recebido por mês — reusa os 12 baldes mensais já montados (parcelas + HF).
     const recvIndex = new Map(buckets.map((b, i) => [b.key, i]));
     const receivedByMonth = buckets.map((b) => ({ key: b.key, label: b.label, value: 0 }));
     for (const r of recvByMonthRes.results ?? []) {
       const idx = recvIndex.get(r.ym);
-      if (idx !== undefined) receivedByMonth[idx].value = r.amt;
+      if (idx !== undefined) receivedByMonth[idx].value += r.amt;
+    }
+    for (const r of hfRecvByMonthRes.results ?? []) {
+      const idx = recvIndex.get(r.ym);
+      if (idx !== undefined) receivedByMonth[idx].value += r.amt;
     }
 
     const contratosTotal = contractsCountRes?.c ?? 0;

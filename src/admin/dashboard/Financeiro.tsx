@@ -156,7 +156,7 @@ export default function Financeiro() {
                     {inst.contractTitle || "—"}
                     {inst.clientName ? <span className={s.listMeta}> · {inst.clientName}</span> : null}
                   </td>
-                  <td>{inst.installmentNumber === 0 ? "Entrada" : `${inst.installmentNumber}ª`}</td>
+                  <td>{inst.kind === "hf" ? "Adicional" : inst.installmentNumber === 0 ? "Entrada" : `${inst.installmentNumber}ª`}</td>
                   <td>{fmtDate(inst.dueDate)}</td>
                   <td className={admin.mono}>{formatBRL(inst.amount)}</td>
                   <td><span className={`${admin.badge} ${admin[meta.cls]}`}>{meta.label}</span></td>

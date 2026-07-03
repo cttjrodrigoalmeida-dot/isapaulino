@@ -222,6 +222,8 @@ export interface Installment {
   // presentes na listagem cruzada (/api/installments):
   contractTitle?: string | null;
   clientName?: string | null;
+  /** 'hf' quando a linha é um serviço adicional (Histórico Financeiro). */
+  kind?: string;
 }
 
 export interface ContractPaymentConfig {
