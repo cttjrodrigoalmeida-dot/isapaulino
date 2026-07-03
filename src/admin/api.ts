@@ -567,4 +567,28 @@ export const api = {
     if (!res.ok) throw new ApiError(res.status, body?.error || `Erro ${res.status}`);
     return body as { url: string; key: string };
   },
+
+  // ── documentos (arquivos gerais no R2, prefixo docs/) ──
+  listDocuments: () => req<{ files: DocumentFile[] }>("/api/documents"),
+  async uploadDocument(file: File, folder?: string): Promise<{ ok: true; key: string; name: string; folder: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (folder) fd.append("folder", folder);
+    const res = await fetch("/api/documents", { method: "POST", credentials: "include", body: fd });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, body?.error || `Erro ${res.status}`);
+    return body as { ok: true; key: string; name: string; folder: string };
+  },
+  deleteDocument: (key: string) =>
+    req<{ ok: true }>("/api/documents", { method: "DELETE", body: JSON.stringify({ key }) }),
+  documentDownloadUrl: (key: string) => `/api/documents/download?key=${encodeURIComponent(key)}`,
 };
+
+export interface DocumentFile {
+  key: string;
+  name: string;
+  folder: string;
+  size: number;
+  uploaded: string;
+  contentType: string | null;
+}
