@@ -29,7 +29,7 @@ export async function renderContractPdf(env: Env, origin: string, slug: string):
       // Espera o sinal de "pronto" (fontes carregadas + conteúdo revelado).
       waitForSelector: { selector: "[data-pdf-ready]", timeout: 15000 },
       pdfOptions: {
-        format: "A4",
+        format: "a4",
         printBackground: true,
         margin: { top: "12mm", bottom: "14mm", left: "10mm", right: "10mm" },
       },
