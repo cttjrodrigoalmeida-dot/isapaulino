@@ -315,7 +315,7 @@ export const api = {
   reports: () => req<{ received: ReportMonth[] }>("/api/reports"),
 
   // ── logs de auditoria ──
-  listLogs: () => req<{ logs: AuditLog[] }>("/api/logs"),
+  listLogs: () => req<{ logs: AuditLog[] }>("/api/audit"),
 
   // ── calendário ──
   listCalendar: (from?: string, to?: string) => {
