@@ -23,6 +23,8 @@ async function asaasFetch<T>(env: Env, path: string, init: RequestInit = {}): Pr
     headers: {
       access_token: env.ASAAS_API_KEY,
       "Content-Type": "application/json",
+      // O ASAAS EXIGE User-Agent (o fetch do Workers não envia por padrão).
+      "User-Agent": "IsabelaPaulinoStudio/1.0",
       ...(init.headers || {}),
     },
   });
