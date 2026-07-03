@@ -108,8 +108,8 @@
 }
 .content {
   flex: 1;
-  padding: 26px clamp(18px, 3vw, 38px) 48px;
-  max-width: 1320px;
+  padding: 26px clamp(12px, 2vw, 22px) 48px;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
 }

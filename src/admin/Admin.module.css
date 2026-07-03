@@ -209,14 +209,27 @@
   border-radius: var(--border-radius-btn);
   overflow: hidden;
 }
-/* Wrapper para tabelas largas: rolagem horizontal em vez de quebrar o texto. */
+/* Tabelas: não quebrar o texto dos dados. As colunas de dados ficam em uma
+   linha; se faltar espaço, a área de conteúdo é larga o suficiente. */
 .tableScroll {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: auto; /* só rola em telas muito estreitas; caso contrário, cabe tudo */
 }
 .tableScroll .table th,
 .tableScroll .table td {
   white-space: nowrap;
+}
+/* Botões de ação compactos dentro das tabelas (o Contratos tem muitos). */
+.tableScroll .rowActions .btn,
+.table .rowActions .btn {
+  padding: 7px 11px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+/* A célula de ações pode quebrar em duas linhas se necessário (não corta). */
+.tableScroll .rowActions {
+  flex-wrap: wrap;
+  white-space: normal;
 }
 .table thead th {
   text-align: left;
