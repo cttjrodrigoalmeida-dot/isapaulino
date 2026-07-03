@@ -122,6 +122,7 @@ export default function ContractsList({
           Nenhum contrato ainda. Clique em <strong>“+ Novo contrato”</strong> para começar.
         </div>
       ) : (
+        <div className={styles.tableScroll}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -192,6 +193,7 @@ export default function ContractsList({
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

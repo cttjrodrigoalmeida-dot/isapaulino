@@ -28,6 +28,9 @@
 - **Fase 4 — E-mails automáticos (SendGrid):** contrato publicado / conta criada / pagamento recebido / atraso + fila `email_queue` + cron. **Motivo do standby:** a Autentique (assinatura) e o ASAAS (cobrança/lembretes) **já enviam e-mails próprios** ao cliente, então pode não ser necessário. Reavaliar.
 - **Timeline do projeto com fotos:** cronograma de marcos com imagens (a seção "Projetos" atual é só resumo de volume, não é isso). Standby — usuário não se recorda de precisar.
 
+**🔍 A INVESTIGAR / AJUSTAR (anotado, fazer depois):**
+- **Autentique gera 3 assinaturas** (deveria 2): CONTRATANTE (João) + CONTRATADA (Isabela) que o nosso sistema envia, **+ "O Criador"** que a Autentique adiciona sozinha (dono da conta = Isabela). Isabela fica duplicada. **Solução A (recomendada):** desligar na conta Autentique a opção "sempre incluir minha assinatura ao criar documento"/"criador assina". **Solução B (código):** parar de enviar a CONTRATADA e deixar a assinatura dela ser a do "Criador" (mas perde o rótulo CONTRATADA). Ver `send-autentique.ts` (monta signers de contratante+contratada).
+
 **⚠️ FEITO DIFERENTE DO GUIA (de propósito, não é pendência):**
 - Login do cliente: guia pedia e-mail+senha+troca na 1ª entrada; feito por **link mágico sem senha**. Logo, "troca de senha"/"1ª entrada" não se aplicam.
 - Arquitetura: guia assume Next.js/`/admin/login`/`/cliente/login`; o projeto é **SPA Vite** com painel por seções e Área do Cliente em `/area`.

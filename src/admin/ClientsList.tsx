@@ -103,6 +103,7 @@ export default function ClientsList({
       ) : filtered.length === 0 ? (
         <div className={styles.empty}>Nenhum cliente encontrado para “{query}”.</div>
       ) : (
+        <div className={styles.tableScroll}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -143,6 +144,7 @@ export default function ClientsList({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

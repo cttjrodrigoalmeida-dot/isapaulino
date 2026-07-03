@@ -24,6 +24,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     await requireAuth(request, env);
     const files: { key: string; name: string; folder: string; size: number; uploaded: string; contentType: string | null; clientId: string | null; clientName: string | null }[] = [];
+    const folderCounts = new Map<string, number>(); // pasta → nº de arquivos (exclui .keep)
     let cursor: string | undefined;
     do {
       // `include` existe em runtime (traz customMetadata/httpMetadata) mas falta
@@ -32,11 +33,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       const page = await env.R2.list(listOpts);
       for (const obj of page.objects) {
         const rel = obj.key.slice(PREFIX.length);
-        const folder = rel.includes("/") ? rel.split("/")[0] : "geral";
+        const folder = obj.customMetadata?.folder || (rel.includes("/") ? rel.split("/")[0] : "geral");
+        if (!folderCounts.has(folder)) folderCounts.set(folder, 0);
+        // `.keep` é o marcador de pasta vazia — conta como pasta mas não é arquivo.
+        if (rel.endsWith("/.keep")) continue;
+        folderCounts.set(folder, (folderCounts.get(folder) ?? 0) + 1);
         files.push({
           key: obj.key,
           name: obj.customMetadata?.name || rel.split("/").pop() || obj.key,
-          folder: obj.customMetadata?.folder || folder,
+          folder,
           size: obj.size,
           uploaded: obj.uploaded instanceof Date ? obj.uploaded.toISOString() : String(obj.uploaded),
           contentType: obj.httpMetadata?.contentType ?? null,
@@ -47,7 +52,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       cursor = page.truncated ? page.cursor : undefined;
     } while (cursor);
     files.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
-    return json({ files });
+    const folders = [...folderCounts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
+    return json({ files, folders });
   } catch (e) {
     return toErrorResponse(e);
   }

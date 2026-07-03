@@ -209,6 +209,15 @@
   border-radius: var(--border-radius-btn);
   overflow: hidden;
 }
+/* Wrapper para tabelas largas: rolagem horizontal em vez de quebrar o texto. */
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.tableScroll .table th,
+.tableScroll .table td {
+  white-space: nowrap;
+}
 .table thead th {
   text-align: left;
   font-family: var(--font-mono);

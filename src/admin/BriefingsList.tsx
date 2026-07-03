@@ -113,6 +113,7 @@ export default function BriefingsList({
               </button>
 
               {open && (
+                <div className={styles.tableScroll}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
@@ -164,6 +165,7 @@ export default function BriefingsList({
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           );

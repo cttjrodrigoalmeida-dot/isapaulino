@@ -113,6 +113,7 @@ export default function ProposalsList({
               </button>
 
               {open && (
+                <div className={styles.tableScroll}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
@@ -171,6 +172,7 @@ export default function ProposalsList({
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           );
