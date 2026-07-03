@@ -311,6 +311,9 @@ export const api = {
   setSetting: (key: string, value: string) =>
     req<{ ok: true }>("/api/settings", { method: "PUT", body: JSON.stringify({ key, value }) }),
 
+  // ── relatórios (série temporal de recebimentos) ──
+  reports: () => req<{ received: ReportMonth[] }>("/api/reports"),
+
   // ── calendário ──
   listCalendar: (from?: string, to?: string) => {
     const qs = from && to ? `?from=${from}&to=${to}` : "";
@@ -583,6 +586,13 @@ export const api = {
     req<{ ok: true }>("/api/documents", { method: "DELETE", body: JSON.stringify({ key }) }),
   documentDownloadUrl: (key: string) => `/api/documents/download?key=${encodeURIComponent(key)}`,
 };
+
+export interface ReportMonth {
+  ym: string; // "2026-07"
+  installments: number;
+  hf: number;
+  total: number;
+}
 
 export interface DocumentFile {
   key: string;
