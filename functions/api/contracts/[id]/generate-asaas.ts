@@ -4,7 +4,7 @@
 import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
-import { asaasConfigured, findOrCreateCustomer, createPayment } from "../../_lib/asaas";
+import { asaasConfigured, findOrCreateCustomer, createPayment, getPayment } from "../../_lib/asaas";
 
 interface ContractClientRow {
   title: string;
@@ -35,11 +35,30 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     if (!row) return error(404, "Contrato não encontrado.");
     if (!row.cpf_cnpj) return error(400, "O cliente do contrato precisa ter CPF/CNPJ para gerar cobranças.");
 
+    // Backfill: parcelas que já têm cobrança mas ficaram sem invoice_url
+    // (geradas antes de guardarmos o link) — consulta o ASAAS e completa.
+    const { results: missing } = await env.DB.prepare(
+      "SELECT asaas_payment_id AS pid, id FROM installments WHERE contract_id = ? AND asaas_payment_id IS NOT NULL AND (invoice_url IS NULL OR invoice_url = '')"
+    ).bind(contractId).all<{ pid: string; id: string }>();
+    let backfilled = 0;
+    for (const m of missing ?? []) {
+      try {
+        const p = await getPayment(env, m.pid);
+        if (p.invoiceUrl) {
+          await env.DB.prepare("UPDATE installments SET invoice_url = ?, updated_at = datetime('now') WHERE id = ?")
+            .bind(p.invoiceUrl, m.id).run();
+          backfilled++;
+        }
+      } catch {
+        /* ignora — não bloqueia a geração das demais */
+      }
+    }
+
     const { results } = await env.DB.prepare(
       "SELECT id, installment_number, due_date, amount FROM installments WHERE contract_id = ? AND asaas_payment_id IS NULL ORDER BY installment_number ASC"
     ).bind(contractId).all<InstallmentRow>();
     const pending = results ?? [];
-    if (pending.length === 0) return json({ ok: true, created: 0, message: "Nenhuma parcela pendente para gerar." });
+    if (pending.length === 0) return json({ ok: true, created: 0, backfilled, message: backfilled ? `${backfilled} link(s) de cobrança atualizado(s).` : "Nenhuma parcela pendente para gerar." });
 
     const customerId = await findOrCreateCustomer(env, {
       name: row.name || "Cliente",
@@ -59,8 +78,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
         externalReference: inst.id,
       });
       await env.DB.prepare(
-        "UPDATE installments SET asaas_payment_id = ?, updated_at = datetime('now') WHERE id = ?"
-      ).bind(payment.id, inst.id).run();
+        "UPDATE installments SET asaas_payment_id = ?, invoice_url = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(payment.id, payment.invoiceUrl ?? null, inst.id).run();
       created++;
     }
 
@@ -68,7 +87,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       "UPDATE contract_payments SET status = 'sent', updated_at = datetime('now') WHERE contract_id = ?"
     ).bind(contractId).run();
 
-    return json({ ok: true, created });
+    return json({ ok: true, created, backfilled });
   } catch (e) {
     return toErrorResponse(e);
   }

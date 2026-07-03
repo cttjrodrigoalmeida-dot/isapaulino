@@ -8,11 +8,11 @@ interface Contract {
 }
 interface Installment {
   id: string; number: number; dueDate: string; amount: number; status: string;
-  paymentDate: string | null; asaasPaymentId: string | null; contractTitle: string;
+  paymentDate: string | null; asaasPaymentId: string | null; invoiceUrl: string | null; contractTitle: string;
 }
 interface HistoryItem {
   id: string; date: string; description: string; amount: number; kind: string;
-  status: string; asaasPaymentId: string | null;
+  status: string; asaasPaymentId: string | null; invoiceUrl: string | null;
 }
 interface Overview {
   client: { name: string; email: string | null; phone: string | null };
@@ -28,7 +28,6 @@ function fmtDate(iso: string | null): string {
   const [y, m, d] = iso.slice(0, 10).split("-");
   return d && m && y ? `${d}/${m}/${y}` : iso;
 }
-const asaasLink = (id: string | null) => (id ? `https://www.asaas.com/i/${id}` : "");
 
 const INST_STATUS: Record<string, { label: string; cls: string }> = {
   pending: { label: "Pendente", cls: "stPending" },
@@ -145,8 +144,8 @@ export default function AreaCliente() {
                     <span className={styles.rowValue}>{fmtBRL(i.amount)}</span>
                     <span className={`${styles.badge} ${styles[st.cls]}`}>{st.label}</span>
                     <span className={styles.rowAction}>
-                      {!paid && i.asaasPaymentId && (
-                        <a className={`${styles.btn} ${styles.btnPrimary}`} href={asaasLink(i.asaasPaymentId)} target="_blank" rel="noopener noreferrer">Pagar</a>
+                      {!paid && i.invoiceUrl && (
+                        <a className={`${styles.btn} ${styles.btnPrimary}`} href={i.invoiceUrl} target="_blank" rel="noopener noreferrer">Pagar</a>
                       )}
                     </span>
                   </div>
@@ -171,8 +170,8 @@ export default function AreaCliente() {
                     <span className={styles.rowValue}>{fmtBRL(h.amount)}</span>
                     <span className={`${styles.badge} ${paid ? styles.stPaid : styles.stPending}`}>{paid ? "Pago" : "A pagar"}</span>
                     <span className={styles.rowAction}>
-                      {!paid && h.asaasPaymentId && (
-                        <a className={`${styles.btn} ${styles.btnPrimary}`} href={asaasLink(h.asaasPaymentId)} target="_blank" rel="noopener noreferrer">Pagar</a>
+                      {!paid && h.invoiceUrl && (
+                        <a className={`${styles.btn} ${styles.btnPrimary}`} href={h.invoiceUrl} target="_blank" rel="noopener noreferrer">Pagar</a>
                       )}
                     </span>
                   </div>

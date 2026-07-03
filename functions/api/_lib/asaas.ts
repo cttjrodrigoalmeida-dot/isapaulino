@@ -93,3 +93,8 @@ export async function createPayment(env: Env, input: CreatePaymentInput): Promis
 export async function deletePayment(env: Env, asaasPaymentId: string): Promise<void> {
   await asaasFetch(env, `/payments/${encodeURIComponent(asaasPaymentId)}`, { method: "DELETE" });
 }
+
+/** Consulta uma cobrança existente (para obter/atualizar o invoiceUrl). */
+export async function getPayment(env: Env, asaasPaymentId: string): Promise<AsaasPayment> {
+  return asaasFetch<AsaasPayment>(env, `/payments/${encodeURIComponent(asaasPaymentId)}`);
+}

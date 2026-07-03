@@ -73,6 +73,7 @@ export interface HistoryItem {
   kind: HistoryKind;
   status: HistoryStatus;
   asaasPaymentId: string | null;
+  invoiceUrl: string | null;
   paidAt: string | null;
   createdAt: string;
 }
@@ -210,6 +211,7 @@ export interface Installment {
   id: string;
   contractId: string;
   asaasPaymentId: string | null;
+  invoiceUrl: string | null;
   installmentNumber: number;
   dueDate: string;
   amount: number;

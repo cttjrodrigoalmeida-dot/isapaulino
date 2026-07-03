@@ -63,10 +63,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     });
 
     await env.DB.prepare(
-      "UPDATE client_history SET asaas_payment_id = ?, status = 'charged', updated_at = datetime('now') WHERE id = ?"
-    ).bind(payment.id, row.id).run();
+      "UPDATE client_history SET asaas_payment_id = ?, invoice_url = ?, status = 'charged', updated_at = datetime('now') WHERE id = ?"
+    ).bind(payment.id, payment.invoiceUrl ?? null, row.id).run();
 
-    return json({ ok: true, asaasPaymentId: payment.id, url: payment.invoiceUrl || `https://www.asaas.com/i/${payment.id}` });
+    return json({ ok: true, asaasPaymentId: payment.id, url: payment.invoiceUrl || "" });
   } catch (e) {
     return toErrorResponse(e);
   }

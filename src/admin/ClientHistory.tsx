@@ -124,7 +124,7 @@ export default function ClientHistory({
   const waLink = (it: HistoryItem): string => {
     const digits = (clientPhone ?? "").replace(/\D+/g, "");
     const num = digits.length > 0 && digits.length <= 11 ? `55${digits}` : digits;
-    const invoice = it.asaasPaymentId ? `https://www.asaas.com/i/${it.asaasPaymentId}` : "";
+    const invoice = it.invoiceUrl ?? "";
     const msg = [
       `Olá${clientName ? " " + clientName.split(" ")[0] : ""}! Tudo bem? 🙂`,
       ``,
@@ -228,8 +228,8 @@ export default function ClientHistory({
                         {(it.status === "pending" || it.status === "charged") && clientPhone && (
                           <a className={`${styles.btn} ${styles.btnGhost}`} href={waLink(it)} target="_blank" rel="noopener noreferrer">WhatsApp</a>
                         )}
-                        {it.asaasPaymentId && (
-                          <a className={`${styles.btn} ${styles.btnGhost}`} href={`https://www.asaas.com/i/${it.asaasPaymentId}`} target="_blank" rel="noopener noreferrer">Ver no ASAAS</a>
+                        {it.invoiceUrl && (
+                          <a className={`${styles.btn} ${styles.btnGhost}`} href={it.invoiceUrl} target="_blank" rel="noopener noreferrer">Ver no ASAAS</a>
                         )}
                         {it.status !== "paid" && it.status !== "cancelled" && (
                           <button className={styles.btn} onClick={() => marcarPago(it)} disabled={busy === it.id}>Marcar pago</button>

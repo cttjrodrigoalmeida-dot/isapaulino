@@ -30,7 +30,7 @@ function addMonths(iso: string, n: number): string {
 }
 
 const INSTALLMENT_COLS =
-  "id, contract_id AS contractId, payment_config_id AS paymentConfigId, asaas_payment_id AS asaasPaymentId, installment_number AS installmentNumber, due_date AS dueDate, amount, status, payment_date AS paymentDate, payment_method AS paymentMethod, notes";
+  "id, contract_id AS contractId, payment_config_id AS paymentConfigId, asaas_payment_id AS asaasPaymentId, invoice_url AS invoiceUrl, installment_number AS installmentNumber, due_date AS dueDate, amount, status, payment_date AS paymentDate, payment_method AS paymentMethod, notes";
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   try {

@@ -21,13 +21,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     const installments = (await env.DB.prepare(
       `SELECT i.id, i.installment_number AS number, i.due_date AS dueDate, i.amount, i.status,
-              i.payment_date AS paymentDate, i.asaas_payment_id AS asaasPaymentId, c.title AS contractTitle
+              i.payment_date AS paymentDate, i.asaas_payment_id AS asaasPaymentId, i.invoice_url AS invoiceUrl, c.title AS contractTitle
        FROM installments i JOIN contracts c ON c.id = i.contract_id
        WHERE c.client_id = ? AND i.status != 'deleted' ORDER BY i.due_date ASC`
     ).bind(clientId).all()).results ?? [];
 
     const history = (await env.DB.prepare(
-      `SELECT id, date, description, amount, kind, status, asaas_payment_id AS asaasPaymentId
+      `SELECT id, date, description, amount, kind, status, asaas_payment_id AS asaasPaymentId, invoice_url AS invoiceUrl
        FROM client_history WHERE client_id = ? AND status IN ('charged', 'paid') ORDER BY date DESC`
     ).bind(clientId).all()).results ?? [];
 

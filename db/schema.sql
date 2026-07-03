@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS installments (
   contract_id        TEXT NOT NULL,
   payment_config_id  TEXT,
   asaas_payment_id   TEXT UNIQUE,
+  invoice_url        TEXT,                        -- link de pagamento (fatura ASAAS)
   installment_number INTEGER NOT NULL,
   due_date           TEXT NOT NULL,               -- 'YYYY-MM-DD'
   amount             REAL NOT NULL,
@@ -187,6 +188,7 @@ CREATE TABLE IF NOT EXISTS client_history (
   kind             TEXT NOT NULL DEFAULT 'adicional', -- adicional|retrabalho|hora-tecnica|outro
   status           TEXT NOT NULL DEFAULT 'pending',   -- pending|charged|paid|cancelled
   asaas_payment_id TEXT UNIQUE,
+  invoice_url      TEXT,                              -- link de pagamento (fatura ASAAS)
   paid_at          TEXT,
   created_at       TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at       TEXT NOT NULL DEFAULT (datetime('now')),

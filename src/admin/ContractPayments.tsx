@@ -194,7 +194,7 @@ export default function ContractPayments({
     const digits = (client?.phone ?? "").replace(/\D+/g, "");
     const num = digits.length > 0 && digits.length <= 11 ? `55${digits}` : digits;
     const parcela = inst.installmentNumber === 0 ? "entrada" : `${inst.installmentNumber}ª parcela`;
-    const invoice = inst.asaasPaymentId ? `https://www.asaas.com/i/${inst.asaasPaymentId}` : "";
+    const invoice = inst.invoiceUrl ?? "";
     const msg = [
       `Olá${client?.name ? " " + client.name.split(" ")[0] : ""}! Tudo bem? 🙂`,
       ``,
@@ -311,8 +311,8 @@ export default function ContractPayments({
                         {inst.status !== "received" && inst.status !== "deleted" && client?.phone && (
                           <a className={`${styles.btn} ${styles.btnGhost}`} href={waLink(inst)} target="_blank" rel="noopener noreferrer">Cobrar no WhatsApp</a>
                         )}
-                        {inst.asaasPaymentId && (
-                          <a className={`${styles.btn} ${styles.btnGhost}`} href={`https://www.asaas.com/i/${inst.asaasPaymentId}`} target="_blank" rel="noopener noreferrer">Ver no ASAAS</a>
+                        {inst.invoiceUrl && (
+                          <a className={`${styles.btn} ${styles.btnGhost}`} href={inst.invoiceUrl} target="_blank" rel="noopener noreferrer">Ver no ASAAS</a>
                         )}
                       </div>
                     </td>
