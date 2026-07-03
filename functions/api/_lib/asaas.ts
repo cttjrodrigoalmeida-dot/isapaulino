@@ -80,6 +80,9 @@ export interface CreatePaymentInput {
 interface AsaasPayment {
   id: string;
   invoiceUrl?: string;
+  status?: string; // PENDING|RECEIVED|CONFIRMED|OVERDUE|REFUNDED|...
+  value?: number;
+  paymentDate?: string | null;
 }
 
 /** Cria uma cobrança. billingType UNDEFINED = cliente escolhe (PIX/boleto/cartão). */

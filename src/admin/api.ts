@@ -475,6 +475,13 @@ export const api = {
       signers: { name: string | null; email: string | null; signed: boolean; signedAt: string | null; rejected: boolean; link: string | null }[];
     }>(`/api/contracts/${encodeURIComponent(id)}/refresh-signature`, { method: "POST" }),
 
+  // Sincroniza os pagamentos de um contrato com o ASAAS (não depende do webhook).
+  syncPayments: (contractId: string) =>
+    req<{ ok: true; updated: number; parcels?: { number: number; status: string }[]; message?: string }>(
+      `/api/contracts/${encodeURIComponent(contractId)}/sync-payments`,
+      { method: "POST" }
+    ),
+
   // ── notificações (sininho) ──
   listNotifications: () =>
     req<{ items: AppNotification[]; unread: number }>(`/api/notifications`),

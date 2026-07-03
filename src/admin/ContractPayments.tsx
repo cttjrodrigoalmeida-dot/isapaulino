@@ -162,6 +162,22 @@ export default function ContractPayments({
     }
   };
 
+  const onSyncAsaas = async () => {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const r = await api.syncPayments(contractId);
+      const paid = (r.parcels ?? []).filter((p) => p.status === "received" || p.status === "confirmed").length;
+      setNotice(r.message || `Sincronizado com o ASAAS. ${r.updated} atualização(ões).${paid ? ` ${paid} paga(s).` : ""}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao sincronizar com o ASAAS.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openPay = (inst: Installment) => {
     setPayModal(inst);
     setPayDate(todayISO());
@@ -281,9 +297,14 @@ export default function ContractPayments({
         <div className={styles.card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <div className={styles.cardTitle} style={{ margin: 0 }}>Parcelas</div>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onGerarAsaas} disabled={busy}>
-              Criar cobranças no ASAAS
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onSyncAsaas} disabled={busy}>
+                Sincronizar com ASAAS
+              </button>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onGerarAsaas} disabled={busy}>
+                Criar cobranças no ASAAS
+              </button>
+            </div>
           </div>
           <table className={styles.table}>
             <thead>
