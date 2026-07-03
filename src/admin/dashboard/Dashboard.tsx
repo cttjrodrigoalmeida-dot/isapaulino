@@ -48,8 +48,8 @@ function Kpi({ icon, label, value, note, soon, badge }: {
 
 const DASH = "—";
 
-export default function Dashboard({ username, onGoComercial, onGoContratos }: {
-  username: string; onGoComercial: () => void; onGoContratos?: () => void;
+export default function Dashboard({ username, onGoComercial, onGoContratos, onGoProjetos }: {
+  username: string; onGoComercial: () => void; onGoContratos?: () => void; onGoProjetos?: () => void;
 }) {
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,10 +149,16 @@ export default function Dashboard({ username, onGoComercial, onGoContratos }: {
 
       {/* Projetos ativos (placeholder) + Ranking + Últimas atividades */}
       <div className={`${s.grid} ${s.cols3}`}>
-        <Card title="Projetos ativos" sub="Status dos projetos">
-          <div className={s.emptyMini}>
-            Nenhum projeto cadastrado ainda.<br /><span className={s.soonTag}>Módulo de projetos em breve</span>
-          </div>
+        <Card title="Projetos ativos" sub="Status dos projetos" link={onGoProjetos ? "Ver projetos" : undefined} onLink={onGoProjetos}>
+          {contracts.published + contracts.signed === 0 ? (
+            <div className={s.emptyMini}>Nenhum projeto ativo. Publique um contrato para iniciar.</div>
+          ) : (
+            <div>
+              <div className={s.summaryRow}><span className={s.summaryNum}>{contracts.published}</span><span className={s.summaryLabel}>Em andamento</span></div>
+              <div className={s.summaryRow}><span className={s.summaryNum}>{contracts.signed}</span><span className={s.summaryLabel}>Contratos assinados</span></div>
+              <div className={s.summaryRow}><span className={s.summaryNum}>{contracts.published + contracts.signed}</span><span className={s.summaryLabel}>Total ativos</span></div>
+            </div>
+          )}
         </Card>
 
         <Card title="Ranking de clientes" sub="Por valor em propostas" link={clientRanking.length ? "Ver clientes" : undefined} onLink={onGoComercial}>
@@ -224,10 +230,10 @@ export default function Dashboard({ username, onGoComercial, onGoContratos }: {
         </Card>
 
         <div className={s.goalCard}>
-          <span className={s.goalLabel}>Meta do ano · Receita anual</span>
-          <div className={s.goalValue}>{DASH}</div>
+          <span className={s.goalLabel}>Recebido no período</span>
+          <div className={s.goalValue}>{formatBRLShort(finance.recebido)}</div>
+          <div className={s.goalRow}><span>A receber</span><span>{formatBRLShort(finance.aReceber)}</span></div>
           <div className={s.goalRow}><span>Meta anual</span><span>a definir</span></div>
-          <div className={s.goalRow}><span>Recebido até agora</span><span>requer financeiro</span></div>
         </div>
       </div>
     </>
