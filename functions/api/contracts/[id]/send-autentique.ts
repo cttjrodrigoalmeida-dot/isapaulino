@@ -9,6 +9,7 @@ import { requireAuth } from "../../_lib/auth";
 import {
   autentiqueConfigured,
   createSignatureDocument,
+  getDocument,
   type AutentiqueSigner,
 } from "../../_lib/autentique";
 import { renderContractPdf, browserRenderingAvailable } from "../../_lib/contract-pdf";
@@ -94,8 +95,24 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       fileName: `${(row.title || "contrato").replace(/[^\w.-]+/g, "_")}.pdf`,
     });
 
-    // Link de assinatura do primeiro signatário (CONTRATANTE) para colar/enviar.
-    const link = document.signatures.find((s) => s.link?.short_link)?.link?.short_link ?? "";
+    // Link de assinatura do CONTRATANTE (o cliente), para o botão "Assinar" na
+    // Área do Cliente. Preferimos o e-mail da CONTRATANTE; se a criação não
+    // devolveu o short_link, reconsultamos o documento (a Autentique gera o link
+    // logo em seguida).
+    const emailLower = contratanteEmail.toLowerCase();
+    const pickLink = (sigs: { email: string | null; link?: { short_link: string } | null }[]): string => {
+      const mine = sigs.find((s) => (s.email || "").toLowerCase() === emailLower && s.link?.short_link);
+      return mine?.link?.short_link || sigs.find((s) => s.link?.short_link)?.link?.short_link || "";
+    };
+    let link = pickLink(document.signatures);
+    if (!link) {
+      try {
+        const fresh = await getDocument(env, document.id);
+        link = pickLink(fresh.signatures);
+      } catch {
+        /* mantém vazio — o refresh manual captura depois */
+      }
+    }
 
     await env.DB.prepare(
       `UPDATE contracts
