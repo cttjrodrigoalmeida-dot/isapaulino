@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Client, type ContractInput, type ContractStatus } from "./api";
 import type { ContractDoc, SignatureStatus } from "../components/contract/types";
 import { blankContractDoc } from "../components/contract/newContractDoc";
@@ -65,6 +65,10 @@ export default function ContractEditor({
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Âncora do topo — rola para o aviso/link após publicar ou enviar p/ assinatura.
+  const topRef = useRef<HTMLDivElement>(null);
+  const scrollToTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -224,9 +228,11 @@ export default function ContractEditor({
       const { slug: newSlug } = await api.publishContract(persistedId);
       setSlug(newSlug);
       setStatus("published");
-      setNotice("Contrato publicado. O link abaixo já está acessível.");
+      setNotice("Contrato publicado! Copie o link abaixo para enviar ao cliente.");
+      scrollToTop();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao publicar.");
+      scrollToTop();
     } finally {
       setSaving(false);
     }
@@ -237,11 +243,13 @@ export default function ContractEditor({
   const sendToAutentique = async (file?: File | null) => {
     if (!contractId) {
       setError("Salve o contrato antes de enviar para assinatura.");
+      scrollToTop();
       return;
     }
     setError(null);
     setNotice(null);
     setSending(true);
+    scrollToTop(); // sobe já para mostrar o "Enviando…"/aviso
     try {
       const { documentId, url } = await api.sendAutentique(contractId, file);
       setAutentiqueDocId(documentId);
@@ -251,6 +259,7 @@ export default function ContractEditor({
       setError(err instanceof ApiError ? err.message : "Erro ao enviar para a Autentique.");
     } finally {
       setSending(false);
+      scrollToTop();
     }
   };
 
@@ -288,6 +297,7 @@ export default function ContractEditor({
 
   return (
     <div className={styles.container}>
+      <div ref={topRef} />
       <div className={styles.pageHead}>
         <div>
           <div className={styles.pageTitle}>{isNew && !contractId ? "Novo contrato" : "Editar contrato"}</div>
@@ -302,6 +312,7 @@ export default function ContractEditor({
 
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}
+      {sending && <div className={styles.notice}>Gerando o PDF e enviando para a Autentique… aguarde.</div>}
 
       {publicUrl && (
         <div className={styles.publicLinkBox}>
@@ -695,6 +706,17 @@ export default function ContractEditor({
           </select>
         </div>
         <div className={styles.editorBarRight}>
+          {publicUrl && (
+            <button
+              className={`${styles.btn} ${styles.btnGhost}`}
+              onClick={() =>
+                navigator.clipboard?.writeText(publicUrl).then(() => { setNotice("Link do contrato copiado!"); scrollToTop(); })
+              }
+              title="Copia o link da página do contrato para enviar ao cliente"
+            >
+              🔗 Copiar link
+            </button>
+          )}
           <button className={styles.btn} onClick={save} disabled={saving}>
             {saving ? "Salvando…" : "Salvar"}
           </button>
