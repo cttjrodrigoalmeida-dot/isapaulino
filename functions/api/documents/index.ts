@@ -23,7 +23,7 @@ function extOf(name: string): string {
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     await requireAuth(request, env);
-    const files: { key: string; name: string; folder: string; size: number; uploaded: string; contentType: string | null }[] = [];
+    const files: { key: string; name: string; folder: string; size: number; uploaded: string; contentType: string | null; clientId: string | null; clientName: string | null }[] = [];
     let cursor: string | undefined;
     do {
       // `include` existe em runtime (traz customMetadata/httpMetadata) mas falta
@@ -40,6 +40,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           size: obj.size,
           uploaded: obj.uploaded instanceof Date ? obj.uploaded.toISOString() : String(obj.uploaded),
           contentType: obj.httpMetadata?.contentType ?? null,
+          clientId: obj.customMetadata?.clientId || null,
+          clientName: obj.customMetadata?.clientName || null,
         });
       }
       cursor = page.truncated ? page.cursor : undefined;
@@ -64,12 +66,23 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const name = (file.name || "arquivo").slice(0, 160);
     const key = `${PREFIX}${folder}/${crypto.randomUUID()}.${extOf(name)}`;
 
+    // Associação opcional a um cliente (para aparecer na Área do Cliente dele).
+    const clientId = typeof form.get("clientId") === "string" ? String(form.get("clientId")).trim() : "";
+    const meta: Record<string, string> = { name, folder };
+    if (clientId) {
+      const cl = await env.DB.prepare("SELECT name FROM clients WHERE id = ?").bind(clientId).first<{ name: string }>();
+      if (cl) {
+        meta.clientId = clientId;
+        meta.clientName = cl.name;
+      }
+    }
+
     await env.R2.put(key, file.stream(), {
       httpMetadata: { contentType: file.type || "application/octet-stream" },
-      customMetadata: { name, folder },
+      customMetadata: meta,
     });
 
-    return json({ ok: true, key, name, folder }, { status: 201 });
+    return json({ ok: true, key, name, folder, clientId: meta.clientId ?? null }, { status: 201 });
   } catch (e) {
     return toErrorResponse(e);
   }

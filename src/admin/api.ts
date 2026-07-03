@@ -576,10 +576,11 @@ export const api = {
 
   // ── documentos (arquivos gerais no R2, prefixo docs/) ──
   listDocuments: () => req<{ files: DocumentFile[] }>("/api/documents"),
-  async uploadDocument(file: File, folder?: string): Promise<{ ok: true; key: string; name: string; folder: string }> {
+  async uploadDocument(file: File, folder?: string, clientId?: string): Promise<{ ok: true; key: string; name: string; folder: string }> {
     const fd = new FormData();
     fd.append("file", file);
     if (folder) fd.append("folder", folder);
+    if (clientId) fd.append("clientId", clientId);
     const res = await fetch("/api/documents", { method: "POST", credentials: "include", body: fd });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new ApiError(res.status, body?.error || `Erro ${res.status}`);
@@ -614,4 +615,6 @@ export interface DocumentFile {
   size: number;
   uploaded: string;
   contentType: string | null;
+  clientId: string | null;
+  clientName: string | null;
 }

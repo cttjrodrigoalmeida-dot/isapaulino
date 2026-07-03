@@ -31,7 +31,27 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        FROM client_history WHERE client_id = ? AND status IN ('charged', 'paid') ORDER BY date DESC`
     ).bind(clientId).all()).results ?? [];
 
-    return json({ client, contracts, installments, history });
+    // Arquivos compartilhados com este cliente (docs/ com clientId no metadata).
+    const files: { key: string; name: string; size: number; uploaded: string }[] = [];
+    let cursor: string | undefined;
+    do {
+      const opts = { prefix: "docs/", cursor, limit: 1000, include: ["customMetadata"] } as unknown as R2ListOptions;
+      const page = await env.R2.list(opts);
+      for (const obj of page.objects) {
+        if (obj.customMetadata?.clientId === clientId) {
+          files.push({
+            key: obj.key,
+            name: obj.customMetadata?.name || obj.key.split("/").pop() || obj.key,
+            size: obj.size,
+            uploaded: obj.uploaded instanceof Date ? obj.uploaded.toISOString() : String(obj.uploaded),
+          });
+        }
+      }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+    files.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
+
+    return json({ client, contracts, installments, history, files });
   } catch (e) {
     return toErrorResponse(e);
   }

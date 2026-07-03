@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { api, ApiError, type DocumentFile } from "../api";
+import { api, ApiError, type DocumentFile, type Client } from "../api";
 import s from "./Dashboard.module.css";
 import admin from "../Admin.module.css";
 
@@ -29,6 +29,8 @@ export default function Arquivos() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [folder, setFolder] = useState("");
+  const [uploadClient, setUploadClient] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState("");
   const [filterFolder, setFilterFolder] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -37,8 +39,9 @@ export default function Arquivos() {
     setLoading(true);
     setError(null);
     try {
-      const { files } = await api.listDocuments();
+      const [{ files }, { clients }] = await Promise.all([api.listDocuments(), api.listClients()]);
       setFiles(files);
+      setClients(clients);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
     } finally {
@@ -52,7 +55,7 @@ export default function Arquivos() {
     setBusy(true);
     setError(null);
     try {
-      await api.uploadDocument(file, folder || undefined);
+      await api.uploadDocument(file, folder || undefined, uploadClient || undefined);
       if (fileInput.current) fileInput.current.value = "";
       await load();
     } catch (err) {
@@ -98,16 +101,20 @@ export default function Arquivos() {
       {/* Upload */}
       <div className={s.card} style={{ marginBottom: 16 }}>
         <div className={s.cardTitleX}>Enviar arquivo</div>
-        <div className={s.cardSub} style={{ marginBottom: 12 }}>PDFs, imagens, plantas, planilhas… até 25 MB.</div>
+        <div className={s.cardSub} style={{ marginBottom: 12 }}>PDFs, imagens, plantas, planilhas… até 25 MB. Vincule a um cliente para ele ver na Área do Cliente dele.</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <input
             className={admin.input}
-            style={{ maxWidth: 220 }}
-            placeholder="Pasta (opcional). Ex: contratos"
+            style={{ maxWidth: 200 }}
+            placeholder="Pasta (opcional)"
             value={folder}
             onChange={(e) => setFolder(e.target.value)}
             disabled={busy}
           />
+          <select className={admin.input} style={{ maxWidth: 220 }} value={uploadClient} onChange={(e) => setUploadClient(e.target.value)} disabled={busy}>
+            <option value="">Sem cliente (interno)</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <input
             ref={fileInput}
             type="file"
@@ -139,13 +146,14 @@ export default function Arquivos() {
       ) : (
         <table className={admin.table}>
           <thead>
-            <tr><th>Arquivo</th><th>Pasta</th><th>Tamanho</th><th>Enviado</th><th style={{ textAlign: "right" }}>Ações</th></tr>
+            <tr><th>Arquivo</th><th>Pasta</th><th>Cliente</th><th>Tamanho</th><th>Enviado</th><th style={{ textAlign: "right" }}>Ações</th></tr>
           </thead>
           <tbody>
             {shown.map((f) => (
               <tr key={f.key}>
                 <td>{fileIcon(f.name, f.contentType)} {f.name}</td>
                 <td><span className={`${admin.badge} ${admin.badgeDraft}`}>{f.folder}</span></td>
+                <td>{f.clientName ? <span className={`${admin.badge} ${admin.badgeSigned}`}>{f.clientName}</span> : <span style={{ opacity: 0.5 }}>—</span>}</td>
                 <td className={admin.mono}>{formatBytes(f.size)}</td>
                 <td>{fmtDate(f.uploaded)}</td>
                 <td>

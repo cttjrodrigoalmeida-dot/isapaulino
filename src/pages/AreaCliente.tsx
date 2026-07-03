@@ -14,11 +14,15 @@ interface HistoryItem {
   id: string; date: string; description: string; amount: number; kind: string;
   status: string; asaasPaymentId: string | null; invoiceUrl: string | null;
 }
+interface ClientFile {
+  key: string; name: string; size: number; uploaded: string;
+}
 interface Overview {
   client: { name: string; email: string | null; phone: string | null };
   contracts: Contract[];
   installments: Installment[];
   history: HistoryItem[];
+  files: ClientFile[];
 }
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -27,6 +31,11 @@ function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   const [y, m, d] = iso.slice(0, 10).split("-");
   return d && m && y ? `${d}/${m}/${y}` : iso;
+}
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
 const INST_STATUS: Record<string, { label: string; cls: string }> = {
@@ -177,6 +186,25 @@ export default function AreaCliente() {
                   </div>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {d.files && d.files.length > 0 && (
+          <section className={styles.section}>
+            <h2 className={styles.h2}>Arquivos do projeto</h2>
+            <div className={styles.card}>
+              {d.files.map((f) => (
+                <div key={f.key} className={styles.row}>
+                  <div className={styles.rowMain}>
+                    <span className={styles.rowLabel}>{f.name}</span>
+                    <span className={styles.rowSub}>{fmtBytes(f.size)} · {fmtDate(f.uploaded)}</span>
+                  </div>
+                  <span className={styles.rowAction}>
+                    <a className={`${styles.btn} ${styles.btnPrimary}`} href={`/api/client/download?key=${encodeURIComponent(f.key)}`} target="_blank" rel="noopener noreferrer">Baixar</a>
+                  </span>
+                </div>
+              ))}
             </div>
           </section>
         )}
