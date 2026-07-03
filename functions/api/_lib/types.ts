@@ -25,6 +25,12 @@ export interface Env {
   AUTENTIQUE_API_URL?: string;
   /** Segredo esperado no webhook da Autentique (query `?secret=`). */
   AUTENTIQUE_WEBHOOK_SECRET?: string;
+
+  // ── Browser Rendering (REST) — opcional; sem ele o PDF é enviado manual ──
+  /** Token da API do Cloudflare Browser Rendering (Secret). */
+  BROWSER_RENDER_TOKEN?: string;
+  /** ID da conta Cloudflare (var não sensível) — usado na URL da API. */
+  CF_ACCOUNT_ID?: string;
 }
 
 /** Sessão decodificada do cookie. */

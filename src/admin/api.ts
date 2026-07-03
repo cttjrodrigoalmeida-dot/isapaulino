@@ -458,10 +458,10 @@ export const api = {
   // Inativo até AUTENTIQUE_TOKEN existir (o backend responde com erro amigável).
   async sendAutentique(
     id: string,
-    file: File
+    file?: File | null
   ): Promise<{ ok: true; documentId: string; url: string }> {
     const fd = new FormData();
-    fd.append("file", file);
+    if (file) fd.append("file", file); // sem arquivo → o servidor gera o PDF automaticamente
     const res = await fetch(`/api/contracts/${encodeURIComponent(id)}/send-autentique`, {
       method: "POST",
       credentials: "include",

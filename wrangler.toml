@@ -28,3 +28,6 @@ bucket_name = "isapaulino-files"
 # Variáveis NÃO sensíveis (as sensíveis vão como Secret, ver BACKEND.md).
 [vars]
 SITE_URL = "https://isabelapaulino.com.br"
+# ID da conta Cloudflare — usado na API REST do Browser Rendering (gerar PDF do
+# contrato). Não é segredo. O token (BROWSER_RENDER_TOKEN) vai como Secret.
+CF_ACCOUNT_ID = "afe5d99710157516701d97f69e73a094"

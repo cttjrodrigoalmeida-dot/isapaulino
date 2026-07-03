@@ -858,10 +858,19 @@ function ClauseCard({
 }
 
 // ── Componente principal ───────────────────────────────────────
-export default function ContractView({ doc }: { doc: ContractDoc }) {
-  const [printing, setPrinting] = useState(false);
+export default function ContractView({ doc, pdfMode = false }: { doc: ContractDoc; pdfMode?: boolean }) {
+  // pdfMode (URL ?pdf=1): renderiza tudo visível para o Browser Rendering
+  // capturar o PDF no servidor — SEM abrir o diálogo de impressão do navegador.
+  const [printing, setPrinting] = useState(pdfMode);
 
   useEffect(() => {
+    if (pdfMode) {
+      // Espera as fontes carregarem e sinaliza que a página está pronta p/ o PDF.
+      (document as Document & { fonts?: FontFaceSet }).fonts?.ready.then(() => {
+        document.documentElement.setAttribute("data-pdf-ready", "1");
+      }) ?? document.documentElement.setAttribute("data-pdf-ready", "1");
+      return;
+    }
     if (!printing) return;
     const id = requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
     const done = () => setPrinting(false);
@@ -870,7 +879,7 @@ export default function ContractView({ doc }: { doc: ContractDoc }) {
       cancelAnimationFrame(id);
       window.removeEventListener("afterprint", done);
     };
-  }, [printing]);
+  }, [printing, pdfMode]);
 
   const waLink = `https://wa.me/${doc.contact.whatsapp}`;
   const signed = doc.signature.status === "assinado";

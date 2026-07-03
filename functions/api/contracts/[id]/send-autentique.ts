@@ -11,10 +11,13 @@ import {
   createSignatureDocument,
   type AutentiqueSigner,
 } from "../../_lib/autentique";
+import { renderContractPdf, browserRenderingAvailable } from "../../_lib/contract-pdf";
 
 interface Row {
   title: string;
   data: string | null;
+  slug: string | null;
+  status: string;
   clientName: string | null;
   clientEmail: string | null;
 }
@@ -43,15 +46,23 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const contractId = String(params.id);
 
     const row = await env.DB.prepare(
-      `SELECT c.title AS title, c.data AS data, cl.name AS clientName, cl.email AS clientEmail
+      `SELECT c.title AS title, c.data AS data, c.slug AS slug, c.status AS status, cl.name AS clientName, cl.email AS clientEmail
        FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
     ).bind(contractId).first<Row>();
     if (!row) return error(404, "Contrato não encontrado.");
 
-    // PDF do contrato (gerado no navegador / futuro render automático).
+    // PDF do contrato: usa o upload (campo 'file') se enviado; senão, gera
+    // automaticamente via Browser Rendering a partir da página pública.
     const form = await request.formData().catch(() => null);
-    const file = form?.get("file");
-    if (!(file instanceof Blob) || file.size === 0) {
+    const uploaded = form?.get("file");
+    let file: Blob;
+    if (uploaded instanceof Blob && uploaded.size > 0) {
+      file = uploaded;
+    } else if (browserRenderingAvailable(env)) {
+      if (!row.slug) return error(400, "Publique o contrato antes de gerar o PDF automaticamente (ou envie o PDF manualmente).");
+      const origin = new URL(request.url).origin;
+      file = await renderContractPdf(env, origin, row.slug);
+    } else {
       return error(400, "Envie o PDF do contrato no campo 'file' para assinatura.");
     }
 

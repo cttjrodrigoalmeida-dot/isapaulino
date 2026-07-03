@@ -232,8 +232,9 @@ export default function ContractEditor({
     }
   };
 
-  // Envia o PDF do contrato para assinatura na Autentique (inativo sem AUTENTIQUE_TOKEN).
-  const sendToAutentique = async (file: File) => {
+  // Envia para assinatura na Autentique. Sem arquivo → o servidor gera o PDF
+  // automaticamente (Browser Rendering) a partir da página pública do contrato.
+  const sendToAutentique = async (file?: File | null) => {
     if (!contractId) {
       setError("Salve o contrato antes de enviar para assinatura.");
       return;
@@ -245,7 +246,7 @@ export default function ContractEditor({
       const { documentId, url } = await api.sendAutentique(contractId, file);
       setAutentiqueDocId(documentId);
       if (url) patch({ autentiqueUrl: url });
-      setNotice("Documento enviado para a Autentique.");
+      setNotice(file ? "Documento enviado para a Autentique." : "PDF gerado e enviado para a Autentique.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao enviar para a Autentique.");
     } finally {
@@ -589,9 +590,10 @@ export default function ContractEditor({
           <div className={styles.card}>
             <div className={styles.cardTitle}>Assinatura digital (Autentique)</div>
             <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
-              Integração <strong>ativa</strong>. Gere o PDF pelo botão “Baixar PDF” na página pública e envie-o aqui para
-              coletar as assinaturas da CONTRATANTE e da CONTRATADA (usa os e-mails das partes acima). Se houver erro, a
-              mensagem aparece no <strong>topo do editor</strong>.
+              Integração <strong>ativa</strong>. Clique em <strong>“Gerar PDF e enviar”</strong> — o sistema gera o PDF do
+              contrato automaticamente e envia para a CONTRATANTE e a CONTRATADA assinarem (usa os e-mails das partes acima).
+              O contrato precisa estar <strong>publicado</strong>. Se preferir, envie um PDF próprio no campo abaixo. Erros
+              aparecem no <strong>topo do editor</strong>.
             </div>
             {autentiqueDocId && (
               <div className={styles.field}>
@@ -621,18 +623,30 @@ export default function ContractEditor({
             {!contractId ? (
               <div className={styles.placeholderHint}>Salve o contrato primeiro para habilitar o envio.</div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  disabled={sending}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) sendToAutentique(f);
-                    e.target.value = "";
-                  }}
-                />
-                {sending && <span className={styles.pageHint}>Enviando…</span>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    disabled={sending}
+                    onClick={() => sendToAutentique(null)}
+                  >
+                    {sending ? "Gerando e enviando…" : "Gerar PDF e enviar para assinatura"}
+                  </button>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span className={styles.pageHint}>Ou envie um PDF próprio:</span>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    disabled={sending}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) sendToAutentique(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
               </div>
             )}
           </div>

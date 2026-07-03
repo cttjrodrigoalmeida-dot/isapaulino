@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import ContractView from "../components/contract/ContractView";
 import type { ContractDoc, SignatureStatus } from "../components/contract/types";
 import { SAMPLE_CONTRACT } from "../components/contract/sampleContract";
@@ -67,6 +67,8 @@ function buildDoc(c: PublicContract): ContractDoc {
 
 export default function Contrato() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const pdfMode = searchParams.get("pdf") === "1";
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -113,5 +115,5 @@ export default function Contrato() {
     );
   }
 
-  return <ContractView doc={state.doc} />;
+  return <ContractView doc={state.doc} pdfMode={pdfMode} />;
 }
