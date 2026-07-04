@@ -551,6 +551,8 @@ export const api = {
 
   // ── armazenamento (R2) + backup (D1) ──
   storageUsage: () => req<StorageUsage>("/api/storage/usage"),
+  listBackups: () => req<{ backups: { key: string; size: number; uploaded: string }[] }>("/api/storage/backups"),
+  backupDownloadUrl: (key: string) => `/api/storage/backups?key=${encodeURIComponent(key)}`,
   async downloadBackup(): Promise<void> {
     const res = await fetch("/api/storage/backup", { credentials: "include" });
     if (!res.ok) {

@@ -3,6 +3,7 @@
 // nem quebra a resposta — o log é "best effort" e roda após a resposta pronta.
 import type { Env } from "./_lib/types";
 import { getSession } from "./_lib/auth";
+import { maybeAutoBackup } from "./_lib/backup";
 
 // Caminhos que NÃO viram log (ruído / não são ação de admin).
 const SKIP = [/^\/api\/webhooks\//, /^\/api\/client\//, /^\/api\/notifications$/];
@@ -53,6 +54,8 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
             .run()
             .catch(() => {})
         );
+        // Backup oportunista (no máx. 1/dia) — só para ações de admin logado.
+        if (session?.sub) ctx.waitUntil(maybeAutoBackup(env));
       }
     }
   } catch {

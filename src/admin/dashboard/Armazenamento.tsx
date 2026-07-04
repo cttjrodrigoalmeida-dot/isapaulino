@@ -22,12 +22,15 @@ export default function Armazenamento() {
   const [error, setError] = useState<string | null>(null);
   const [backing, setBacking] = useState(false);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
+  const [backups, setBackups] = useState<{ key: string; size: number; uploaded: string }[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setUsage(await api.storageUsage());
+      const [u, b] = await Promise.all([api.storageUsage(), api.listBackups().catch(() => ({ backups: [] }))]);
+      setUsage(u);
+      setBackups(b.backups);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao carregar o uso do armazenamento.");
     } finally {
@@ -131,8 +134,8 @@ export default function Armazenamento() {
             </div>
           </div>
           <p className={s.kpiNote} style={{ display: "block", marginBottom: 14 }}>
-            Baixa um arquivo JSON com uma cópia de segurança de todos os dados do painel.
-            Faça isso antes de mudanças grandes.
+            Baixa um JSON com cópia de todos os dados (clientes, contratos, pagamentos, etc.).
+            O sistema também faz um <strong>backup automático por dia</strong> (guardado no R2, abaixo).
           </p>
           <button
             className={`${admin.btn} ${admin.btnPrimary}`}
@@ -142,6 +145,20 @@ export default function Armazenamento() {
             {backing ? "Gerando backup…" : "Fazer backup agora"}
           </button>
           {backupMsg && <div className={admin.notice} style={{ marginTop: 12 }}>{backupMsg}</div>}
+
+          {backups.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <div className={s.cardSub} style={{ marginBottom: 8 }}>Backups automáticos ({backups.length})</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {backups.slice(0, 10).map((b) => (
+                  <div key={b.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 13 }}>
+                    <span className={admin.mono}>{b.key.replace("backups/", "")}</span>
+                    <a className={`${admin.btn} ${admin.btnGhost}`} href={api.backupDownloadUrl(b.key)} target="_blank" rel="noopener noreferrer">Baixar</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
