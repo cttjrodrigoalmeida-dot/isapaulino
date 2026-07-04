@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import styles from "./AreaCliente.module.css";
 
@@ -48,23 +48,54 @@ const INST_STATUS: Record<string, { label: string; cls: string }> = {
 
 export default function AreaCliente() {
   const [params] = useSearchParams();
-  const [state, setState] = useState<"loading" | "ok" | "noauth">("loading");
+  const [state, setState] = useState<"loading" | "ok" | "noauth" | "verify">("loading");
   const [data, setData] = useState<Overview | null>(null);
+  const [cpf, setCpf] = useState("");
+  const [verifyErr, setVerifyErr] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  const load = async () => {
+    try {
+      const res = await fetch("/api/client/overview", { credentials: "include" });
+      if (res.ok) {
+        setData(await res.json());
+        setState("ok");
+      } else if (res.status === 428) {
+        setState("verify"); // sessão válida, mas falta confirmar o CPF
+      } else setState("noauth");
+    } catch {
+      setState("noauth");
+    }
+  };
 
   useEffect(() => {
     document.title = "Área do Cliente · Isabela Paulino Studio";
-    (async () => {
-      try {
-        const res = await fetch("/api/client/overview", { credentials: "include" });
-        if (res.ok) {
-          setData(await res.json());
-          setState("ok");
-        } else setState("noauth");
-      } catch {
-        setState("noauth");
-      }
-    })();
+    load();
   }, []);
+
+  const submitCpf = async (e: FormEvent) => {
+    e.preventDefault();
+    setVerifyErr(null);
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/client/verify", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cpf }),
+      });
+      if (res.ok) {
+        await load();
+      } else {
+        const b = await res.json().catch(() => ({}));
+        setVerifyErr(b?.error || "Não foi possível confirmar. Tente novamente.");
+      }
+    } catch {
+      setVerifyErr("Erro de conexão. Tente novamente.");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const logout = async () => {
     await fetch("/api/client/logout", { method: "POST", credentials: "include" }).catch(() => {});
@@ -73,6 +104,32 @@ export default function AreaCliente() {
   };
 
   if (state === "loading") return <div className={styles.center}>Carregando…</div>;
+
+  if (state === "verify") {
+    return (
+      <div className={styles.center}>
+        <form className={styles.gate} onSubmit={submitCpf}>
+          <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.gateLogo} />
+          <h1 className={styles.gateTitle}>Confirme quem é você</h1>
+          {verifyErr && <p className={styles.err}>{verifyErr}</p>}
+          <p className={styles.gateText} style={{ marginBottom: 18 }}>
+            Por segurança, digite seu <strong>CPF ou CNPJ</strong> para acessar sua área.
+          </p>
+          <input
+            className={styles.verifyInput}
+            inputMode="numeric"
+            autoFocus
+            placeholder="Somente números"
+            value={cpf}
+            onChange={(ev) => setCpf(ev.target.value)}
+          />
+          <button className={styles.verifyBtn} type="submit" disabled={verifying}>
+            {verifying ? "Verificando…" : "Entrar"}
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   if (state === "noauth") {
     const erro = params.get("erro");

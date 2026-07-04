@@ -439,9 +439,14 @@ export const api = {
   getClientAccess: (clientId: string) =>
     req<{ enabled: boolean; link: string }>(`/api/clients/${encodeURIComponent(clientId)}/access`),
   setClientAccess: (clientId: string, enabled: boolean) =>
-    req<{ ok: true; enabled: boolean }>(`/api/clients/${encodeURIComponent(clientId)}/access`, {
+    req<{ ok: true; enabled: boolean; link: string }>(`/api/clients/${encodeURIComponent(clientId)}/access`, {
       method: "PUT",
       body: JSON.stringify({ enabled }),
+    }),
+  regenerateClientLink: (clientId: string) =>
+    req<{ ok: true; enabled: boolean; link: string }>(`/api/clients/${encodeURIComponent(clientId)}/access`, {
+      method: "PUT",
+      body: JSON.stringify({ regenerate: true }),
     }),
 
   // ── contratos ──

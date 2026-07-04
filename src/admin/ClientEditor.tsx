@@ -112,6 +112,20 @@ export default function ClientEditor({
       setTimeout(() => setCopied(false), 1800);
     });
   };
+  const regenerateLink = async () => {
+    if (isNew) return;
+    if (!confirm("Gerar um novo link revoga o link anterior (quem tiver o antigo perde o acesso). Continuar?")) return;
+    setError(null);
+    setAccessBusy(true);
+    try {
+      const a = await api.regenerateClientLink(id!);
+      setAccess({ enabled: a.enabled, link: a.link });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao gerar novo link.");
+    } finally {
+      setAccessBusy(false);
+    }
+  };
 
   if (loading) return <div className={styles.loading}>Carregando cliente…</div>;
 
@@ -271,12 +285,20 @@ export default function ClientEditor({
             </span>
           </div>
           {access?.enabled && access.link && (
-            <div className={styles.publicLinkBox} style={{ marginTop: 12 }}>
-              <span className={styles.publicLinkUrl}>{access.link}</span>
-              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={copyLink}>
-                {copied ? "Copiado!" : "Copiar link"}
-              </button>
-            </div>
+            <>
+              <div className={styles.publicLinkBox} style={{ marginTop: 12 }}>
+                <span className={styles.publicLinkUrl}>{access.link}</span>
+                <button className={`${styles.btn} ${styles.btnGhost}`} onClick={copyLink}>
+                  {copied ? "Copiado!" : "Copiar link"}
+                </button>
+                <button className={`${styles.btn} ${styles.btnGhost}`} onClick={regenerateLink} disabled={accessBusy}>
+                  Gerar novo link
+                </button>
+              </div>
+              <div className={styles.pageHint} style={{ marginTop: 6 }}>
+                O link vale 30 dias. No 1º acesso, o cliente confirma o CPF/CNPJ. “Gerar novo link” revoga o anterior.
+              </div>
+            </>
           )}
         </div>
       )}

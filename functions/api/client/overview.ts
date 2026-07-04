@@ -3,11 +3,11 @@
 // e o Histórico Financeiro (lançamentos que viraram cobrança).
 import type { Env } from "../_lib/types";
 import { json, error, toErrorResponse } from "../_lib/http";
-import { requireClient } from "../_lib/client-auth";
+import { requireVerifiedClient } from "../_lib/client-auth";
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
-    const clientId = await requireClient(request, env);
+    const clientId = await requireVerifiedClient(request, env);
 
     const client = await env.DB.prepare("SELECT name, email, phone FROM clients WHERE id = ?")
       .bind(clientId)

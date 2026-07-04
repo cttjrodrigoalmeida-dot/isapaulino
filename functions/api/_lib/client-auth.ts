@@ -1,12 +1,16 @@
 // Autenticação da Área do Cliente (separada do admin). Sessão via token HMAC
 // assinado com o SESSION_SECRET, com aud="client"; o "magic link" (aud="magic")
-// loga o cliente e troca por um cookie de sessão. Cookie: ips_cliente.
+// loga o cliente. Cookie: ips_cliente.
+//   - Link mágico traz a VERSÃO (v) do cliente; se o admin "gerar novo link"
+//     (incrementa access_token_version), os links antigos deixam de valer.
+//   - Sessão tem flag `ver` (verificado): se o cliente tem CPF, o 1º acesso
+//     exige confirmar o CPF (defesa extra caso o link vaze).
 import type { Env } from "./types";
 import { HttpError } from "./http";
 
 const CLIENT_COOKIE = "ips_cliente";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // sessão: 30 dias
-const MAGIC_TTL_MS = 1000 * 60 * 60 * 24 * 90;   // link de acesso válido: 90 dias
+const MAGIC_TTL_MS = 1000 * 60 * 60 * 24 * 30;   // link de acesso válido: 30 dias
 
 const enc = new TextEncoder();
 const te = (s: string): Uint8Array<ArrayBuffer> => new Uint8Array(enc.encode(s));
@@ -32,7 +36,7 @@ async function hmac(secret: string, data: string): Promise<string> {
 }
 
 type Aud = "client" | "magic";
-interface ClientToken { sub: string; aud: Aud; exp: number; }
+interface ClientToken { sub: string; aud: Aud; exp: number; v?: number; ver?: boolean; }
 
 async function sign(payload: ClientToken, secret: string): Promise<string> {
   const p = b64url(btoa(JSON.stringify(payload)));
@@ -54,11 +58,11 @@ async function verify(token: string, secret: string, aud: Aud): Promise<ClientTo
   }
 }
 
-export function createClientMagicToken(clientId: string, secret: string): Promise<string> {
-  return sign({ sub: clientId, aud: "magic", exp: Date.now() + MAGIC_TTL_MS }, secret);
+export function createClientMagicToken(clientId: string, secret: string, version = 1): Promise<string> {
+  return sign({ sub: clientId, aud: "magic", exp: Date.now() + MAGIC_TTL_MS, v: version }, secret);
 }
-export function createClientSessionToken(clientId: string, secret: string): Promise<string> {
-  return sign({ sub: clientId, aud: "client", exp: Date.now() + SESSION_TTL_MS }, secret);
+export function createClientSessionToken(clientId: string, secret: string, verified = true): Promise<string> {
+  return sign({ sub: clientId, aud: "client", exp: Date.now() + SESSION_TTL_MS, ver: verified }, secret);
 }
 export function verifyMagicToken(token: string, secret: string): Promise<ClientToken | null> {
   return verify(token, secret, "magic");
@@ -82,16 +86,22 @@ function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
-/** client_id do cliente logado (ou null). */
-export async function getClientSession(request: Request, env: Env): Promise<string | null> {
+/** Sessão do cliente logado (ou null). */
+export async function getClientSession(request: Request, env: Env): Promise<ClientToken | null> {
   const token = readCookie(request, CLIENT_COOKIE);
   if (!token) return null;
-  const t = await verify(token, env.SESSION_SECRET, "client");
-  return t ? t.sub : null;
+  return verify(token, env.SESSION_SECRET, "client");
 }
-/** Exige cliente autenticado; lança 401. */
+/** Exige cliente autenticado (mesmo não verificado); lança 401. Retorna client_id. */
 export async function requireClient(request: Request, env: Env): Promise<string> {
-  const sub = await getClientSession(request, env);
-  if (!sub) throw new HttpError(401, "Não autenticado.");
-  return sub;
+  const t = await getClientSession(request, env);
+  if (!t) throw new HttpError(401, "Não autenticado.");
+  return t.sub;
+}
+/** Exige cliente autenticado E verificado (CPF confirmado). 428 se faltar verificar. */
+export async function requireVerifiedClient(request: Request, env: Env): Promise<string> {
+  const t = await getClientSession(request, env);
+  if (!t) throw new HttpError(401, "Não autenticado.");
+  if (t.ver === false) throw new HttpError(428, "Confirme seu CPF para acessar.");
+  return t.sub;
 }

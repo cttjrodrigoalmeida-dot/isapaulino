@@ -4,11 +4,11 @@
 // arquivo de outro.
 import type { Env } from "../_lib/types";
 import { error, toErrorResponse } from "../_lib/http";
-import { requireClient } from "../_lib/client-auth";
+import { requireVerifiedClient } from "../_lib/client-auth";
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
-    const clientId = await requireClient(request, env);
+    const clientId = await requireVerifiedClient(request, env);
     const key = new URL(request.url).searchParams.get("key") || "";
     if (!key.startsWith("docs/")) return error(400, "Chave inválida.");
 

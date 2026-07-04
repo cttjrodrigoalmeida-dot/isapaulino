@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS clients (
   nacionalidade TEXT,                        -- ex.: "Brasileiro(a)"
   birth_date    TEXT,                        -- nascimento (texto livre)
   access_enabled INTEGER NOT NULL DEFAULT 0, -- 1 = acesso à Área do Cliente liberado
+  access_token_version INTEGER NOT NULL DEFAULT 1, -- ++ ao "gerar novo link" (revoga os antigos)
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );

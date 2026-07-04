@@ -29,6 +29,20 @@
 .gateTitle { font-family: var(--font-ui, sans-serif); font-size: 20px; font-weight: 600; color: #fff; margin: 0 0 14px; }
 .gateText { font-size: 14px; line-height: 1.7; color: rgba(255, 255, 255, 0.6); margin: 0; }
 .err { font-size: 13px; color: #f0506e; background: rgba(240, 80, 110, 0.1); border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; }
+.verifyInput {
+  width: 100%; box-sizing: border-box; text-align: center; letter-spacing: 0.14em;
+  font-family: var(--font-mono, monospace); font-size: 16px; color: #fff;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px 0 12px 0; padding: 13px 14px; margin-bottom: 14px; outline: none;
+}
+.verifyInput:focus { border-color: rgba(255, 255, 255, 0.4); }
+.verifyBtn {
+  width: 100%; font-family: var(--font-mono, monospace); font-size: 12px; letter-spacing: 0.1em;
+  text-transform: uppercase; background: #f4ede0; color: #161616; border: none;
+  border-radius: 10px 0 10px 0; padding: 13px; cursor: pointer; font-weight: 600;
+}
+.verifyBtn:hover { background: #fff; }
+.verifyBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Topo ── */
 .top {
