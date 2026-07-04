@@ -105,6 +105,8 @@ export default function Footer() {
                 <img
                   src="/assets/footer-map.webp"
                   alt="Mapa Isabela Paulino Studio - Goiás, Brasil"
+                  loading="lazy"
+                  decoding="async"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
               </div>

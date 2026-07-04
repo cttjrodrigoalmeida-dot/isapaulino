@@ -5,6 +5,7 @@ import WhatsappFloat from '../components/WhatsappFloat'
 import CustomCursor from '../components/CustomCursor'
 import postsData from '../data/cmsPosts.json'
 import type { CMSPost } from '../cms/types'
+import { sanitizeHtml } from '../utils/sanitizeHtml'
 import styles from './BlogPost.module.css'
 
 const posts: CMSPost[] = postsData as CMSPost[]
@@ -62,7 +63,7 @@ export default function BlogPost() {
         {post.content && (
           <div
             className={styles.articleContent}
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
           />
         )}
       </div>
