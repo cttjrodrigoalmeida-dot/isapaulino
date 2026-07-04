@@ -64,7 +64,10 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   try {
     await requireAuth(request, env);
     const id = String(params.id);
-    const res = await env.DB.prepare("DELETE FROM clients WHERE id = ?").bind(id).run();
+    // Soft-delete: vai para a lixeira (recuperável), sem violar FK de contratos.
+    const res = await env.DB.prepare(
+      "UPDATE clients SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND deleted_at IS NULL"
+    ).bind(id).run();
     if (!res.meta.changes) return error(404, "Cliente não encontrado.");
     return json({ ok: true });
   } catch (e) {

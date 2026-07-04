@@ -16,7 +16,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     const contracts = (await env.DB.prepare(
       `SELECT id, title, status, slug, value, autentique_url AS autentiqueUrl, signed_at AS signedAt
-       FROM contracts WHERE client_id = ? AND status IN ('published','signed') ORDER BY updated_at DESC`
+       FROM contracts WHERE client_id = ? AND deleted_at IS NULL AND status IN ('published','signed') ORDER BY updated_at DESC`
     ).bind(clientId).all()).results ?? [];
 
     const installments = (await env.DB.prepare(

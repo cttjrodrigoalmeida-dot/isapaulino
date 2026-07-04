@@ -33,10 +33,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const url = new URL(request.url);
     const q = url.searchParams.get("q")?.trim();
 
-    let query = `SELECT ${COLS} FROM clients`;
+    let query = `SELECT ${COLS} FROM clients WHERE deleted_at IS NULL`;
     const binds: string[] = [];
     if (q) {
-      query += " WHERE name LIKE ? OR email LIKE ? OR cpf_cnpj LIKE ?";
+      query += " AND (name LIKE ? OR email LIKE ? OR cpf_cnpj LIKE ?)";
       const like = `%${q}%`;
       binds.push(like, like, like);
     }

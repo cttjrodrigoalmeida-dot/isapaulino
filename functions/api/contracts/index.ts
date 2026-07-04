@@ -47,10 +47,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
 
-    let query = `SELECT ${LIST_COLS} FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id`;
+    let query = `SELECT ${LIST_COLS} FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.deleted_at IS NULL`;
     const binds: string[] = [];
     if (status && STATUSES.includes(status)) {
-      query += " WHERE c.status = ?";
+      query += " AND c.status = ?";
       binds.push(status);
     }
     query += " ORDER BY c.updated_at DESC";

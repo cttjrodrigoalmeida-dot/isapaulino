@@ -317,6 +317,12 @@ export const api = {
   // ── logs de auditoria ──
   listLogs: () => req<{ logs: AuditLog[] }>("/api/audit"),
 
+  // ── lixeira (soft-delete) ──
+  listTrash: () =>
+    req<{ clients: TrashItem[]; contracts: TrashItem[] }>("/api/trash"),
+  trashAction: (entity: "client" | "contract", id: string, action: "restore" | "purge") =>
+    req<{ ok: true }>("/api/trash", { method: "POST", body: JSON.stringify({ entity, id, action }) }),
+
   // ── calendário ──
   listCalendar: (from?: string, to?: string) => {
     const qs = from && to ? `?from=${from}&to=${to}` : "";
@@ -597,6 +603,17 @@ export const api = {
     req<{ ok: true }>("/api/documents", { method: "DELETE", body: JSON.stringify({ key }) }),
   documentDownloadUrl: (key: string) => `/api/documents/download?key=${encodeURIComponent(key)}`,
 };
+
+export interface TrashItem {
+  id: string;
+  name?: string | null;
+  title?: string | null;
+  clientName?: string | null;
+  status?: string | null;
+  cpfCnpj?: string | null;
+  email?: string | null;
+  deletedAt: string;
+}
 
 export interface AuditLog {
   id: string;

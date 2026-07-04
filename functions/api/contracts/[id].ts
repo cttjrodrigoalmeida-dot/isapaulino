@@ -71,7 +71,10 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   try {
     await requireAuth(request, env);
     const id = String(params.id);
-    const res = await env.DB.prepare("DELETE FROM contracts WHERE id = ?").bind(id).run();
+    // Soft-delete: vai para a lixeira (recuperável).
+    const res = await env.DB.prepare(
+      "UPDATE contracts SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND deleted_at IS NULL"
+    ).bind(id).run();
     if (!res.meta.changes) return error(404, "Contrato não encontrado.");
     return json({ ok: true });
   } catch (e) {

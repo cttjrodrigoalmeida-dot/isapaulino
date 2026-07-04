@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS clients (
   birth_date    TEXT,                        -- nascimento (texto livre)
   access_enabled INTEGER NOT NULL DEFAULT 0, -- 1 = acesso à Área do Cliente liberado
   access_token_version INTEGER NOT NULL DEFAULT 1, -- ++ ao "gerar novo link" (revoga os antigos)
+  deleted_at    TEXT,                        -- soft-delete (lixeira); NULL = ativo
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -114,6 +115,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   autentique_url TEXT,                          -- link de assinatura (Autentique)
   autentique_document_id TEXT,                  -- id do documento na Autentique (quando enviado)
   signed_at      TEXT,                          -- data/hora da assinatura (preenchida pelo webhook)
+  deleted_at     TEXT,                          -- soft-delete (lixeira); NULL = ativo
   created_at     TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at     TEXT NOT NULL DEFAULT (datetime('now')),
   published_at   TEXT,

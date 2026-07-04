@@ -63,7 +63,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       env.DB.prepare("SELECT COALESCE(SUM(total_value), 0) AS faturado FROM contract_payments").first<{ faturado: number }>(),
       env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM installments GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
       env.DB.prepare("SELECT substr(payment_date, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM installments WHERE status = 'received' AND payment_date IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
-      env.DB.prepare("SELECT status, COUNT(*) AS c FROM contracts GROUP BY status").all<{ status: string; c: number }>(),
+      env.DB.prepare("SELECT status, COUNT(*) AS c FROM contracts WHERE deleted_at IS NULL GROUP BY status").all<{ status: string; c: number }>(),
       // Histórico Financeiro (serviços adicionais): também são receita.
       env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM client_history GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
       env.DB.prepare("SELECT substr(paid_at, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM client_history WHERE status = 'paid' AND paid_at IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
