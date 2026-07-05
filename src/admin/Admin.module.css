@@ -693,6 +693,11 @@
   color: var(--color-accent);
   margin-bottom: 18px;
 }
+/* No tema claro, os títulos de seção ficam cinza (sem o creme). O escuro
+   mantém o creme da marca. */
+.shell[data-theme="light"] .cardTitle {
+  color: var(--color-text-secondary);
+}
 .tabs {
   display: flex;
   gap: 8px;
