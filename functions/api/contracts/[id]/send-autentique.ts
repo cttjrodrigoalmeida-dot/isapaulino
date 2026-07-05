@@ -1,8 +1,13 @@
 // POST /api/contracts/:id/send-autentique  (admin, multipart)
-// Envia o contrato para assinatura na Autentique: monta os signatários a partir
-// das partes do documento (CONTRATANTE + CONTRATADA) e faz upload do PDF (campo
+// Envia o contrato para assinatura na Autentique e faz upload do PDF (campo
 // `file`). Requer AUTENTIQUE_TOKEN — sem ele retorna 400 amigável (inativo).
 // Guarda autentique_document_id e o link de assinatura em autentique_url.
+//
+// SIGNATÁRIOS: enviamos apenas o CONTRATANTE (o cliente). A CONTRATADA é a
+// Isabela, que é a DONA da conta Autentique — a Autentique já a adiciona
+// automaticamente como "Criador" do documento. Se enviássemos a CONTRATADA
+// também, ela ficaria DUPLICADA (Criador + CONTRATADA = 3 assinaturas no total).
+// Assim ficam 2: CONTRATANTE + Criador(Isabela).
 import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
@@ -77,15 +82,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       }
     }
     const contratante = party(doc, "contratante");
-    const contratada = party(doc, "contratada");
 
+    // Só o CONTRATANTE (cliente). A CONTRATADA (Isabela) assina como "Criador"
+    // — ver comentário no topo do arquivo.
     const signers: AutentiqueSigner[] = [];
     const contratanteEmail = contratante.email || row.clientEmail || "";
     if (contratanteEmail) signers.push({ email: contratanteEmail, name: contratante.name || row.clientName || undefined, action: "SIGN" });
-    if (contratada.email) signers.push({ email: contratada.email, name: contratada.name, action: "SIGN" });
 
     if (signers.length === 0) {
-      return error(400, "Nenhum e-mail de signatário encontrado. Preencha o e-mail da CONTRATANTE (ou do cliente).");
+      return error(400, "O contrato precisa do e-mail da CONTRATANTE (ou do cliente) para enviar para assinatura.");
     }
 
     const document = await createSignatureDocument(env, {
