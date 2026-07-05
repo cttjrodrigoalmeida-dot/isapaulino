@@ -3,6 +3,9 @@ import { api, ApiError, type Client } from "./api";
 import { formatCpfCnpj, formatPhone, onlyDigits } from "./validation";
 import styles from "./Admin.module.css";
 
+const initials = (name: string) =>
+  (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+
 export default function ClientsList({
   onNew,
   onEdit,
@@ -118,7 +121,14 @@ export default function ClientsList({
           <tbody>
             {filtered.map((c) => (
               <tr key={c.id}>
-                <td>{c.name}</td>
+                <td>
+                  <div className={styles.clientNameCell}>
+                    <span className={styles.clientAvatar}>
+                      {c.photo_url ? <img src={c.photo_url} alt={c.name} /> : initials(c.name)}
+                    </span>
+                    {c.name}
+                  </div>
+                </td>
                 <td className={styles.mono}>{c.cpf_cnpj ? formatCpfCnpj(c.cpf_cnpj) : "—"}</td>
                 <td>{c.email || "—"}</td>
                 <td>{c.phone ? formatPhone(c.phone) : "—"}</td>

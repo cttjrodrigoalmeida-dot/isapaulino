@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS clients (
   state         TEXT,
   role          TEXT,                        -- profissão/papel (ex.: "ARQUITETO E URBANISTA")
   nacionalidade TEXT,                        -- ex.: "Brasileiro(a)"
-  birth_date    TEXT,                        -- nascimento (texto livre)
+  birth_date    TEXT,                        -- nascimento (texto livre; usado p/ aniversariantes)
+  photo_url     TEXT,                        -- foto/avatar do cliente (URL pública no R2)
   access_enabled INTEGER NOT NULL DEFAULT 0, -- 1 = acesso à Área do Cliente liberado
   access_token_version INTEGER NOT NULL DEFAULT 1, -- ++ ao "gerar novo link" (revoga os antigos)
   deleted_at    TEXT,                        -- soft-delete (lixeira); NULL = ativo
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS clients (
 --   ALTER TABLE clients ADD COLUMN role TEXT;
 --   ALTER TABLE clients ADD COLUMN nacionalidade TEXT;
 --   ALTER TABLE clients ADD COLUMN birth_date TEXT;
+--   ALTER TABLE clients ADD COLUMN photo_url TEXT;
 --   ALTER TABLE clients ADD COLUMN access_enabled INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);

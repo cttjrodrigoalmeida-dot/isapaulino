@@ -28,6 +28,41 @@ function parseDateBR(v: unknown): { y: number; m: number } | null {
 
 const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
+// Extrai dia/mês de um nascimento em texto livre ("21/08/1995", "21/08",
+// "1995-08-21"). Retorna null se não reconhecer números de data.
+function parseBirthday(v: unknown): { day: number; month: number } | null {
+  if (typeof v !== "string") return null;
+  let day: number;
+  let month: number;
+  const iso = v.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    month = parseInt(iso[2], 10);
+    day = parseInt(iso[3], 10);
+  } else {
+    const br = v.match(/(\d{1,2})[/.\-](\d{1,2})/);
+    if (!br) return null;
+    day = parseInt(br[1], 10);
+    month = parseInt(br[2], 10);
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { day, month };
+}
+
+interface ClientRow {
+  id: string;
+  name: string;
+  phone: string | null;
+  birth_date: string | null;
+  photo_url: string | null;
+}
+interface CalendarRow {
+  id: string;
+  date: string;
+  time: string | null;
+  title: string;
+  kind: string;
+}
+
 interface ProposalRow {
   number: string;
   client: string | null;
@@ -47,7 +82,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     await requireAuth(request, env);
 
-    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes, annualGoalRes] = await Promise.all([
+    // "Hoje" vem do cliente (fuso do navegador) para casar com o Calendário;
+    // se ausente/inválido, usa a data do servidor (UTC).
+    const todayParam = new URL(request.url).searchParams.get("today");
+    const todayStr = todayParam && /^\d{4}-\d{2}-\d{2}$/.test(todayParam)
+      ? todayParam
+      : new Date().toISOString().slice(0, 10);
+
+    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes, annualGoalRes, calendarRes, clientsRes] = await Promise.all([
       env.DB.prepare(
         "SELECT number, client, date, status, data, updated_at FROM proposals"
       ).all<ProposalRow>(),
@@ -68,6 +110,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM client_history GROUP BY status").all<{ status: string; amt: number; cnt: number }>(),
       env.DB.prepare("SELECT substr(paid_at, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM client_history WHERE status = 'paid' AND paid_at IS NOT NULL GROUP BY ym").all<{ ym: string; amt: number }>(),
       env.DB.prepare("SELECT value FROM app_settings WHERE key = 'annual_goal'").first<{ value: string | null }>(),
+      // Agenda: itens de hoje + atrasados não concluídos (alimentam "Atenção hoje").
+      env.DB.prepare(
+        "SELECT id, date, time, title, kind FROM calendar_events WHERE done = 0 AND date <= ? ORDER BY date ASC, time ASC LIMIT 12"
+      ).bind(todayStr).all<CalendarRow>(),
+      // Clientes (para aniversariantes e fotos no ranking).
+      env.DB.prepare(
+        "SELECT id, name, phone, birth_date, photo_url FROM clients WHERE deleted_at IS NULL"
+      ).all<ClientRow>(),
     ]);
 
     const proposals = propsRes.results ?? [];
@@ -76,6 +126,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       (respCountRes.results ?? []).map((r) => [r.briefing_number, r.c])
     );
     const responsesTotal = (respCountRes.results ?? []).reduce((s, r) => s + r.c, 0);
+
+    // Clientes → mapa nome (minúsculo) para anexar foto/telefone ao ranking
+    // (o ranking é agrupado por NOME da proposta, não por client_id).
+    const allClients = clientsRes.results ?? [];
+    const clientByName = new Map<string, { id: string; phone: string | null; photo: string | null }>();
+    for (const c of allClients) {
+      const key = (c.name ?? "").trim().toLowerCase();
+      if (key && !clientByName.has(key)) clientByName.set(key, { id: c.id, phone: c.phone, photo: c.photo_url });
+    }
 
     // ── Propostas: status, valores, ranking, faturamento por mês ──
     let pDraft = 0;
@@ -125,7 +184,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const avgTicket = proposalsTotal > 0 ? totalValue / proposalsTotal : 0;
 
     const clientRanking = [...byClient.entries()]
-      .map(([client, v]) => ({ client, total: v.total, count: v.count }))
+      .map(([client, v]) => {
+        const meta = clientByName.get(client.trim().toLowerCase());
+        return { client, total: v.total, count: v.count, photo: meta?.photo ?? null, clientId: meta?.id ?? null };
+      })
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
 
@@ -183,6 +245,41 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         count: pDraft,
         label: pDraft === 1 ? "Proposta em rascunho" : "Propostas em rascunho",
       });
+
+    // ── Atenção hoje (agenda): itens de hoje + atrasados não concluídos ──
+    const agendaHoje = (calendarRes.results ?? []).map((e) => ({
+      id: e.id,
+      title: e.title,
+      time: e.time,
+      kind: e.kind === "compromisso" ? "compromisso" : "tarefa",
+      date: e.date,
+      overdue: e.date < todayStr,
+    }));
+
+    // ── Aniversariantes: hoje + próximos 30 dias ──
+    const [ty, tm, td] = todayStr.split("-").map(Number);
+    const todayMs = Date.UTC(ty, tm - 1, td);
+    const aniversariantes = allClients
+      .map((c) => {
+        const b = parseBirthday(c.birth_date);
+        if (!b) return null;
+        let next = Date.UTC(ty, b.month - 1, b.day);
+        if (next < todayMs) next = Date.UTC(ty + 1, b.month - 1, b.day);
+        const days = Math.round((next - todayMs) / 86400000);
+        if (days > 30) return null;
+        return {
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          photo: c.photo_url,
+          date: `${String(b.day).padStart(2, "0")}/${String(b.month).padStart(2, "0")}`,
+          days,
+          today: days === 0,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.days - b.days)
+      .slice(0, 8);
 
     // ── Financeiro (parcelas/contratos + Histórico Financeiro) ──
     const byStatus = new Map<string, { amt: number; cnt: number }>(
@@ -267,6 +364,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       clientRanking,
       recentActivity,
       pendencias,
+      agendaHoje,
+      aniversariantes,
     });
   } catch (e) {
     return toErrorResponse(e);

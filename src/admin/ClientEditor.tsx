@@ -27,6 +27,8 @@ export default function ClientEditor({
 }) {
   const isNew = id === null;
   const [form, setForm] = useState<ClientInput>(EMPTY);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export default function ClientEditor({
           nacionalidade: client.nacionalidade ?? "",
           birth_date: client.birth_date ?? "",
         });
+        setPhoto(client.photo_url ?? null);
         try {
           const a = await api.getClientAccess(id!);
           if (alive) setAccess(a);
@@ -72,6 +75,37 @@ export default function ClientEditor({
 
   const set = <K extends keyof ClientInput>(key: K, value: ClientInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite reenviar o mesmo arquivo
+    if (!file || isNew) return;
+    setError(null);
+    setPhotoBusy(true);
+    try {
+      const { photo_url } = await api.uploadClientPhoto(id!, file);
+      setPhoto(photo_url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao enviar a foto.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+  const removePhoto = async () => {
+    if (isNew || !photo) return;
+    setError(null);
+    setPhotoBusy(true);
+    try {
+      await api.deleteClientPhoto(id!);
+      setPhoto(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao remover a foto.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+  const initials = (name: string) =>
+    (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
 
   const save = async () => {
     setError(null);
@@ -145,6 +179,33 @@ export default function ClientEditor({
 
       <div className={styles.card}>
         <div className={styles.cardTitle}>Dados do cliente</div>
+
+        <div className={styles.photoRow}>
+          <div className={styles.avatarLg}>
+            {photo ? <img src={photo} alt={form.name || "Cliente"} /> : <span>{initials(form.name ?? "")}</span>}
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className={styles.label}>Foto do cliente</label>
+            {isNew ? (
+              <div className={styles.pageHint}>Salve o cliente primeiro para adicionar uma foto.</div>
+            ) : (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                <label className={`${styles.btn} ${styles.btnGhost}`} style={{ cursor: photoBusy ? "default" : "pointer" }}>
+                  {photoBusy ? "Enviando…" : photo ? "Trocar foto" : "Enviar foto"}
+                  <input type="file" accept="image/*" hidden onChange={onPickPhoto} disabled={photoBusy} />
+                </label>
+                {photo && (
+                  <button className={`${styles.btn} ${styles.btnGhost}`} onClick={removePhoto} disabled={photoBusy}>
+                    Remover
+                  </button>
+                )}
+              </div>
+            )}
+            <div className={styles.pageHint} style={{ marginTop: 6 }}>
+              JPG, PNG ou WEBP · até 5 MB. Aparece na lista, no ranking e nos aniversariantes.
+            </div>
+          </div>
+        </div>
 
         <div className={styles.field}>
           <label className={styles.label}>Nome *</label>
@@ -221,7 +282,7 @@ export default function ClientEditor({
             placeholder="ex.: 21/08/1995"
           />
           <div className={styles.pageHint} style={{ marginTop: 6 }}>
-            Profissão, nacionalidade e nascimento são usados para preencher o contrato automaticamente.
+            Use o formato <strong>dd/mm/aaaa</strong>. Preenche o contrato automaticamente e alimenta os <strong>aniversariantes</strong> na dashboard.
           </div>
         </div>
 

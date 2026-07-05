@@ -19,7 +19,7 @@ export interface ClientInput {
   birth_date?: string | null;
 }
 
-const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, created_at AS createdAt, updated_at AS updatedAt";
+const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, created_at AS createdAt, updated_at AS updatedAt";
 
 // Normaliza um campo opcional: trim + vazio vira null.
 function opt(v: unknown): string | null {

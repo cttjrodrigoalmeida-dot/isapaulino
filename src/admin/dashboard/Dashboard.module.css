@@ -513,6 +513,55 @@
   font-weight: 700;
   font-size: 12px;
 }
+/* Ícone de item atrasado na "Atenção hoje" (âmbar) */
+.pendIconOverdue {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f59e0b;
+}
+.metaOverdue {
+  color: #f59e0b;
+}
+
+/* ── Avatar do cliente (ranking, aniversariantes) ── */
+.dashAvatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dashAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── Botão WhatsApp (aniversariantes) — redondo, só ícone ── */
+.waBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff;
+  text-decoration: none;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.waBtn:hover {
+  filter: brightness(1.06);
+  transform: scale(1.06);
+}
 
 /* ── Resumo (mini-contadores) ── */
 .summaryRow {

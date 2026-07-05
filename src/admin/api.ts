@@ -47,8 +47,10 @@ export interface Client {
   /** Profissão/papel (ex.: "ARQUITETO E URBANISTA") — usado no contrato. */
   role: string | null;
   nacionalidade: string | null;
-  /** Nascimento (texto livre). */
+  /** Nascimento (texto livre; também usado para aniversariantes). */
   birth_date: string | null;
+  /** Foto/avatar do cliente (URL pública no R2). */
+  photo_url: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -199,9 +201,13 @@ export interface DashboardOverview {
     entregues: number;
   };
   revenueByMonth: { key: string; label: string; value: number }[];
-  clientRanking: { client: string; total: number; count: number }[];
+  clientRanking: { client: string; total: number; count: number; photo: string | null; clientId: string | null }[];
   recentActivity: { at: string; type: string; title: string; sub: string }[];
   pendencias: { kind: string; count: number; label: string }[];
+  /** Itens da agenda de hoje + atrasados não concluídos (card "Atenção hoje"). */
+  agendaHoje: { id: string; title: string; time: string | null; kind: "tarefa" | "compromisso"; date: string; overdue: boolean }[];
+  /** Aniversariantes de hoje + próximos 30 dias. */
+  aniversariantes: { id: string; name: string; phone: string | null; photo: string | null; date: string; days: number; today: boolean }[];
   finance: {
     faturado: number;
     recebido: number;
@@ -305,7 +311,14 @@ export const api = {
     }),
 
   // ── dashboard ──
-  dashboardOverview: () => req<DashboardOverview>("/api/dashboard/overview"),
+  // Envia o "hoje" local (fuso do navegador) p/ casar a agenda com o Calendário.
+  dashboardOverview: () => {
+    const today = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    })();
+    return req<DashboardOverview>(`/api/dashboard/overview?today=${today}`);
+  },
 
   // ── configurações (meta anual, etc.) ──
   setSetting: (key: string, value: string) =>
@@ -414,6 +427,16 @@ export const api = {
     }),
   deleteClient: (id: string) =>
     req<{ ok: true }>(`/api/clients/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  async uploadClientPhoto(id: string, file: File): Promise<{ ok: true; photo_url: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/clients/${encodeURIComponent(id)}/photo`, { method: "POST", credentials: "include", body: fd });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, body?.error || `Erro ${res.status}`);
+    return body as { ok: true; photo_url: string };
+  },
+  deleteClientPhoto: (id: string) =>
+    req<{ ok: true }>(`/api/clients/${encodeURIComponent(id)}/photo`, { method: "DELETE" }),
 
   // ── Histórico Financeiro (HF) do cliente ──
   listClientHistory: (clientId: string) =>
