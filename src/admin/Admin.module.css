@@ -22,7 +22,7 @@
   --color-text-primary: #16181d;
   --color-text-secondary: #565b66;
   --color-text-muted: #939aa6;
-  --color-accent: #b2956a; /* creme da marca um tom mais escuro p/ contraste no claro */
+  --color-accent: #6b7280; /* CINZA no tema claro (sem o creme, a pedido) */
   --admin-pattern: rgba(20, 22, 28, 0.035);
 }
 /* ── Tema ESCURO ── */
@@ -697,6 +697,21 @@
    mantém o creme da marca. */
 .shell[data-theme="light"] .cardTitle {
   color: var(--color-text-secondary);
+}
+/* Tema claro: botão primário cinza precisa de texto branco para contraste. */
+.shell[data-theme="light"] .btnPrimary {
+  color: #ffffff;
+}
+/* Tema escuro: campos de edição BRANCOS (a pedido — igual à imagem). */
+.shell[data-theme="dark"] .input,
+.shell[data-theme="dark"] .textarea {
+  background: #ffffff;
+  color: #16181d;
+  border-color: rgba(0, 0, 0, 0.18);
+}
+.shell[data-theme="dark"] .input::placeholder,
+.shell[data-theme="dark"] .textarea::placeholder {
+  color: #8a8f98;
 }
 .tabs {
   display: flex;
