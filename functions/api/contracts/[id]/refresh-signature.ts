@@ -6,7 +6,7 @@
 import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
-import { autentiqueConfigured, getDocument, isFullySigned } from "../../_lib/autentique";
+import { autentiqueConfigured, getDocument, isFullySigned, createSignatureLink } from "../../_lib/autentique";
 import { createNotification } from "../../_lib/notifications";
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
@@ -38,7 +38,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const fullySigned = isFullySigned(doc);
 
     // Link de assinatura de quem ainda não assinou (para o botão "Assinar").
-    const pendingLink = signers.find((s) => !s.signed && s.link)?.link ?? signers.find((s) => s.link)?.link ?? "";
+    // Signatário por e-mail não traz short_link → geramos via public_id.
+    let pendingLink = signers.find((s) => !s.signed && s.link)?.link ?? signers.find((s) => s.link)?.link ?? "";
+    if (!pendingLink) {
+      const target = doc.signatures.find((s) => !s.signed) ?? doc.signatures[0];
+      if (target?.public_id) pendingLink = (await createSignatureLink(env, target.public_id)) || "";
+    }
 
     let status = row.status;
     if (fullySigned && row.status !== "signed") {

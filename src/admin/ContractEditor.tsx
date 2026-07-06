@@ -367,6 +367,16 @@ export default function ContractEditor({
               {sending ? "Enviando…" : "Enviar p/ assinatura"}
             </button>
           )}
+          {autentiqueDocId && (
+            <button
+              className={`${styles.btn} ${styles.btnGhost}`}
+              onClick={refreshSignature}
+              disabled={refreshing}
+              title="Reconsulta a Autentique e captura o link de assinatura para o botão da página"
+            >
+              {refreshing ? "Atualizando…" : "Atualizar status"}
+            </button>
+          )}
         </div>
       )}
 

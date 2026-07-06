@@ -14,7 +14,7 @@ import { requireAuth } from "../../_lib/auth";
 import {
   autentiqueConfigured,
   createSignatureDocument,
-  getDocument,
+  createSignatureLink,
   type AutentiqueSigner,
 } from "../../_lib/autentique";
 import { renderContractPdf, browserRenderingAvailable } from "../../_lib/contract-pdf";
@@ -101,22 +101,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     });
 
     // Link de assinatura do CONTRATANTE (o cliente), para o botão "Assinar" na
-    // Área do Cliente. Preferimos o e-mail da CONTRATANTE; se a criação não
-    // devolveu o short_link, reconsultamos o documento (a Autentique gera o link
-    // logo em seguida).
+    // página do contrato / Área do Cliente. Como o signatário é por E-MAIL, a
+    // Autentique NÃO devolve short_link automaticamente — geramos o link
+    // exclusivo dele com createLinkToSignature (usando o public_id).
     const emailLower = contratanteEmail.toLowerCase();
-    const pickLink = (sigs: { email: string | null; link?: { short_link: string } | null }[]): string => {
-      const mine = sigs.find((s) => (s.email || "").toLowerCase() === emailLower && s.link?.short_link);
-      return mine?.link?.short_link || sigs.find((s) => s.link?.short_link)?.link?.short_link || "";
-    };
-    let link = pickLink(document.signatures);
+    const target =
+      document.signatures.find((s) => (s.email || "").toLowerCase() === emailLower) ??
+      document.signatures.find((s) => s.email);
+    let link = "";
+    if (target?.public_id) link = (await createSignatureLink(env, target.public_id)) || "";
+    // Fallback: se algum signatário já veio com short_link (adicionado por nome).
     if (!link) {
-      try {
-        const fresh = await getDocument(env, document.id);
-        link = pickLink(fresh.signatures);
-      } catch {
-        /* mantém vazio — o refresh manual captura depois */
-      }
+      link = target?.link?.short_link || document.signatures.find((s) => s.link?.short_link)?.link?.short_link || "";
     }
 
     await env.DB.prepare(

@@ -141,6 +141,26 @@ export async function createSignatureDocument(
   return data.createDocument;
 }
 
+// ── createLinkToSignature ──────────────────────────────────────────
+// Signatários adicionados por E-MAIL não têm `link.short_link` (a Autentique
+// entrega por e-mail). Para exibir o botão "Assinar" na nossa página, geramos
+// o link exclusivo do signatário via esta mutation (usando o public_id).
+/** Gera (ou recupera) o link de assinatura exclusivo de um signatário. */
+export async function createSignatureLink(env: Env, publicId: string): Promise<string | null> {
+  const safe = String(publicId).replace(/[^\w-]/g, "");
+  if (!safe) return null;
+  try {
+    const data = await graphqlJson<{ createLinkToSignature: { short_link: string | null } | null }>(
+      env,
+      `mutation { createLinkToSignature(public_id: "${safe}") { short_link } }`,
+      {}
+    );
+    return data.createLinkToSignature?.short_link ?? null;
+  } catch {
+    return null; // não é fatal: o signatário ainda recebe o link por e-mail
+  }
+}
+
 // ── document (status) ──────────────────────────────────────────────
 const DOCUMENT_QUERY = `
 query Document($id: UUID!) {
