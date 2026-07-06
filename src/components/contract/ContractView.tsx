@@ -807,13 +807,13 @@ function ForoAssinaturaCard({
       {!printing && (
         <>
           <FooterActionCard
+            mirror
             icon={<IconDownload />}
             title="BAIXAR CONTRATO EM PDF"
             caption="Tenha uma cópia deste contrato em PDF."
             action={<button className={styles.pdfBtn} onClick={onPrint}><IconDownload /> BAIXAR PDF</button>}
           />
           <FooterActionCard
-            mirror
             icon={<IconQuestion />}
             title="DÚVIDAS?"
             caption="Fale conosco pelo WhatsApp e teremos prazer em ajudar."

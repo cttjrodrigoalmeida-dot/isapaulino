@@ -98,8 +98,9 @@
   font-family: var(--font-title);
   font-weight: 200;
   font-size: clamp(30px, 5.7vw, 54px);
-  letter-spacing: 0.01em;
-  line-height: 1.04;
+  /* mesmo tracking do título da proposta (.heroTitle: -0.04em) */
+  letter-spacing: -0.04em;
+  line-height: 1.02;
   color: var(--c-ink);
   margin: 18px 0 0;
   max-width: 15em;
@@ -187,11 +188,11 @@
 .rule { position: relative; height: 2px; background: var(--c-line); margin: 16px 0 20px; }
 .rule::before { content: ""; position: absolute; left: 0; top: 0; width: 56px; height: 2px; background: var(--c-ink); }
 
-.clauseP { font-size: 13px; line-height: 1.8; color: var(--c-ink-2); margin: 0 0 13px; }
+.clauseP { font-size: 13px; line-height: 1.8; color: var(--c-ink-2); margin: 0 0 13px; text-align: justify; }
 .clauseP:last-child { margin-bottom: 0; }
 .clauseNumInline { font-weight: 700; color: var(--c-ink); }
 .clauseList { list-style: none; margin: 0 0 13px; padding: 0; display: flex; flex-direction: column; gap: 9px; }
-.clauseList li { position: relative; padding-left: 20px; font-size: 13px; line-height: 1.7; color: var(--c-ink-2); }
+.clauseList li { position: relative; padding-left: 20px; font-size: 13px; line-height: 1.7; color: var(--c-ink-2); text-align: justify; }
 .clauseList li::before { content: ""; position: absolute; left: 4px; top: 9px; width: 5px; height: 5px; border-radius: 50%; background: var(--c-ink); }
 
 .blockLabel { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-gray); margin: 22px 0 12px; }
@@ -206,7 +207,7 @@
   margin: 16px 0;
 }
 .infoBoxIcon { flex-shrink: 0; width: 36px; height: 36px; border-radius: 9px 0 9px 0; background: var(--c-ink); color: #fff; display: grid; place-items: center; }
-.infoBoxText { font-size: 12px; font-style: italic; line-height: 1.65; color: var(--c-ink-3); margin: 0; }
+.infoBoxText { font-size: 12px; font-style: italic; line-height: 1.65; color: var(--c-ink-3); margin: 0; text-align: justify; }
 
 /* ════════ PARTES ════════ */
 .partiesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -260,6 +261,7 @@
 .importante {
   font-size: 12px;
   line-height: 1.65;
+  text-align: justify;
   color: var(--c-melancia-ink);
   margin: 16px 0 0;
   padding: 13px 16px;
@@ -273,7 +275,7 @@
 .noteItem:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
 .noteHead { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .noteTitle { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-ink); font-weight: 600; }
-.noteText { font-size: 12px; line-height: 1.65; color: var(--c-ink-2); margin: 0; }
+.noteText { font-size: 12px; line-height: 1.65; color: var(--c-ink-2); margin: 0; text-align: justify; }
 
 /* ════════ SEÇÃO 06 ════════ */
 .sixWrap { margin-top: 2px; }
@@ -342,7 +344,7 @@
 /* tabela de custos */
 .costTable { margin: 22px 0; }
 .costTableTitle { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-ink); margin-bottom: 9px; padding-bottom: 8px; border-bottom: 2px solid var(--c-ink); }
-.costNote { font-size: 12px; line-height: 1.65; color: var(--c-ink-3); margin: 0 0 12px; }
+.costNote { font-size: 12px; line-height: 1.65; color: var(--c-ink-3); margin: 0 0 12px; text-align: justify; }
 .costGrid { width: 100%; border-collapse: collapse; }
 .costGrid th { text-align: left; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-ink-2); background: var(--c-beige-soft); padding: 10px 12px; border-bottom: 1px solid var(--c-line-2); }
 .costGrid td { font-size: 12px; color: var(--c-ink-2); padding: 12px; border-bottom: 1px solid var(--c-line); vertical-align: top; }
@@ -385,7 +387,7 @@
 .digitalBoxMain { display: flex; gap: 14px; flex: 1; min-width: 240px; }
 .digitalBoxIcon { flex-shrink: 0; width: 42px; height: 42px; border-radius: 12px 0 12px 0; background: var(--c-ink); color: #fff; display: grid; place-items: center; }
 .digitalBoxLabel { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-ink-3); margin-bottom: 6px; }
-.digitalBoxText { font-size: 12.5px; line-height: 1.6; color: var(--c-ink-2); margin: 0; max-width: 420px; }
+.digitalBoxText { font-size: 12.5px; line-height: 1.6; color: var(--c-ink-2); margin: 0; max-width: 420px; text-align: justify; }
 .digitalBoxSide { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; text-align: right; }
 .digitalBadge {
   display: inline-flex; align-items: center; gap: 6px;
@@ -450,11 +452,11 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.16);
   border-radius: var(--border-radius-standard);
   padding: 18px 22px;
   margin-top: 14px;
-  background: var(--c-pill-bg);
+  background: #f8f8f7; /* bem mais claro que o cinza das pílulas */
   flex-wrap: wrap;
 }
 .footerCardMirror { border-radius: var(--border-radius-mirror); }
