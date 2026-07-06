@@ -47,6 +47,12 @@ function computeValidUntil(validity: string, date: string): string | undefined {
   return end.toISOString();
 }
 
+// Data de hoje no formato "DD/MM/AAAA" (padrão de uma proposta nova).
+function todayBR(): string {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
 export default function ProposalEditor({
   number,
   onBack,
@@ -70,6 +76,11 @@ export default function ProposalEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Clientes cadastrados — para "puxar" o cliente no seletor (evita erro de nome no Ranking/Dashboard).
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    api.listClients().then(({ clients }) => setClients(clients.map((c) => ({ id: c.id, name: c.name })))).catch(() => {});
+  }, []);
 
   // Recálculo central: investimento → total → pagamento.
   const recomputeAll = useCallback(
@@ -99,6 +110,9 @@ export default function ProposalEditor({
           draft.number = nextNum;
           draft.client = "";
           draft.clientFirstName = "";
+          // Proposta nova começa com a data de hoje (editável).
+          draft.date = todayBR();
+          draft.validUntil = computeValidUntil(draft.validity, draft.date) ?? draft.validUntil;
           const combo = readComboFromNote(draft.comboNote);
           const pixD = readPixDiscount(draft.pixPlan?.discountLabel);
           const maxN = readMaxInstallments(draft.installmentPlan?.rows);
@@ -275,7 +289,23 @@ export default function ProposalEditor({
             <div className={styles.row2}>
               <div className={styles.field}>
                 <label className={styles.label}>Cliente</label>
-                <input className={styles.input} value={proposal.client} onChange={(e) => set("client", e.target.value)} />
+                {clients.length > 0 && (
+                  <select
+                    className={styles.input}
+                    style={{ marginBottom: 8 }}
+                    value=""
+                    onChange={(e) => {
+                      const c = clients.find((x) => x.id === e.target.value);
+                      if (!c) return;
+                      const first = c.name.trim().split(/\s+/)[0] || c.name;
+                      setProposal((prev) => (prev ? { ...prev, client: c.name, clientFirstName: first } : prev));
+                    }}
+                  >
+                    <option value="">— Puxar cliente cadastrado —</option>
+                    {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                )}
+                <input className={styles.input} value={proposal.client} onChange={(e) => set("client", e.target.value)} placeholder="Nome do cliente" />
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>Primeiro nome (carta)</label>
