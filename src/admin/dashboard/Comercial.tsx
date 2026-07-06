@@ -7,8 +7,9 @@ import BriefingResponses from "../BriefingResponses";
 import Contratos from "./Contratos";
 import admin from "../Admin.module.css";
 
-// Contratos também faz parte do comercial (proposta → briefing → contrato), então
+// Contratos também faz parte do comercial (proposta → contrato → briefing), então
 // aparece aqui como aba além de ter a seção dedicada própria na barra lateral.
+// Ordem do fluxo: primeiro a proposta, depois assinar o contrato, e só então o briefing.
 type Area = "proposals" | "briefings" | "contracts";
 type View =
   | { name: "list" }
@@ -38,11 +39,11 @@ export default function Comercial({ requestNew }: { requestNew?: { area: Area; n
         <button className={`${admin.tab} ${area === "proposals" ? admin.tabActive : ""}`} onClick={() => goArea("proposals")}>
           Propostas
         </button>
-        <button className={`${admin.tab} ${area === "briefings" ? admin.tabActive : ""}`} onClick={() => goArea("briefings")}>
-          Briefings
-        </button>
         <button className={`${admin.tab} ${area === "contracts" ? admin.tabActive : ""}`} onClick={() => goArea("contracts")}>
           Contratos
+        </button>
+        <button className={`${admin.tab} ${area === "briefings" ? admin.tabActive : ""}`} onClick={() => goArea("briefings")}>
+          Briefings
         </button>
       </div>
 

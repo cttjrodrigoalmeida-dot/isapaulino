@@ -37,7 +37,7 @@ export interface SectionDef {
 
 export const SECTIONS: SectionDef[] = [
   { id: "visao", label: "Visão geral", sub: "Resumo do estúdio", icon: IcDashboard, ready: true },
-  { id: "comercial", label: "Comercial", sub: "Propostas, briefing e contrato", icon: IcComercial, ready: true },
+  { id: "comercial", label: "Comercial", sub: "Propostas, contrato e briefing", icon: IcComercial, ready: true },
   { id: "clientes", label: "Clientes", sub: "Lista e relacionamento", icon: IcClientes, ready: true },
   { id: "contratos", label: "Contratos", sub: "Documentos e assinatura", icon: IcContrato, ready: true },
   { id: "projetos", label: "Projetos", sub: "Andamento e entregas", icon: IcProjetos, ready: true },

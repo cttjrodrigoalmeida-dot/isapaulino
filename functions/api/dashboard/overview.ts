@@ -354,9 +354,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       // módulos futuros (leads/contratos/projetos/entregas).
       funnel: {
         leads: 0,
-        briefings: briefings.length,
         propostas: proposalsTotal,
         contratos: contratosTotal,
+        briefings: briefings.length,
         projetos: 0,
         entregues: 0,
       },

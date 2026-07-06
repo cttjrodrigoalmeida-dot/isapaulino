@@ -135,9 +135,9 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
           <div className={s.list}>
             {([
               ["Leads", funnel.leads],
-              ["Briefings", funnel.briefings],
               ["Propostas", funnel.propostas],
               ["Contratos", funnel.contratos],
+              ["Briefings", funnel.briefings],
               ["Projetos", funnel.projetos],
               ["Entregues", funnel.entregues],
             ] as [string, number][]).map(([label, v]) => (
