@@ -26,7 +26,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     if (!row.docId) return error(400, "Este contrato ainda não foi enviado para assinatura.");
 
     const doc = await getDocument(env, row.docId);
-    console.log("[autentique] refresh signatures:", JSON.stringify(doc.signatures.map((s) => ({ email: s.email, action: s.action?.name ?? null, signed: !!s.signed }))));
 
     // Só os SIGNATÁRIOS reais (com ação) — o CRIADOR (Isabela dona da conta) não assina.
     const realSigners = actionableSignatures(doc.signatures);
