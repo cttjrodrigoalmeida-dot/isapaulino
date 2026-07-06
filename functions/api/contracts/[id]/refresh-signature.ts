@@ -6,7 +6,7 @@
 import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
-import { autentiqueConfigured, getDocument, isFullySigned, createSignatureLink } from "../../_lib/autentique";
+import { autentiqueConfigured, getDocument, isFullySigned, createSignatureLink, actionableSignatures } from "../../_lib/autentique";
 import { createNotification } from "../../_lib/notifications";
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
@@ -26,9 +26,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     if (!row.docId) return error(400, "Este contrato ainda não foi enviado para assinatura.");
 
     const doc = await getDocument(env, row.docId);
-    console.log("[autentique] refresh signatures:", JSON.stringify(doc.signatures.map((s) => ({ public_id: s.public_id, email: s.email, signed: !!s.signed, link: s.link?.short_link ?? null }))));
+    console.log("[autentique] refresh signatures:", JSON.stringify(doc.signatures.map((s) => ({ email: s.email, action: s.action?.name ?? null, signed: !!s.signed }))));
 
-    const signers = doc.signatures.map((s) => ({
+    // Só os SIGNATÁRIOS reais (com ação) — o CRIADOR (Isabela dona da conta) não assina.
+    const realSigners = actionableSignatures(doc.signatures);
+    const signers = realSigners.map((s) => ({
       name: s.name,
       email: s.email,
       signed: !!s.signed,
@@ -38,12 +40,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     }));
     const fullySigned = isFullySigned(doc);
 
-    // Link de assinatura de quem ainda não assinou (para o botão "Assinar").
-    // Signatário por e-mail não traz short_link → geramos via public_id.
-    // A CONTRATADA (Isabela) é a Criadora e NÃO tem ação de assinar
-    // ("without_action_in_document"), então miramos o e-mail do CONTRATANTE
-    // (do doc ou do cliente) primeiro e pulamos quem não devolver link.
-    let pendingLink = signers.find((s) => !s.signed && s.link)?.link ?? signers.find((s) => s.link)?.link ?? "";
+    // Link do CONTRATANTE (cliente) para o botão "Assinar" da página pública.
+    // A CONTRATADA (Isabela) assina no painel da Autentique dela — não precisa
+    // de link público. Signatário por e-mail não traz short_link → geramos via
+    // public_id, mirando o e-mail do CONTRATANTE (do doc ou do cliente) primeiro.
+    let pendingLink = signers.find((s) => !s.signed && s.link)?.link ?? "";
     if (!pendingLink) {
       let contratanteEmail = row.clientEmail || "";
       if (row.data) {
@@ -54,8 +55,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       }
       const el = contratanteEmail.toLowerCase();
       const ordered = [
-        ...doc.signatures.filter((s) => el && (s.email || "").toLowerCase() === el),
-        ...doc.signatures.filter((s) => !el || (s.email || "").toLowerCase() !== el),
+        ...realSigners.filter((s) => el && (s.email || "").toLowerCase() === el),
+        ...realSigners.filter((s) => !el || (s.email || "").toLowerCase() !== el),
       ];
       for (const s of ordered) {
         if (s.signed) continue;

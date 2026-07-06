@@ -172,7 +172,7 @@ query Document($id: UUID!) {
   document(id: $id) {
     id
     name
-    signatures { public_id email name signed { created_at } rejected { created_at } link { short_link } }
+    signatures { public_id email name action { name } signed { created_at } rejected { created_at } link { short_link } }
   }
 }`;
 
@@ -183,10 +183,17 @@ export interface AutentiqueDocStatus {
     public_id: string;
     email: string | null;
     name: string | null;
+    // action = null quando é apenas o CRIADOR (dono da conta), que não assina.
+    action?: { name: string } | null;
     signed: { created_at: string } | null;
     rejected: { created_at: string } | null;
     link?: { short_link: string } | null;
   }[];
+}
+
+/** Assinaturas que realmente precisam assinar (exclui o CRIADOR, que não tem ação). */
+export function actionableSignatures<T extends { action?: { name: string } | null }>(sigs: T[]): T[] {
+  return sigs.filter((s) => !!s.action);
 }
 
 /** Consulta o status de um documento (quem já assinou). */
@@ -195,7 +202,9 @@ export async function getDocument(env: Env, id: string): Promise<AutentiqueDocSt
   return data.document;
 }
 
-/** true se todas as assinaturas do documento já foram concluídas. */
+/** true se todas as assinaturas do documento já foram concluídas.
+ *  Conta apenas os SIGNATÁRIOS (com ação) — o CRIADOR não assina. */
 export function isFullySigned(doc: AutentiqueDocStatus): boolean {
-  return doc.signatures.length > 0 && doc.signatures.every((s) => !!s.signed);
+  const signers = actionableSignatures(doc.signatures);
+  return signers.length > 0 && signers.every((s) => !!s.signed);
 }
