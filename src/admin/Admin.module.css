@@ -781,11 +781,16 @@
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  border-radius: var(--border-radius-btn);
+  /* Bordas menos arredondadas (8px em vez de 14px) e assimétricas (marca). */
+  border-radius: 8px 0 8px 0;
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
+}
+/* Espelhado: alterna os cantos entre botões vizinhos, a partir do 1º. */
+.tab:nth-child(even) {
+  border-radius: 0 8px 0 8px;
 }
 .tabActive {
   background: rgba(212, 197, 176, 0.1);
