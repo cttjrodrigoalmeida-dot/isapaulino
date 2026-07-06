@@ -19,9 +19,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
     const row = await env.DB.prepare(
       `SELECT c.autentique_document_id AS docId, c.status AS status, c.autentique_url AS url,
-              c.title AS title, cl.name AS clientName
+              c.title AS title, cl.name AS clientName, cl.email AS clientEmail, c.data AS data
        FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
-    ).bind(contractId).first<{ docId: string | null; status: string; url: string | null; title: string | null; clientName: string | null }>();
+    ).bind(contractId).first<{ docId: string | null; status: string; url: string | null; title: string | null; clientName: string | null; clientEmail: string | null; data: string | null }>();
     if (!row) return error(404, "Contrato não encontrado.");
     if (!row.docId) return error(400, "Este contrato ainda não foi enviado para assinatura.");
 
@@ -40,10 +40,28 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
     // Link de assinatura de quem ainda não assinou (para o botão "Assinar").
     // Signatário por e-mail não traz short_link → geramos via public_id.
+    // A CONTRATADA (Isabela) é a Criadora e NÃO tem ação de assinar
+    // ("without_action_in_document"), então miramos o e-mail do CONTRATANTE
+    // (do doc ou do cliente) primeiro e pulamos quem não devolver link.
     let pendingLink = signers.find((s) => !s.signed && s.link)?.link ?? signers.find((s) => s.link)?.link ?? "";
     if (!pendingLink) {
-      const target = doc.signatures.find((s) => !s.signed) ?? doc.signatures[0];
-      if (target?.public_id) pendingLink = (await createSignatureLink(env, target.public_id)) || "";
+      let contratanteEmail = row.clientEmail || "";
+      if (row.data) {
+        try {
+          const d = JSON.parse(row.data) as { contratante?: { email?: string } };
+          if (d?.contratante?.email) contratanteEmail = d.contratante.email;
+        } catch { /* usa o e-mail do cliente */ }
+      }
+      const el = contratanteEmail.toLowerCase();
+      const ordered = [
+        ...doc.signatures.filter((s) => el && (s.email || "").toLowerCase() === el),
+        ...doc.signatures.filter((s) => !el || (s.email || "").toLowerCase() !== el),
+      ];
+      for (const s of ordered) {
+        if (s.signed) continue;
+        const l = await createSignatureLink(env, s.public_id);
+        if (l) { pendingLink = l; break; }
+      }
     }
 
     let status = row.status;

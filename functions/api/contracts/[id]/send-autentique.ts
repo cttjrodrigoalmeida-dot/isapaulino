@@ -104,16 +104,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     // página do contrato / Área do Cliente. Como o signatário é por E-MAIL, a
     // Autentique NÃO devolve short_link automaticamente — geramos o link
     // exclusivo dele com createLinkToSignature (usando o public_id).
+    // IMPORTANTE: a CONTRATADA (Isabela) é a Criadora e NÃO tem ação de assinar
+    // ("without_action_in_document"); miramos o e-mail do CONTRATANTE primeiro e,
+    // se falhar, tentamos os demais — pulando quem não tiver link.
     const emailLower = contratanteEmail.toLowerCase();
-    const target =
-      document.signatures.find((s) => (s.email || "").toLowerCase() === emailLower) ??
-      document.signatures.find((s) => s.email);
+    const ordered = [
+      ...document.signatures.filter((s) => emailLower && (s.email || "").toLowerCase() === emailLower),
+      ...document.signatures.filter((s) => !emailLower || (s.email || "").toLowerCase() !== emailLower),
+    ];
     let link = "";
-    if (target?.public_id) link = (await createSignatureLink(env, target.public_id)) || "";
-    // Fallback: se algum signatário já veio com short_link (adicionado por nome).
-    if (!link) {
-      link = target?.link?.short_link || document.signatures.find((s) => s.link?.short_link)?.link?.short_link || "";
+    for (const s of ordered) {
+      if (!s.public_id) continue;
+      const l = await createSignatureLink(env, s.public_id);
+      if (l) { link = l; break; }
     }
+    // Fallback: se algum signatário já veio com short_link (adicionado por nome).
+    if (!link) link = ordered.find((s) => s.link?.short_link)?.link?.short_link || "";
 
     await env.DB.prepare(
       `UPDATE contracts
