@@ -26,6 +26,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     if (!row.docId) return error(400, "Este contrato ainda não foi enviado para assinatura.");
 
     const doc = await getDocument(env, row.docId);
+    console.log("[autentique] refresh signatures:", JSON.stringify(doc.signatures.map((s) => ({ public_id: s.public_id, email: s.email, signed: !!s.signed, link: s.link?.short_link ?? null }))));
 
     const signers = doc.signatures.map((s) => ({
       name: s.name,

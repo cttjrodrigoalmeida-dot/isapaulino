@@ -148,15 +148,20 @@ export async function createSignatureDocument(
 /** Gera (ou recupera) o link de assinatura exclusivo de um signatário. */
 export async function createSignatureLink(env: Env, publicId: string): Promise<string | null> {
   const safe = String(publicId).replace(/[^\w-]/g, "");
-  if (!safe) return null;
+  if (!safe) {
+    console.log("[autentique] createSignatureLink: public_id vazio");
+    return null;
+  }
   try {
     const data = await graphqlJson<{ createLinkToSignature: { short_link: string | null } | null }>(
       env,
       `mutation { createLinkToSignature(public_id: "${safe}") { short_link } }`,
       {}
     );
+    console.log("[autentique] createSignatureLink OK:", JSON.stringify(data), "public_id:", safe);
     return data.createLinkToSignature?.short_link ?? null;
-  } catch {
+  } catch (e) {
+    console.error("[autentique] createSignatureLink ERRO:", e instanceof Error ? e.message : String(e), "public_id:", safe);
     return null; // não é fatal: o signatário ainda recebe o link por e-mail
   }
 }
