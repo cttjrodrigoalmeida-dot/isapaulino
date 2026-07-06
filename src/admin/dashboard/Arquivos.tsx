@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api, ApiError, type DocumentFile, type Client } from "../api";
+import UploadHint from "../UploadHint";
 import s from "./Dashboard.module.css";
 import admin from "../Admin.module.css";
 
@@ -214,6 +215,7 @@ export default function Arquivos() {
               <input ref={fileInput} type="file" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) doUpload(f); }} />
               {busy && <span className={s.emptyMini} style={{ margin: 0 }}>Enviando…</span>}
             </div>
+            <UploadHint compact />
           </div>
 
           <div style={{ marginBottom: 12 }}>

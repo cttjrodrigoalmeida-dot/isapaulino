@@ -3,6 +3,7 @@ import type { BriefingSection, BriefingQuestion, QuestionType } from "../compone
 import { api, ApiError } from "./api";
 import ListEditor from "./ListEditor";
 import PinCanvas from "./PinCanvas";
+import UploadHint from "./UploadHint";
 import styles from "./Admin.module.css";
 
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
@@ -250,6 +251,7 @@ export default function BriefingSectionEditor({
             />
           </div>
           {uploadError && <div className={styles.error}>{uploadError}</div>}
+          <UploadHint compact />
 
           {section.image && (
             <>

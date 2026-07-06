@@ -12,6 +12,7 @@ import {
   readMaxInstallments,
 } from "./recompute";
 import ListEditor from "./ListEditor";
+import GalleryEditor from "./GalleryEditor";
 import InvestmentEditor from "./InvestmentEditor";
 import PaymentEditor from "./PaymentEditor";
 import ProcessEditor from "./ProcessEditor";
@@ -358,7 +359,9 @@ export default function ProposalEditor({
             </div>
           </div>
 
-          {/* ordem igual à da página: Processo vem antes do Investimento */}
+          {/* ordem igual à da página: Portfólio → Processo → Investimento */}
+          <GalleryEditor proposal={proposal} onChange={(p) => setProposal(p)} />
+
           <ProcessEditor proposal={proposal} onChange={(p) => setProposal(p)} />
 
           <InvestmentEditor

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type ClientInput } from "./api";
 import { isValidCpfCnpj, isValidEmail } from "./validation";
+import UploadHint from "./UploadHint";
 import styles from "./Admin.module.css";
 
 const EMPTY: ClientInput = {
@@ -204,6 +205,7 @@ export default function ClientEditor({
             <div className={styles.pageHint} style={{ marginTop: 6 }}>
               JPG, PNG ou WEBP · até 5 MB. Aparece na lista, no ranking e nos aniversariantes.
             </div>
+            {!isNew && <UploadHint compact />}
           </div>
         </div>
 
