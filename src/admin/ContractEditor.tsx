@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, type Client, type ContractInput, type ContractStatus } from "./api";
+import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus } from "../components/contract/types";
 import { blankContractDoc } from "../components/contract/newContractDoc";
 import ListEditor from "./ListEditor";
@@ -33,6 +33,16 @@ function parseBRL(s?: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Ícone da "caneta" usado nos botões de enviar para assinatura (topo e barra inferior).
+function SignIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
 export default function ContractEditor({
   id,
   onBack,
@@ -45,6 +55,7 @@ export default function ContractEditor({
   const isNew = id === null;
   const [contractId, setContractId] = useState<string | null>(id);
   const [clients, setClients] = useState<Client[]>([]);
+  const [proposals, setProposals] = useState<ProposalSummary[]>([]);
 
   const [doc, setDoc] = useState<ContractDoc | null>(null);
   const [clientId, setClientId] = useState("");
@@ -76,12 +87,14 @@ export default function ContractEditor({
     let alive = true;
     (async () => {
       try {
-        const [{ clients }, loaded] = await Promise.all([
+        const [{ clients }, { proposals }, loaded] = await Promise.all([
           api.listClients(),
+          api.listProposals(),
           isNew ? Promise.resolve(null) : api.getContract(id!),
         ]);
         if (!alive) return;
         setClients(clients);
+        setProposals(proposals);
         if (loaded) {
           const c = loaded.contract;
           setClientId(c.clientId);
@@ -154,6 +167,18 @@ export default function ContractEditor({
       },
     });
     setNotice("Dados do cliente aplicados à CONTRATANTE.");
+  };
+
+  // Seleciona o cliente e puxa o nº da proposta dele → preenche nº do contrato
+  // e nº da proposta (ambos editáveis). Pega a proposta mais recente do cliente.
+  const selectClient = (cid: string) => {
+    setClientId(cid);
+    const c = clients.find((x) => x.id === cid);
+    if (!c) return;
+    const mine = proposals
+      .filter((p) => (p.client || "").trim().toLowerCase() === (c.name || "").trim().toLowerCase())
+      .sort((a, b) => Number(b.number) - Number(a.number));
+    if (mine.length > 0) patch({ proposalNumber: mine[0].number, contractNumber: mine[0].number });
   };
 
   const goJsonTab = () => {
@@ -331,6 +356,17 @@ export default function ContractEditor({
           <a className={`${styles.btn} ${styles.btnGhost}`} href={publicUrl} target="_blank" rel="noopener noreferrer">
             Abrir
           </a>
+          {contractId && (
+            <button
+              className={`${styles.btn} ${styles.btnSign}`}
+              onClick={() => sendToAutentique(null)}
+              disabled={saving || sending}
+              title="Gera o PDF e envia para as partes assinarem na Autentique"
+            >
+              <SignIcon />
+              {sending ? "Enviando…" : "Enviar p/ assinatura"}
+            </button>
+          )}
         </div>
       )}
 
@@ -370,7 +406,7 @@ export default function ContractEditor({
             <div className={styles.row2}>
               <div className={styles.field}>
                 <label className={styles.label}>Cliente *</label>
-                <select className={styles.input} value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                <select className={styles.input} value={clientId} onChange={(e) => selectClient(e.target.value)}>
                   <option value="">Selecione…</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -384,12 +420,9 @@ export default function ContractEditor({
               </div>
               <Txt label="Título interno (listagem)" value={title} onChange={setTitle} placeholder="Ex.: Contrato — Paulo Henrique" />
             </div>
-            <Txt
-              label="Link de assinatura (Autentique)"
-              value={doc.autentiqueUrl ?? ""}
-              onChange={(v) => patch({ autentiqueUrl: v })}
-              placeholder="Cole o link gerado na Autentique (opcional por enquanto)"
-            />
+            <div className={styles.placeholderHint}>
+              Ao selecionar o cliente, os nº do contrato e da proposta são puxados da proposta dele (editáveis na aba abaixo).
+            </div>
           </div>
 
           {/* ── Identificação ── */}
@@ -730,10 +763,7 @@ export default function ContractEditor({
               disabled={saving || sending}
               title={slug ? "Gera o PDF e envia para as partes assinarem na Autentique" : "Publique o contrato primeiro"}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
+              <SignIcon />
               {sending ? "Enviando…" : "Enviar p/ assinatura"}
             </button>
           )}
