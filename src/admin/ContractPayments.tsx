@@ -87,20 +87,25 @@ export default function ContractPayments({
     try {
       const { config, installments } = await api.getContractPayments(contractId);
       setInstallments(installments);
-      if (config) {
-        setTotalValue(config.totalValue);
-        setDownPayment(config.downPayment || null);
-        setCountStr(String(config.installmentsCount));
-      }
-      // Dados do cliente (para o botão "Cobrar no WhatsApp").
+      // Busca o contrato p/ o cliente (WhatsApp) e o valor (sugestão do total).
+      let contractValue: number | null = null;
       try {
         const { contract } = await api.getContract(contractId);
+        contractValue = contract.value;
         if (contract.clientId) {
           const { client } = await api.getClient(contract.clientId);
           setClient({ name: client.name, phone: client.phone });
         }
       } catch {
         /* opcional — sem cliente, o botão do WhatsApp só não aparece */
+      }
+      if (config) {
+        setTotalValue(config.totalValue);
+        setDownPayment(config.downPayment || null);
+        setCountStr(String(config.installmentsCount));
+      } else if (contractValue != null && contractValue > 0) {
+        // Ainda não configurado: sugere o valor total do contrato (editável).
+        setTotalValue(contractValue);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -157,6 +162,31 @@ export default function ContractPayments({
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao gerar cobranças.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onExcluir = async () => {
+    const hasAsaas = installments.some((i) => i.asaasPaymentId);
+    const hasPaid = installments.some((i) => i.status === "received");
+    const msg =
+      hasAsaas || hasPaid
+        ? `Atenção: há cobranças geradas no ASAAS${hasPaid ? " e/ou pagamentos já recebidos" : ""}.\n\nExcluir aqui vai tentar CANCELAR as cobranças no ASAAS (as já pagas não podem ser canceladas) e remover as parcelas do sistema. Esta ação não pode ser desfeita. Continuar?`
+        : "Excluir todas as parcelas deste contrato para refazer? Esta ação não pode ser desfeita.";
+    if (!confirm(msg)) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const r = await api.deleteContractPayments(contractId);
+      setPreview(null);
+      setDownPayment(null);
+      setCountStr("1");
+      setNotice(`Parcelas excluídas.${r.cancelled ? ` ${r.cancelled} cobrança(s) cancelada(s) no ASAAS.` : ""}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao excluir as parcelas.");
     } finally {
       setBusy(false);
     }
@@ -239,6 +269,11 @@ export default function ContractPayments({
       {/* Configuração */}
       <div className={styles.card}>
         <div className={styles.cardTitle}>Configurar parcelas</div>
+        {!locked && (
+          <div className={styles.pageHint} style={{ marginBottom: 12 }}>
+            O <strong>valor total</strong> já vem sugerido do contrato — ajuste se precisar.
+          </div>
+        )}
         {locked && (
           <div className={styles.pageHint} style={{ marginBottom: 12 }}>
             Já há parcelas pagas ou enviadas ao ASAAS — a reconfiguração está bloqueada.
@@ -303,6 +338,9 @@ export default function ContractPayments({
               </button>
               <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onGerarAsaas} disabled={busy}>
                 Criar cobranças no ASAAS
+              </button>
+              <button className={`${styles.btn} ${styles.btnDanger}`} onClick={onExcluir} disabled={busy} title="Apaga as parcelas para refazer (cancela no ASAAS o que der)">
+                Excluir parcelas
               </button>
             </div>
           </div>

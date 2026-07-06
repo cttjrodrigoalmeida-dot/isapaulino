@@ -1,10 +1,13 @@
 // /api/contracts/:id/payments
-//   GET  → config de pagamento + parcelas do contrato (admin).
-//   POST → calcula e grava parcelas { total_value, down_payment, installments_count, first_due_date }.
-//          NÃO chama o ASAAS (isso é feito depois em /generate-asaas).
+//   GET    → config de pagamento + parcelas do contrato (admin).
+//   POST   → calcula e grava parcelas { total_value, down_payment, installments_count, first_due_date }.
+//            NÃO chama o ASAAS (isso é feito depois em /generate-asaas).
+//   DELETE → apaga a config + parcelas (para refazer em caso de erro); cancela
+//            no ASAAS as cobranças que dá (best-effort).
 import type { Env } from "../../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
+import { asaasConfigured, deletePayment } from "../../_lib/asaas";
 
 interface PaymentBody {
   total_value?: number;
@@ -112,6 +115,36 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     await env.DB.batch(stmts);
 
     return json({ ok: true, configId, count: list.length }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+};
+
+export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const contractId = String(params.id);
+    const contract = await env.DB.prepare("SELECT id FROM contracts WHERE id = ?").bind(contractId).first();
+    if (!contract) return error(404, "Contrato não encontrado.");
+
+    // Cancela no ASAAS as cobranças que ainda dá (best-effort — já pagas dão erro
+    // e são ignoradas) antes de apagar localmente, para não deixar cobrança órfã.
+    let cancelled = 0;
+    if (asaasConfigured(env)) {
+      const { results } = await env.DB.prepare(
+        "SELECT asaas_payment_id AS id FROM installments WHERE contract_id = ? AND asaas_payment_id IS NOT NULL"
+      ).bind(contractId).all<{ id: string }>();
+      for (const r of results ?? []) {
+        try { await deletePayment(env, r.id); cancelled++; } catch { /* já paga/cancelada — ignora */ }
+      }
+    }
+
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM installments WHERE contract_id = ?").bind(contractId),
+      env.DB.prepare("DELETE FROM contract_payments WHERE contract_id = ?").bind(contractId),
+    ]);
+
+    return json({ ok: true, cancelled });
   } catch (e) {
     return toErrorResponse(e);
   }

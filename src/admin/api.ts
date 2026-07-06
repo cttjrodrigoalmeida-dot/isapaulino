@@ -554,6 +554,11 @@ export const api = {
       `/api/contracts/${encodeURIComponent(contractId)}/payments`,
       { method: "POST", body: JSON.stringify(input) }
     ),
+  deleteContractPayments: (contractId: string) =>
+    req<{ ok: true; cancelled: number }>(
+      `/api/contracts/${encodeURIComponent(contractId)}/payments`,
+      { method: "DELETE" }
+    ),
   generateAsaas: (contractId: string) =>
     req<{ ok: true; created: number; message?: string }>(
       `/api/contracts/${encodeURIComponent(contractId)}/generate-asaas`,
