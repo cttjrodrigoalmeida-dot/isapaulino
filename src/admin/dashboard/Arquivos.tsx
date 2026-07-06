@@ -70,6 +70,24 @@ export default function Arquivos() {
     }
   };
 
+  const removeFolder = async (f: { name: string; count: number }) => {
+    const msg = f.count > 0
+      ? `A pasta "${f.name}" tem ${f.count} arquivo(s). Excluir a pasta apaga TODOS eles (inclusive os vinculados a clientes, que somem da Área do Cliente). Esta ação não pode ser desfeita. Continuar?`
+      : `Excluir a pasta "${f.name}"?`;
+    if (!confirm(msg)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteFolder(f.name);
+      if (current === f.name) setCurrent(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao excluir a pasta.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const doUpload = async (file: File) => {
     setBusy(true);
     setError(null);
@@ -148,16 +166,25 @@ export default function Arquivos() {
           ) : (
             <div className={`${s.grid} ${s.cols4}`}>
               {folders.map((f) => (
-                <button
+                <div
                   key={f.name}
                   className={s.card}
                   onClick={() => setCurrent(f.name)}
-                  style={{ cursor: "pointer", textAlign: "left", border: "1px solid var(--color-border)" }}
+                  style={{ cursor: "pointer", textAlign: "left", border: "1px solid var(--color-border)", position: "relative" }}
                 >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeFolder(f); }}
+                    disabled={busy}
+                    title={`Excluir pasta "${f.name}"`}
+                    aria-label={`Excluir pasta ${f.name}`}
+                    style={{ position: "absolute", top: 8, right: 8, background: "transparent", border: "none", cursor: "pointer", fontSize: 15, opacity: 0.55, padding: 4, lineHeight: 1 }}
+                  >
+                    🗑️
+                  </button>
                   <div style={{ fontSize: 30, marginBottom: 6 }}>📁</div>
                   <div className={s.cardTitleX}>{f.name}</div>
                   <div className={s.cardSub}>{f.count} arquivo(s)</div>
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -165,8 +192,15 @@ export default function Arquivos() {
       ) : (
         /* ── DENTRO DE UMA PASTA ── */
         <>
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className={`${admin.btn} ${admin.btnGhost}`} onClick={() => { setCurrent(null); setSearch(""); }}>← Voltar às pastas</button>
+            <button
+              className={`${admin.btn} ${admin.btnDanger}`}
+              disabled={busy}
+              onClick={() => removeFolder({ name: current, count: inFolder.length })}
+            >
+              🗑️ Excluir pasta
+            </button>
           </div>
 
           <div className={s.card} style={{ marginBottom: 16 }}>

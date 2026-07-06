@@ -614,6 +614,8 @@ export const api = {
   listDocuments: () => req<{ files: DocumentFile[]; folders: { name: string; count: number }[] }>("/api/documents"),
   createFolder: (folder: string) =>
     req<{ ok: true; folder: string }>("/api/documents/folder", { method: "POST", body: JSON.stringify({ folder }) }),
+  deleteFolder: (folder: string) =>
+    req<{ ok: true; deleted: number }>("/api/documents/folder", { method: "DELETE", body: JSON.stringify({ folder }) }),
   async uploadDocument(file: File, folder?: string, clientId?: string): Promise<{ ok: true; key: string; name: string; folder: string }> {
     const fd = new FormData();
     fd.append("file", file);
