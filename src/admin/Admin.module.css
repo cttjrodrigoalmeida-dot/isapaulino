@@ -39,6 +39,16 @@
   --admin-pattern: rgba(212, 197, 176, 0.05);
 }
 
+/* Tooltip dos gráficos (recharts): o texto acompanha o tema (branco no escuro).
+   Sem isso, o recharts usa preto fixo e some no fundo escuro. */
+.shell :global(.recharts-default-tooltip),
+.shell :global(.recharts-tooltip-label),
+.shell :global(.recharts-tooltip-item),
+.shell :global(.recharts-tooltip-item-name),
+.shell :global(.recharts-tooltip-item-value) {
+  color: var(--color-text-primary) !important;
+}
+
 /* fundo: pontos sutis adaptados ao tema */
 .shell::before {
   content: "";
@@ -158,6 +168,14 @@
   background: rgba(255, 255, 255, 0.05);
   color: var(--color-text-primary);
   border-color: transparent;
+}
+/* No tema CLARO a tinta clara do hover some no fundo claro — usar tinta ESCURA. */
+.shell[data-theme="light"] .btn:hover {
+  background: rgba(20, 22, 28, 0.06);
+  border-color: var(--color-border-strong);
+}
+.shell[data-theme="light"] .btnGhost:hover {
+  background: rgba(20, 22, 28, 0.06);
 }
 /* Botão de assinatura — tom escuro (ink) para destacar do creme do "Publicar". */
 .btnSign {
@@ -796,6 +814,22 @@
   background: rgba(212, 197, 176, 0.1);
   border-color: var(--color-accent);
   color: var(--color-text-primary);
+}
+/* Hover das abas (não-ativas ficavam sem retorno visual; no claro a tinta
+   clara sumia). Tinta escura no claro, clara no escuro. */
+.tab:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+.shell[data-theme="light"] .tab:hover {
+  background: rgba(20, 22, 28, 0.05);
+}
+.shell[data-theme="dark"] .tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+/* Aba ativa no tema claro: tinta cinza (sem creme). */
+.shell[data-theme="light"] .tabActive {
+  background: rgba(20, 22, 28, 0.06);
 }
 .jsonArea {
   width: 100%;
