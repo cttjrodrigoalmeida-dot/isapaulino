@@ -95,6 +95,12 @@ const IconInfo = () => (
     <path d="M12 11v5M12 7.6v.01" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+const IconCopy = () => (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <rect x="8" y="8" width="12" height="12" rx="2" />
+    <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
+  </svg>
+);
 const IconPercent = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <line x1="19" y1="5" x2="5" y2="19" />
@@ -537,7 +543,10 @@ function PixCard({ doc }: { doc: ContractDoc }) {
             <span className={styles.pixLabel}>{doc.pix.chaveLabel}</span>
             <div className={styles.pixKeyRow}>
               <span className={styles.pixValue}>{doc.pix.chave}</span>
-              <button className={styles.pixCopy} onClick={copy}>{copied ? "COPIADO" : "COPIAR"}</button>
+              <button className={styles.pixCopy} onClick={copy}>
+                {copied ? <IconCheck /> : <IconCopy />}
+                {copied ? "COPIADO" : "COPIAR"}
+              </button>
             </div>
           </div>
         </div>
