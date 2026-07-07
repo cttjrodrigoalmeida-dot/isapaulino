@@ -38,3 +38,6 @@ dist-ssr
 06. PERGUNTAS FREQUENTES/
 07. PORTFOLIOS/
 *.pdf
+
+# Scripts/arquivos de trabalho temporários (não fazem parte do sistema)
+scratch/

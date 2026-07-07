@@ -121,7 +121,7 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
 
       {/* KPIs */}
       <div className={`${s.grid} ${s.kpiRow}`}>
-        <Kpi icon={<IcRevenue />} label="Em propostas" value={formatBRLShort(proposals.totalValue)} note={`${proposals.total} propostas`} />
+        <Kpi icon={<IcRevenue />} label="Em propostas" value={formatBRLShort(proposals.totalValue)} note={`${proposals.total} proposta${proposals.total === 1 ? "" : "s"}`} />
         <Kpi icon={<IcReceived />} label="Recebido" value={formatBRLShort(finance.recebido)} note="Parcelas recebidas" />
         <Kpi icon={<IcToReceive />} label="A receber" value={formatBRLShort(finance.aReceber)} note="Parcelas em aberto" />
         <Kpi icon={<IcOverdue />} label="Em atraso" value={String(finance.atrasados)} note={finance.atrasados === 1 ? "parcela vencida" : "parcelas vencidas"} />

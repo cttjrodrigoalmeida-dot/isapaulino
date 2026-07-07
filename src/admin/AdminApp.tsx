@@ -120,7 +120,7 @@ export default function AdminApp() {
   const renderSection = () => {
     switch (section) {
       case "visao":
-        return <Dashboard username={user.username} onGoComercial={() => setSection("comercial")} onGoContratos={() => setSection("contratos")} onGoProjetos={() => setSection("projetos")} onGoAgenda={() => setSection("calendario")} onGoClientes={() => setSection("clientes")} />;
+        return <Dashboard username={user.name || user.username} onGoComercial={() => setSection("comercial")} onGoContratos={() => setSection("contratos")} onGoProjetos={() => setSection("projetos")} onGoAgenda={() => setSection("calendario")} onGoClientes={() => setSection("clientes")} />;
       case "comercial":
         return <Comercial requestNew={comercialNew} />;
       case "clientes":
