@@ -387,6 +387,25 @@
 .sectionHead {
   margin-bottom: 24px;
 }
+/* bloco de continuação (outra imagem do MESMO ambiente): cola na seção
+   anterior e troca o título grande por um chip discreto */
+.sectionContinuation {
+  padding-top: 0;
+}
+.sectionHeadCont {
+  margin-bottom: 20px;
+}
+.sectionContChip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 0 8px 0 8px;
+  padding: 7px 14px;
+}
 .sectionTitle {
   display: flex;
   align-items: flex-start;
@@ -442,35 +461,36 @@
   gap: 20px;
 }
 
-/* ── Imagem com pinos + zoom (no topo da seção, 16:9 com teto de altura) ── */
+/* ── Imagem com pinos (no topo da seção) ──
+   Formato NATURAL da imagem, sem corte — mesma geometria do PinCanvas do
+   editor, garantindo que os pinos (x/y em %) caiam exatamente onde foram
+   posicionados. Imagens quadradas aparecem quadradas (mais altas). */
 .figure {
   margin: 0 0 28px;
   text-align: center;
 }
-/* moldura 16:9: a altura tem um teto; a largura segue a proporção (até 100%) */
 .figureViewport {
   position: relative;
   display: inline-block;
-  width: auto;
-  height: clamp(300px, 48vh, 500px);
-  aspect-ratio: 16 / 9;
   max-width: 100%;
   overflow: hidden;
   border-radius: var(--border-radius-standard);
   border: 1px solid var(--color-border);
-  cursor: zoom-in;
+  line-height: 0;
 }
 .figureInner {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  display: inline-block;
+  line-height: 0;
   transition: transform 0.25s ease;
   will-change: transform;
 }
 .image {
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: clamp(340px, 68vh, 660px);
+  width: auto;
+  height: auto;
 }
 .figureHint {
   margin: 10px 2px 0;
@@ -494,6 +514,15 @@
   align-items: center;
   gap: 3px;
   pointer-events: none;
+}
+/* pino clicável (página do cliente): leva à pergunta correspondente */
+.pinClickable {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.pinClickable:hover {
+  transform: translate(-50%, -50%) scale(1.18);
 }
 .pinDot {
   width: 24px;
@@ -549,6 +578,23 @@
 .qItemPending {
   border-color: #f0506e;
   box-shadow: 0 0 0 1px rgba(240, 80, 110, 0.4);
+}
+/* destaque temporário ao clicar no pino da imagem */
+.qItemFlash {
+  animation: qFlash 1.7s ease;
+}
+@keyframes qFlash {
+  0% {
+    border-color: #f0506e;
+    box-shadow: 0 0 0 3px rgba(240, 80, 110, 0.45);
+  }
+  60% {
+    border-color: #f0506e;
+    box-shadow: 0 0 0 2px rgba(240, 80, 110, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(240, 80, 110, 0);
+  }
 }
 .qHead {
   display: flex;

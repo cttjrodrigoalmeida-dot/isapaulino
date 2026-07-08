@@ -127,6 +127,22 @@ export default function BriefingEditor({
     );
   const removeSection = (i: number) =>
     setBriefing((prev) => (prev ? { ...prev, sections: prev.sections.filter((_, idx) => idx !== i) } : prev));
+  // Novo bloco de imagem do MESMO ambiente: insere logo após a seção i uma
+  // seção ambiente com o mesmo título (na página do cliente vira "continuação").
+  const addContinuation = (i: number) =>
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const base = prev.sections[i];
+      const list = prev.sections.slice();
+      list.splice(i + 1, 0, {
+        id: `sec-${Date.now()}`,
+        kind: "ambiente",
+        title: base.title,
+        image: "",
+        questions: [],
+      });
+      return { ...prev, sections: list };
+    });
   const moveSection = (i: number, dir: -1 | 1) =>
     setBriefing((prev) => {
       if (!prev) return prev;
@@ -267,6 +283,7 @@ export default function BriefingEditor({
               onChange={(next) => setSection(i, next)}
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
+              onAddContinuation={() => addContinuation(i)}
               isFirst={i === 0}
               isLast={i === briefing.sections.length - 1}
             />

@@ -27,14 +27,15 @@
 }
 /* ── Tema ESCURO ── */
 .shell[data-theme="dark"] {
-  --color-bg: #0e0f12;
-  --color-surface: #16181c;
-  --color-surface-2: #1d2025;
+  /* Cinzas 100% neutros (R=G=B) — sem tom azulado, a pedido. */
+  --color-bg: #101010;
+  --color-surface: #181818;
+  --color-surface-2: #202020;
   --color-border: rgba(255, 255, 255, 0.10);
   --color-border-strong: rgba(255, 255, 255, 0.22);
-  --color-text-primary: #f3f4f6;
-  --color-text-secondary: #a2a7b0;
-  --color-text-muted: #6b7078;
+  --color-text-primary: #f4f4f4;
+  --color-text-secondary: #a8a8a8;
+  --color-text-muted: #707070;
   --color-accent: #d4c5b0;
   --admin-pattern: rgba(212, 197, 176, 0.05);
 }
@@ -614,7 +615,7 @@
   justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  color: #0b0c0e;
+  color: #0c0c0c;
 }
 .rememberOn .rememberBox {
   background: #f3f3f3;
@@ -651,7 +652,7 @@
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #15161a;
+  color: #151515;
   background: #ffffff;
   border: none;
   border-radius: 12px 0 12px 0;
@@ -781,12 +782,12 @@
 .shell[data-theme="dark"] .input,
 .shell[data-theme="dark"] .textarea {
   background: #ffffff;
-  color: #16181d;
+  color: #171717;
   border-color: rgba(0, 0, 0, 0.18);
 }
 .shell[data-theme="dark"] .input::placeholder,
 .shell[data-theme="dark"] .textarea::placeholder {
-  color: #8a8f98;
+  color: #8f8f8f;
 }
 .tabs {
   display: flex;

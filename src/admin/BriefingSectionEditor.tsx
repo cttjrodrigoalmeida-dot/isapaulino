@@ -118,6 +118,7 @@ export default function BriefingSectionEditor({
   onChange,
   onRemove,
   onMove,
+  onAddContinuation,
   isFirst,
   isLast,
 }: {
@@ -126,6 +127,8 @@ export default function BriefingSectionEditor({
   onChange: (next: BriefingSection) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
+  /** insere logo abaixo um novo bloco de imagem do MESMO ambiente */
+  onAddContinuation?: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -292,6 +295,12 @@ export default function BriefingSectionEditor({
       )}
 
       <label className={styles.label} style={{ marginTop: 4 }}>Perguntas</label>
+      {isAmbiente && (
+        <p className={styles.pageHint} style={{ marginTop: 0 }}>
+          Perguntas <strong>sem pino</strong> também aparecem para o cliente (sem número na
+          imagem) — use quando a pergunta é do ambiente em geral, não de um ponto da foto.
+        </p>
+      )}
       {section.questions.map((q, qi) => (
         <QuestionEditor
           key={q.id || qi}
@@ -305,7 +314,14 @@ export default function BriefingSectionEditor({
           isLast={qi === section.questions.length - 1}
         />
       ))}
-      <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
+        {isAmbiente && onAddContinuation && (
+          <button type="button" className={styles.btn} onClick={onAddContinuation} title="Cria outro bloco de imagem + perguntas deste mesmo ambiente (na página vira 'continuação').">
+            🖼 + novo bloco de imagem (mesmo ambiente)
+          </button>
+        )}
+      </div>
     </div>
   );
 }

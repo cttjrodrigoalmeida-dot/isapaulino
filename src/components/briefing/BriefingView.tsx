@@ -11,6 +11,7 @@ import type { Briefing, BriefingSection, BriefingQuestion } from "./types";
 import { getProposalByNumber } from "../proposal/proposalsRegistry";
 import CustomCursor from "../CustomCursor";
 import FadeIn from "../FadeIn";
+import SectionFigure from "./SectionFigure";
 import styles from "./BriefingView.module.css";
 
 // Modo impressão: desliga zoom/animações e troca controles por texto fixo.
@@ -166,6 +167,7 @@ function QuestionItem({
   onRemoveRef,
   pending,
   locked,
+  flash,
   registerRef,
   contact,
   studioEmail,
@@ -181,6 +183,8 @@ function QuestionItem({
   onRemoveRef: () => void;
   pending: boolean;
   locked: boolean;
+  /** destaque temporário quando o cliente clica no pino da imagem */
+  flash?: boolean;
   registerRef: (el: HTMLDivElement | null) => void;
   contact: Briefing["contact"];
   studioEmail?: string;
@@ -385,7 +389,7 @@ function QuestionItem({
       ref={registerRef}
       className={`${styles.qItem} ${index % 2 === 1 ? styles.qItemMirror : ""} ${
         pending ? styles.qItemPending : ""
-      }`}
+      } ${flash ? styles.qItemFlash : ""}`}
     >
       <div className={styles.qHead}>
         <span className={styles.qNum}>{String(index + 1).padStart(2, "0")}</span>
@@ -537,88 +541,7 @@ function normalizeLink(url: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-// ── Imagem com pinos + zoom no hover (desktop) ────────────────
-// distância máxima de zoom no pinça (mobile) — mesmo nível do hover (desktop)
-const PINCH_MAX_SCALE = 2.2;
-
-function SectionFigure({ section }: { section: BriefingSection }) {
-  const printing = useContext(PrintContext);
-  const [isTouch] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
-  );
-  const [zoom, setZoom] = useState({ on: false, x: 50, y: 50, scale: 1.9 });
-  const pinch = useRef<{ dist: number; scale: number } | null>(null);
-  if (!section.image) return null;
-
-  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (printing || isTouch) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    setZoom({
-      on: true,
-      x: ((e.clientX - r.left) / r.width) * 100,
-      y: ((e.clientY - r.top) / r.height) * 100,
-      scale: 1.9,
-    });
-  };
-
-  // zoom por pinça (dois dedos) — o toque simples não amplia (evita ficar travado)
-  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (printing || e.touches.length !== 2) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const [t1, t2] = [e.touches[0], e.touches[1]];
-    const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-    const midX = ((t1.clientX + t2.clientX) / 2 - r.left) / r.width * 100;
-    const midY = ((t1.clientY + t2.clientY) / 2 - r.top) / r.height * 100;
-    if (!pinch.current) {
-      pinch.current = { dist, scale: zoom.scale };
-      return;
-    }
-    const scale = Math.min(
-      PINCH_MAX_SCALE,
-      Math.max(1, pinch.current.scale * (dist / pinch.current.dist))
-    );
-    setZoom({ on: scale > 1.03, x: midX, y: midY, scale });
-  };
-  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length < 2) pinch.current = null;
-  };
-
-  const innerStyle = zoom.on
-    ? { transform: `scale(${zoom.scale})`, transformOrigin: `${zoom.x}% ${zoom.y}%` }
-    : undefined;
-
-  return (
-    <figure className={styles.figure}>
-      <div
-        className={styles.figureViewport}
-        onMouseMove={onMove}
-        onMouseLeave={() => setZoom((z) => ({ ...z, on: false }))}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        <div className={styles.figureInner} style={innerStyle}>
-          <img src={section.image} alt={section.title} className={styles.image} />
-          {section.questions.map((q, i) =>
-            q.pin ? (
-              <span
-                key={q.id}
-                className={styles.pin}
-                style={{ left: `${q.pin.x}%`, top: `${q.pin.y}%` }}
-              >
-                <span className={styles.pinDot}>{i + 1}</span>
-                {q.pin.label && <span className={styles.pinLabel}>{q.pin.label}</span>}
-              </span>
-            ) : null
-          )}
-        </div>
-      </div>
-      <figcaption className={styles.figureHint}>
-        <span className={styles.figureHintDesktop}>Passe o mouse sobre a imagem para ampliar.</span>
-        <span className={styles.figureHintMobile}>Use dois dedos (pinça) para ampliar.</span>
-      </figcaption>
-    </figure>
-  );
-}
+// (a imagem com pinos vive em SectionFigure.tsx — compartilhada com o admin)
 
 export default function BriefingView({ briefing: b }: Props) {
   const linked = getProposalByNumber(b.proposalNumber);
@@ -725,6 +648,33 @@ export default function BriefingView({ briefing: b }: Props) {
 
   const questionEls = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // ── Pino clicável: rola até a pergunta e dá um "flash" de destaque ──
+  const [flashId, setFlashId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flashId) return;
+    const id = window.setTimeout(() => setFlashId(null), 1700);
+    return () => window.clearTimeout(id);
+  }, [flashId]);
+  const goToQuestion = useCallback((qid: string) => {
+    questionEls.current[qid]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlashId(qid);
+  }, []);
+
+  // ── Blocos de continuação: seção ambiente com o MESMO título da anterior
+  //    (novo bloco de imagem do mesmo ambiente) ganha cabeçalho compacto e
+  //    não repete a etapa na timeline. ──
+  const normTitle = (s: string) => s.trim().toLowerCase();
+  const isContinuation = useCallback(
+    (i: number) => {
+      const s = b.sections[i];
+      const p = b.sections[i - 1];
+      return (
+        !!p && s.kind === "ambiente" && p.kind === "ambiente" && normTitle(s.title) === normTitle(p.title)
+      );
+    },
+    [b.sections]
+  );
+
   // todas as perguntas (achatado), usado pra resolver bloqueios entre perguntas
   const allQuestions = useMemo(
     () => b.sections.flatMap((s) => s.questions),
@@ -763,7 +713,19 @@ export default function BriefingView({ briefing: b }: Props) {
     Object.values(spyEls.current).forEach((el) => el && obs.observe(el));
     return () => obs.disconnect();
   }, [b.sections]);
-  const activeIdx = Math.max(0, b.sections.findIndex((s) => s.id === activeId));
+  // Timeline mostra só o primeiro bloco de cada ambiente (continuações não
+  // viram etapa); a etapa ativa de uma continuação é a do bloco inicial.
+  const navSections = useMemo(
+    () => b.sections.filter((_, i) => !isContinuation(i)),
+    [b.sections, isContinuation]
+  );
+  const activeIdx = useMemo(() => {
+    let raw = b.sections.findIndex((s) => s.id === activeId);
+    if (raw < 0) return 0;
+    while (raw > 0 && isContinuation(raw)) raw--;
+    const idx = navSections.findIndex((s) => s.id === b.sections[raw].id);
+    return Math.max(0, idx);
+  }, [b.sections, navSections, activeId, isContinuation]);
 
   const goTo = (id: string) =>
     spyEls.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -887,6 +849,7 @@ export default function BriefingView({ briefing: b }: Props) {
         onRemoveRef={() => removeRef(q.id)}
         pending={pending.has(q.id)}
         locked={isLockedQuestion(q, allQuestions, answers)}
+        flash={flashId === q.id}
         registerRef={(el) => {
           questionEls.current[q.id] = el;
         }}
@@ -928,7 +891,7 @@ export default function BriefingView({ briefing: b }: Props) {
         <nav className={styles.timeline} aria-label="Progresso do briefing">
           <span className={styles.timelineStep}>
             ETAPA {String(activeIdx + 1).padStart(2, "0")}/
-            {String(b.sections.length).padStart(2, "0")}
+            {String(navSections.length).padStart(2, "0")}
           </span>
           <span className={styles.timelineEyebrow}>BRIEFING POR AMBIENTE</span>
           <div className={styles.timelineDivider} aria-hidden>
@@ -937,8 +900,16 @@ export default function BriefingView({ briefing: b }: Props) {
             <span className={styles.timelineDividerLine} />
           </div>
           <ul className={styles.timelineList}>
-            {b.sections.map((section, i) => {
-              const complete = progress[section.id]?.complete ?? false;
+            {navSections.map((section, i) => {
+              // progresso do "run" (bloco inicial + continuações do mesmo ambiente)
+              const start = b.sections.findIndex((s) => s.id === section.id);
+              let total = 0;
+              let done = 0;
+              for (let j = start; j === start || (j < b.sections.length && isContinuation(j)); j++) {
+                total += progress[b.sections[j].id]?.total ?? 0;
+                done += progress[b.sections[j].id]?.done ?? 0;
+              }
+              const complete = total > 0 && done === total;
               const reached = i <= activeIdx;
               const isActive = i === activeIdx;
               return (
@@ -1027,11 +998,12 @@ export default function BriefingView({ briefing: b }: Props) {
         </header>
 
         <main className={styles.container}>
-          {b.sections.map((section) => {
+          {b.sections.map((section, si) => {
             const lines = section.titleLines ?? [section.title];
+            const continuation = isContinuation(si);
             return (
               <div key={section.id}>
-                <StarDivider />
+                {!continuation && <StarDivider />}
                 <section
                   data-spy={section.id}
                   ref={(el) => {
@@ -1039,31 +1011,46 @@ export default function BriefingView({ briefing: b }: Props) {
                   }}
                   className={`${styles.section} ${
                     section.kind === "ambiente" ? styles.sectionAmbiente : ""
-                  }`}
+                  } ${continuation ? styles.sectionContinuation : ""}`}
                 >
                   <FadeIn>
-                    <div className={styles.sectionHead}>
-                      <h2 className={styles.sectionTitle}>
-                        <span className={styles.sectionStar}>{STAR}</span>
-                        <span className={styles.sectionTitleText}>
-                          {lines.map((line, li) => (
-                            <span
-                              key={li}
-                              className={li === 0 ? styles.titleLine : styles.titleLineMuted}
-                            >
-                              {line}
-                            </span>
-                          ))}
+                    {continuation ? (
+                      // bloco extra do MESMO ambiente: cabeçalho compacto
+                      <div className={styles.sectionHeadCont}>
+                        <span className={styles.sectionContChip}>
+                          {section.title} · continuação
                         </span>
-                      </h2>
-                      {section.intro && <p className={styles.sectionIntro}>{section.intro}</p>}
-                    </div>
+                        {section.intro && <p className={styles.sectionIntro}>{section.intro}</p>}
+                      </div>
+                    ) : (
+                      <div className={styles.sectionHead}>
+                        <h2 className={styles.sectionTitle}>
+                          <span className={styles.sectionStar}>{STAR}</span>
+                          <span className={styles.sectionTitleText}>
+                            {lines.map((line, li) => (
+                              <span
+                                key={li}
+                                className={li === 0 ? styles.titleLine : styles.titleLineMuted}
+                              >
+                                {line}
+                              </span>
+                            ))}
+                          </span>
+                        </h2>
+                        {section.intro && <p className={styles.sectionIntro}>{section.intro}</p>}
+                      </div>
+                    )}
                   </FadeIn>
 
-                  {/* imagem no topo (full-width) + perguntas abaixo — igual ao PDF */}
+                  {/* imagem no topo (formato natural) + perguntas abaixo */}
                   {section.kind === "ambiente" && (
                     <FadeIn delay={0.1}>
-                      <SectionFigure section={section} />
+                      <SectionFigure
+                        section={section}
+                        interactive
+                        printing={printing}
+                        onPinClick={goToQuestion}
+                      />
                     </FadeIn>
                   )}
                   <div className={styles.questionsWide}>

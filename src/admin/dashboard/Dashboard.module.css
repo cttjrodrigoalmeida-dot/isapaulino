@@ -587,9 +587,9 @@
 
 /* ── Meta do ano (card escuro de destaque) ── */
 .goalCard {
-  background: #15161a;
+  background: #151515;
   color: #fff;
-  border: 1px solid #23252b;
+  border: 1px solid #252525;
   border-radius: 16px;
   padding: 22px;
 }
