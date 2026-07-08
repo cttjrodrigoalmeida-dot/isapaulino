@@ -37,25 +37,27 @@
   --ov-60: rgba(255, 255, 255, 0.6);
 }
 
-/* ── Tema CLARO (cliente escolhe pelo botão) ── */
+/* ── Tema CLARO (cliente escolhe pelo botão) ──
+   Base BRANCA + cinza neutro; só os EFEITOS (acento/estrelas/hovers/CTA)
+   levam o creme da marca. */
 .page[data-theme="light"] {
-  --color-bg: #f4f3f0;
+  --color-bg: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-2: #f1efe9;
-  --color-surface-3: #e9e6df;
-  --color-border: rgba(0, 0, 0, 0.12);
+  --color-surface-2: #f4f4f4;
+  --color-surface-3: #ececec;
+  --color-border: rgba(0, 0, 0, 0.11);
   --color-border-strong: rgba(0, 0, 0, 0.2);
   --color-text-primary: #1a1a1a;
-  --color-text-secondary: #5a5852;
-  --color-text-muted: #8d8a82;
-  --color-accent: #6f6f6f;
+  --color-text-secondary: #575757;
+  --color-text-muted: #8a8a8a;
+  --color-accent: #a08a5e; /* CREME (efeitos) */
 
   --srf: #ffffff;
-  --srf-2: #f1efe9;
+  --srf-2: #f4f4f4;
   --srf-line: rgba(0, 0, 0, 0.10);
-  --srf-3: rgba(0, 0, 0, 0.14);
-  --srf-glass: rgba(255, 255, 255, 0.8);
-  --t-dim: #8d8a82;
+  --srf-3: rgba(0, 0, 0, 0.13);
+  --srf-glass: rgba(255, 255, 255, 0.82);
+  --t-dim: #8a8a8a;
   --on-accent: #ffffff;
   --ov-05: rgba(0, 0, 0, 0.04);
   --ov-06: rgba(0, 0, 0, 0.05);
@@ -1470,6 +1472,16 @@
   background: #25d366;
   border-color: #25d366;
   transform: translateY(-2px);
+}
+/* Tema claro: WhatsApp fica VERDE fixo (o ícone já é branco pelo filtro). */
+.page[data-theme="light"] .waFloat {
+  background: #25d366;
+  border-color: #1fb457;
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.32);
+}
+.page[data-theme="light"] .waFloat:hover {
+  background: #21bd5c;
+  border-color: #1fb457;
 }
 .waFloatIcon {
   width: 34px;

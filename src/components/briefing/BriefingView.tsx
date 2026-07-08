@@ -1002,7 +1002,11 @@ export default function BriefingView({ briefing: b }: Props) {
         <header className={styles.hero}>
           <FadeIn>
             <div className={styles.heroTopbar}>
-              <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.heroLogo} />
+              <img
+                src={theme === "light" ? "/assets/logo-parasite-dark.webp" : "/assets/logo-parasite.webp"}
+                alt="Isabela Paulino Studio"
+                className={styles.heroLogo}
+              />
               <div className={styles.heroActions}>
                 <span className={styles.autosave}>
                   <span className={styles.autosaveDot} /> Salvamento automático
@@ -1169,7 +1173,11 @@ export default function BriefingView({ briefing: b }: Props) {
         </main>
 
         <footer className={styles.footer}>
-          <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.footerLogo} />
+          <img
+            src={theme === "light" ? "/assets/logo-parasite-dark.webp" : "/assets/logo-parasite.webp"}
+            alt="Isabela Paulino Studio"
+            className={styles.footerLogo}
+          />
           <span className={styles.footerNote}>
             ISABELA PAULINO STUDIO · BRIEFING · PROPOSTA Nº {b.proposalNumber}
             {displayDate ? ` · ${displayDate}` : ""}
