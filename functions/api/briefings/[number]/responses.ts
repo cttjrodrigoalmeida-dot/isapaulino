@@ -44,26 +44,44 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
     // Reenvio do MESMO briefing pelo MESMO cliente ATUALIZA a resposta existente
     // (em vez de acumular "Resposta 1, 2, 3…"). Chave: (briefing_number, client).
-    const existing = await env.DB.prepare(
+    // Se já houver MAIS de uma (duplicatas antigas, de antes desta regra), a mais
+    // recente é atualizada e as demais são apagadas — colapsa tudo em uma só.
+    const { results: prev } = await env.DB.prepare(
       `SELECT id, ref_images AS refImages FROM briefing_responses
        WHERE briefing_number = ? AND ((client = ?) OR (client IS NULL AND ? IS NULL))
-       ORDER BY submitted_at DESC LIMIT 1`
+       ORDER BY submitted_at DESC`
     )
       .bind(number, client, client)
-      .first<{ id: number; refImages: string | null }>();
+      .all<{ id: number; refImages: string | null }>();
 
-    if (existing) {
-      await env.DB.prepare(
-        "UPDATE briefing_responses SET answers = ?, ref_images = ?, submitted_at = datetime('now') WHERE id = ?"
-      )
-        .bind(answersStr, refImagesStr, existing.id)
-        .run();
+    if (prev && prev.length > 0) {
+      const keepId = prev[0].id;
+      const removeIds = prev.slice(1).map((r) => r.id);
 
-      // Remove do R2 os anexos antigos que não estão mais na resposta (evita lixo).
+      const stmts = [
+        env.DB.prepare(
+          "UPDATE briefing_responses SET answers = ?, ref_images = ?, submitted_at = datetime('now') WHERE id = ?"
+        ).bind(answersStr, refImagesStr, keepId),
+      ];
+      if (removeIds.length > 0) {
+        stmts.push(
+          env.DB.prepare(
+            `DELETE FROM briefing_responses WHERE id IN (${removeIds.map(() => "?").join(",")})`
+          ).bind(...removeIds)
+        );
+      }
+      await env.DB.batch(stmts);
+
+      // Limpa do R2 os anexos antigos (de qualquer versão anterior) que não estão
+      // mais na resposta atual — evita lixo ocupando espaço.
       try {
-        const oldMap = existing.refImages ? (JSON.parse(existing.refImages) as Record<string, string>) : {};
         const keep = new Set(Object.values(refImages));
-        for (const url of Object.values(oldMap)) {
+        const oldUrls = new Set<string>();
+        for (const p of prev) {
+          const map = p.refImages ? (JSON.parse(p.refImages) as Record<string, string>) : {};
+          for (const u of Object.values(map)) oldUrls.add(u);
+        }
+        for (const url of oldUrls) {
           if (keep.has(url)) continue;
           const key = url.replace(/^\/api\/files\//, "");
           if (key.startsWith("briefing-refs/")) await env.R2.delete(key);
@@ -72,7 +90,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
         /* limpeza é best-effort */
       }
 
-      return json({ ok: true, id: existing.id, updated: true });
+      return json({ ok: true, id: keepId, updated: true, merged: removeIds.length });
     }
 
     const res = await env.DB.prepare(
