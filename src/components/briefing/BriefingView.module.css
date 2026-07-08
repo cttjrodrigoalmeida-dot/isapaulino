@@ -38,37 +38,36 @@
 }
 
 /* ── Tema CLARO (cliente escolhe pelo botão) ──
-   Base BRANCA + cinza neutro; só os EFEITOS (acento/estrelas/hovers/CTA)
-   levam o creme da marca. */
+   MESMA paleta do painel (admin): cinza neutro, acento cinza (sem creme). */
 .page[data-theme="light"] {
-  --color-bg: #ffffff;
+  --color-bg: #f3f4f6;
   --color-surface: #ffffff;
-  --color-surface-2: #f4f4f4;
-  --color-surface-3: #ececec;
-  --color-border: rgba(0, 0, 0, 0.11);
-  --color-border-strong: rgba(0, 0, 0, 0.2);
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #575757;
-  --color-text-muted: #8a8a8a;
-  --color-accent: #a08a5e; /* CREME (efeitos) */
+  --color-surface-2: #f6f7f9;
+  --color-surface-3: #eceef1;
+  --color-border: rgba(20, 22, 28, 0.10);
+  --color-border-strong: rgba(20, 22, 28, 0.18);
+  --color-text-primary: #16181d;
+  --color-text-secondary: #565b66;
+  --color-text-muted: #939aa6;
+  --color-accent: #6b7280; /* cinza, igual ao sistema */
 
   --srf: #ffffff;
-  --srf-2: #f4f4f4;
-  --srf-line: rgba(0, 0, 0, 0.10);
-  --srf-3: rgba(0, 0, 0, 0.13);
+  --srf-2: #f6f7f9;
+  --srf-line: rgba(20, 22, 28, 0.10);
+  --srf-3: rgba(20, 22, 28, 0.14);
   --srf-glass: rgba(255, 255, 255, 0.82);
-  --t-dim: #8a8a8a;
+  --t-dim: #939aa6;
   --on-accent: #ffffff;
-  --ov-05: rgba(0, 0, 0, 0.04);
-  --ov-06: rgba(0, 0, 0, 0.05);
-  --ov-08: rgba(0, 0, 0, 0.06);
-  --ov-12: rgba(0, 0, 0, 0.12);
-  --ov-14: rgba(0, 0, 0, 0.10);
-  --ov-30: rgba(0, 0, 0, 0.16);
-  --ov-35: rgba(0, 0, 0, 0.14);
-  --ov-40: rgba(0, 0, 0, 0.22);
-  --ov-50: rgba(0, 0, 0, 0.28);
-  --ov-60: rgba(0, 0, 0, 0.34);
+  --ov-05: rgba(20, 22, 28, 0.035);
+  --ov-06: rgba(20, 22, 28, 0.05);
+  --ov-08: rgba(20, 22, 28, 0.06);
+  --ov-12: rgba(20, 22, 28, 0.10);
+  --ov-14: rgba(20, 22, 28, 0.10);
+  --ov-30: rgba(20, 22, 28, 0.16);
+  --ov-35: rgba(20, 22, 28, 0.14);
+  --ov-40: rgba(20, 22, 28, 0.22);
+  --ov-50: rgba(20, 22, 28, 0.28);
+  --ov-60: rgba(20, 22, 28, 0.34);
 }
 
 .ambient {
