@@ -40,10 +40,45 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       .first<{ status: string }>();
     if (!b || b.status !== "published") return error(404, "Briefing não encontrado.");
 
+    const client = body.client ?? null;
+
+    // Reenvio do MESMO briefing pelo MESMO cliente ATUALIZA a resposta existente
+    // (em vez de acumular "Resposta 1, 2, 3…"). Chave: (briefing_number, client).
+    const existing = await env.DB.prepare(
+      `SELECT id, ref_images AS refImages FROM briefing_responses
+       WHERE briefing_number = ? AND ((client = ?) OR (client IS NULL AND ? IS NULL))
+       ORDER BY submitted_at DESC LIMIT 1`
+    )
+      .bind(number, client, client)
+      .first<{ id: number; refImages: string | null }>();
+
+    if (existing) {
+      await env.DB.prepare(
+        "UPDATE briefing_responses SET answers = ?, ref_images = ?, submitted_at = datetime('now') WHERE id = ?"
+      )
+        .bind(answersStr, refImagesStr, existing.id)
+        .run();
+
+      // Remove do R2 os anexos antigos que não estão mais na resposta (evita lixo).
+      try {
+        const oldMap = existing.refImages ? (JSON.parse(existing.refImages) as Record<string, string>) : {};
+        const keep = new Set(Object.values(refImages));
+        for (const url of Object.values(oldMap)) {
+          if (keep.has(url)) continue;
+          const key = url.replace(/^\/api\/files\//, "");
+          if (key.startsWith("briefing-refs/")) await env.R2.delete(key);
+        }
+      } catch {
+        /* limpeza é best-effort */
+      }
+
+      return json({ ok: true, id: existing.id, updated: true });
+    }
+
     const res = await env.DB.prepare(
       "INSERT INTO briefing_responses (briefing_number, client, answers, ref_images) VALUES (?, ?, ?, ?)"
     )
-      .bind(number, body.client ?? null, answersStr, refImagesStr)
+      .bind(number, client, answersStr, refImagesStr)
       .run();
 
     return json({ ok: true, id: res.meta.last_row_id }, { status: 201 });

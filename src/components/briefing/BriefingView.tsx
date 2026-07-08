@@ -39,6 +39,17 @@ const IconGrid = () => (
     <rect x="14" y="14" width="7" height="7" rx="1" />
   </svg>
 );
+const IconSun = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" strokeLinecap="round" />
+  </svg>
+);
+const IconMoon = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 const IconMail = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
     <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -171,6 +182,7 @@ function QuestionItem({
   registerRef,
   contact,
   studioEmail,
+  briefingNumber,
 }: {
   question: BriefingQuestion;
   index: number;
@@ -188,6 +200,7 @@ function QuestionItem({
   registerRef: (el: HTMLDivElement | null) => void;
   contact: Briefing["contact"];
   studioEmail?: string;
+  briefingNumber: string;
 }) {
   const printing = useContext(PrintContext);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -221,6 +234,12 @@ function QuestionItem({
 
   const email = studioEmail ?? "IsaPaulinoStudio@gmail.com";
   const waNumber = `https://wa.me/+${contact.whatsapp}`;
+  // E-mail pré-endereçado p/ o cliente enviar o template (ele anexa o arquivo lá).
+  const templateMailto = `mailto:${email}?subject=${encodeURIComponent(
+    `Template do escritório — Briefing Nº ${briefingNumber}`
+  )}&body=${encodeURIComponent(
+    "Olá, Isabela! Segue em anexo o template padrão do meu escritório.\n\n(Não esqueça de anexar o arquivo antes de enviar.)"
+  )}`;
 
   const renderControl = () => {
     if (printing) {
@@ -268,17 +287,39 @@ function QuestionItem({
             </div>
             {wantsTemplateAttach &&
               (refImage ? (
-                <span className={styles.refPreview}>
-                  <img src={refImage} alt="Template anexado" className={styles.refImg} />
-                  <button type="button" className={styles.refRemove} onClick={onRemoveRef} aria-label="Remover anexo">
-                    ×
-                  </button>
-                </span>
+                refIsLink ? (
+                  <span className={styles.refLinkChip}>
+                    <a href={refImage} target="_blank" rel="noopener noreferrer">
+                      {refImage.replace(/^https?:\/\//, "")}
+                    </a>
+                    <button type="button" className={styles.refChipRemove} onClick={onRemoveRef} aria-label="Remover template">
+                      ×
+                    </button>
+                  </span>
+                ) : (
+                  <span className={styles.refPreview}>
+                    <img src={refImage} alt="Template anexado" className={styles.refImg} />
+                    <button type="button" className={styles.refRemove} onClick={onRemoveRef} aria-label="Remover anexo">
+                      ×
+                    </button>
+                  </span>
+                )
               ) : (
                 <>
-                  <button type="button" className={styles.refBtn} onClick={() => fileRef.current?.click()}>
-                    <IconImage /> Anexar arquivo do template
-                  </button>
+                  <div className={styles.templateAttach}>
+                    <button type="button" className={styles.refBtn} onClick={() => setRefModalOpen(true)}>
+                      <span className={styles.plus}>+</span> Colar link (Drive, WeTransfer…)
+                    </button>
+                    <a className={styles.refBtn} href={templateMailto}>
+                      <IconMail /> Enviar por e-mail
+                    </a>
+                    <button type="button" className={styles.refBtn} onClick={() => fileRef.current?.click()}>
+                      <IconImage /> Anexar arquivo
+                    </button>
+                  </div>
+                  <p className={styles.templateHint}>
+                    Dica: para arquivos maiores, prefira o link ou o e-mail — assim não pesa no sistema.
+                  </p>
                   {attachInput}
                 </>
               ))}
@@ -551,6 +592,24 @@ export default function BriefingView({ briefing: b }: Props) {
   const displayDate = linked?.date ?? b.date ?? "";
   const contact = b.contact;
   const storageKey = `briefing:${b.number}`;
+
+  // ── Tema da página do cliente (escuro por padrão), persistido no navegador ──
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      const v = localStorage.getItem("ips_briefing_theme");
+      if (v === "light" || v === "dark") return v;
+    } catch {
+      /* ignore */
+    }
+    return "dark";
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("ips_briefing_theme", theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
 
   // Quebra o título do hero deixando a última palavra na linha de baixo
   // (ex.: "BRIEFING DE DETALHAMENTO" → "BRIEFING DE" / "DETALHAMENTO").
@@ -855,14 +914,15 @@ export default function BriefingView({ briefing: b }: Props) {
         }}
         contact={contact}
         studioEmail={b.studioEmail}
+        briefingNumber={b.number}
       />
     </FadeIn>
   );
 
   return (
     <PrintContext.Provider value={printing}>
-      <div className={styles.page}>
-        {!printing && <CustomCursor />}
+      <div className={styles.page} data-theme={theme}>
+        {!printing && theme === "dark" && <CustomCursor />}
         <div className={styles.ambient} aria-hidden />
 
         {/* redes sociais fixas (topo-direito, desktop) — 2x2 */}
@@ -947,6 +1007,15 @@ export default function BriefingView({ briefing: b }: Props) {
                 <span className={styles.autosave}>
                   <span className={styles.autosaveDot} /> Salvamento automático
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+                  className={styles.themeToggle}
+                  aria-label={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+                  title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+                >
+                  {theme === "dark" ? <IconSun /> : <IconMoon />}
+                </button>
                 <button type="button" onClick={exportPdf} className={styles.pdfButton} aria-label="Exportar briefing em PDF">
                   <IconDownload />
                   <span>Exportar PDF</span>
