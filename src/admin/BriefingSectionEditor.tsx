@@ -118,6 +118,7 @@ export default function BriefingSectionEditor({
   onChange,
   onRemove,
   onMove,
+  onDuplicate,
   onAddContinuation,
   isFirst,
   isLast,
@@ -127,6 +128,8 @@ export default function BriefingSectionEditor({
   onChange: (next: BriefingSection) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
+  /** duplica a seção inteira (mesmas perguntas) logo abaixo */
+  onDuplicate: () => void;
   /** insere logo abaixo um novo bloco de imagem do MESMO ambiente */
   onAddContinuation?: () => void;
   isFirst: boolean;
@@ -204,6 +207,7 @@ export default function BriefingSectionEditor({
         <div style={{ display: "flex", gap: 6 }}>
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
+          <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo, com as mesmas perguntas (é só trocar a imagem).">⧉ Duplicar</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover seção</button>
         </div>
       </div>

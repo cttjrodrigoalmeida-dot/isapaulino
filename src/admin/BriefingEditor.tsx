@@ -127,6 +127,18 @@ export default function BriefingEditor({
     );
   const removeSection = (i: number) =>
     setBriefing((prev) => (prev ? { ...prev, sections: prev.sections.filter((_, idx) => idx !== i) } : prev));
+  // Duplica a seção inteira (mesmas perguntas) logo abaixo, com IDs novos.
+  // Mantém o título: se for ambiente, vira "continuação" do mesmo (só troca a imagem).
+  const duplicateSection = (i: number) =>
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const copy = structuredClone(prev.sections[i]);
+      copy.id = `sec-${Date.now()}`;
+      copy.questions = (copy.questions ?? []).map((q, qi) => ({ ...q, id: `q-${Date.now()}-${qi}` }));
+      const list = prev.sections.slice();
+      list.splice(i + 1, 0, copy);
+      return { ...prev, sections: list };
+    });
   // Novo bloco de imagem do MESMO ambiente: insere logo após a seção i uma
   // seção ambiente com o mesmo título (na página do cliente vira "continuação").
   const addContinuation = (i: number) =>
@@ -283,6 +295,7 @@ export default function BriefingEditor({
               onChange={(next) => setSection(i, next)}
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
+              onDuplicate={() => duplicateSection(i)}
               onAddContinuation={() => addContinuation(i)}
               isFirst={i === 0}
               isLast={i === briefing.sections.length - 1}
