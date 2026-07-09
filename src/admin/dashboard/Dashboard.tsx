@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Cell } from "recharts";
 import { api, type DashboardOverview } from "../api";
-import ProposalsSummary from "../ProposalsSummary";
 import s from "./Dashboard.module.css";
 import { formatBRL, formatBRLShort, timeAgo, saudacao } from "./format";
 import {
@@ -129,15 +128,6 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
         <Kpi icon={<IcTicket />} label="Ticket médio" value={formatBRLShort(proposals.avgTicket)} note="Por proposta aprovada" />
         <Kpi icon={<IcGrowth />} label="Crescimento" value={DASH} soon />
       </div>
-
-      {/* Propostas por valor: aprovadas x não aprovadas */}
-      <ProposalsSummary
-        totalValue={proposals.totalValue}
-        approvedValue={proposals.approvedValue}
-        lostValue={proposals.lostValue}
-        approvedCount={proposals.approvedCount}
-        lostCount={proposals.lostCount}
-      />
 
       {/* Funil + Receitas 12m + Atenção hoje */}
       <div className={`${s.grid} ${s.cols3}`}>
