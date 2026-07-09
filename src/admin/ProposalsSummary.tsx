@@ -4,7 +4,7 @@ import { formatBRL, formatBRLShort } from "./dashboard/format";
 // Bloco de resumo das propostas por VALOR (aprovadas x não aprovadas).
 // Usado na tela de Propostas (rodapé) e no Resumo Geral.
 const GREEN = "#a3e635";
-const PINK = "#ec4899";
+const PINK = "#f0506e"; // melancia da marca (não aprovadas)
 
 const IcCheck = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1a2e05" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -12,7 +12,7 @@ const IcCheck = () => (
   </svg>
 );
 const IcX = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a0a1e" strokeWidth="3" strokeLinecap="round" aria-hidden>
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4a121f" strokeWidth="3" strokeLinecap="round" aria-hidden>
     <path d="M6 6l12 12M18 6L6 18" />
   </svg>
 );
@@ -114,7 +114,7 @@ export default function ProposalsSummary({
               <span style={moneyCircle(GREEN)}><IcMoney color={GREEN} /></span>
             </div>
           </div>
-          <div style={{ ...cardStyle, background: "rgba(236, 72, 153, 0.10)", border: "1px solid rgba(236, 72, 153, 0.35)" }}>
+          <div style={{ ...cardStyle, background: "rgba(240, 80, 110, 0.10)", border: "1px solid rgba(240, 80, 110, 0.35)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={iconBox(PINK)}><IcX /></span>
               <div style={{ flex: 1 }}>

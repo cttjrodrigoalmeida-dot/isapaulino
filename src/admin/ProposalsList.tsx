@@ -202,7 +202,7 @@ export default function ProposalsList({
                           border: "1px solid",
                           ...(p.outcome === "aprovada"
                             ? { color: "#4d7c0f", background: "rgba(132,204,22,0.16)", borderColor: "rgba(132,204,22,0.45)" }
-                            : { color: "#be185d", background: "rgba(236,72,153,0.14)", borderColor: "rgba(236,72,153,0.45)" }),
+                            : { color: "#c92d4f", background: "rgba(240,80,110,0.16)", borderColor: "rgba(240,80,110,0.5)" }),
                         }}
                       >
                         {p.outcome === "aprovada" ? "Aprovada" : "Não aprovada"}
