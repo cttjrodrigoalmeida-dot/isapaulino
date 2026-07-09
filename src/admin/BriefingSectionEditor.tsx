@@ -321,8 +321,8 @@ export default function BriefingSectionEditor({
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
         {isAmbiente && onAddContinuation && (
-          <button type="button" className={styles.btn} onClick={onAddContinuation} title="Cria outro bloco de imagem + perguntas deste mesmo ambiente (na página vira 'continuação').">
-            🖼 + novo bloco de imagem (mesmo ambiente)
+          <button type="button" className={styles.btn} onClick={onAddContinuation} title="Cria outro bloco do mesmo ambiente JÁ com as mesmas perguntas de cima — é só enviar a nova foto (na página vira 'continuação').">
+            🖼 + outra imagem (mesmas perguntas)
           </button>
         )}
       </div>

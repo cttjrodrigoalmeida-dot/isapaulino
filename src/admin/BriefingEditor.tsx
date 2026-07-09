@@ -140,18 +140,24 @@ export default function BriefingEditor({
       return { ...prev, sections: list };
     });
   // Novo bloco de imagem do MESMO ambiente: insere logo após a seção i uma
-  // seção ambiente com o mesmo título (na página do cliente vira "continuação").
+  // seção ambiente com o mesmo título (na página do cliente vira "continuação")
+  // e JÁ com as MESMAS perguntas do bloco de cima (IDs novos, mantém os pinos).
+  // A imagem fica vazia — é só enviar a nova foto.
   const addContinuation = (i: number) =>
     setBriefing((prev) => {
       if (!prev) return prev;
       const base = prev.sections[i];
+      const questions = (base.questions ?? []).map((q, qi) => ({
+        ...structuredClone(q),
+        id: `q-${Date.now()}-${qi}`,
+      }));
       const list = prev.sections.slice();
       list.splice(i + 1, 0, {
         id: `sec-${Date.now()}`,
         kind: "ambiente",
         title: base.title,
         image: "",
-        questions: [],
+        questions,
       });
       return { ...prev, sections: list };
     });
