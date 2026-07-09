@@ -3,9 +3,13 @@ import type { Briefing, BriefingSection } from "../components/briefing/types";
 import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
 import { api, ApiError, type ProposalSummary } from "./api";
 import BriefingSectionEditor from "./BriefingSectionEditor";
+import BriefingView from "../components/briefing/BriefingView";
 import styles from "./Admin.module.css";
 
 type Status = "draft" | "published";
+
+// Largura do painel de prévia (usada no drawer e para "encolher" o editor à esquerda).
+const PREVIEW_W = "min(48vw, 760px)";
 
 export default function BriefingEditor({
   number,
@@ -21,6 +25,7 @@ export default function BriefingEditor({
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
   const [status, setStatus] = useState<Status>("draft");
   const [tab, setTab] = useState<"campos" | "json">("campos");
+  const [showPreview, setShowPreview] = useState(false);
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -139,28 +144,6 @@ export default function BriefingEditor({
       list.splice(i + 1, 0, copy);
       return { ...prev, sections: list };
     });
-  // Novo bloco de imagem do MESMO ambiente: insere logo após a seção i uma
-  // seção ambiente com o mesmo título (na página do cliente vira "continuação")
-  // e JÁ com as MESMAS perguntas do bloco de cima (IDs novos, mantém os pinos).
-  // A imagem fica vazia — é só enviar a nova foto.
-  const addContinuation = (i: number) =>
-    setBriefing((prev) => {
-      if (!prev) return prev;
-      const base = prev.sections[i];
-      const questions = (base.questions ?? []).map((q, qi) => ({
-        ...structuredClone(q),
-        id: `q-${Date.now()}-${qi}`,
-      }));
-      const list = prev.sections.slice();
-      list.splice(i + 1, 0, {
-        id: `sec-${Date.now()}`,
-        kind: "ambiente",
-        title: base.title,
-        image: "",
-        questions,
-      });
-      return { ...prev, sections: list };
-    });
   const moveSection = (i: number, dir: -1 | 1) =>
     setBriefing((prev) => {
       if (!prev) return prev;
@@ -215,7 +198,21 @@ export default function BriefingEditor({
   }
 
   return (
-    <div className={styles.container}>
+    <div
+      className={styles.container}
+      style={
+        showPreview
+          ? {
+              // Encolhe o editor p/ a esquerda enquanto a prévia estiver aberta,
+              // reservando a largura do painel (senão ele tapa os campos da direita).
+              maxWidth: "none",
+              marginLeft: 0,
+              marginRight: `calc(${PREVIEW_W} + 20px)`,
+              transition: "margin-right .22s ease",
+            }
+          : { transition: "margin-right .22s ease" }
+      }
+    >
       <div className={styles.pageHead}>
         <div>
           <div className={styles.pageTitle}>
@@ -225,7 +222,12 @@ export default function BriefingEditor({
             Cada briefing é vinculado a uma proposta (mesmo número). Link público: /briefing/{briefing.number || "Nº"}
           </div>
         </div>
-        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>← Voltar</button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
+            {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
+          </button>
+          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>← Voltar</button>
+        </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
@@ -302,7 +304,6 @@ export default function BriefingEditor({
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
               onDuplicate={() => duplicateSection(i)}
-              onAddContinuation={() => addContinuation(i)}
               isFirst={i === 0}
               isLast={i === briefing.sections.length - 1}
             />
@@ -338,6 +339,33 @@ export default function BriefingEditor({
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>Salvar e publicar</button>
         </div>
       </div>
+
+      {/* Painel de pré-visualização ao vivo (atualiza a cada alteração) */}
+      {showPreview && (
+        <div
+          style={{
+            position: "fixed", top: 0, right: 0, zIndex: 60,
+            width: PREVIEW_W, height: "100vh",
+            background: "#0a0a0a", borderLeft: "1px solid var(--color-border)",
+            boxShadow: "-10px 0 40px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column",
+          }}
+        >
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "10px 14px", borderBottom: "1px solid var(--color-border)",
+            background: "var(--color-surface)", color: "var(--color-text-primary)",
+          }}>
+            <strong style={{ fontSize: 13 }}>Prévia ao vivo · {briefing.title || "Briefing"}</strong>
+            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+          </div>
+          <div style={{ flex: 1, overflow: "auto" }}>
+            {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}
+            <div style={{ zoom: 0.64 }}>
+              <BriefingView briefing={briefing} preview />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

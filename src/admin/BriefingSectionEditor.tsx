@@ -119,7 +119,6 @@ export default function BriefingSectionEditor({
   onRemove,
   onMove,
   onDuplicate,
-  onAddContinuation,
   isFirst,
   isLast,
 }: {
@@ -128,10 +127,8 @@ export default function BriefingSectionEditor({
   onChange: (next: BriefingSection) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
-  /** duplica a seção inteira (mesmas perguntas) logo abaixo */
+  /** duplica a seção inteira (imagem + perguntas) logo abaixo */
   onDuplicate: () => void;
-  /** insere logo abaixo um novo bloco de imagem do MESMO ambiente */
-  onAddContinuation?: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -207,7 +204,7 @@ export default function BriefingSectionEditor({
         <div style={{ display: "flex", gap: 6 }}>
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
-          <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo, com as mesmas perguntas (é só trocar a imagem).">⧉ Duplicar</button>
+          <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo (imagem + perguntas) — é só trocar a imagem.">⧉ Duplicar</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover seção</button>
         </div>
       </div>
@@ -320,11 +317,6 @@ export default function BriefingSectionEditor({
       ))}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
-        {isAmbiente && onAddContinuation && (
-          <button type="button" className={styles.btn} onClick={onAddContinuation} title="Cria outro bloco do mesmo ambiente JÁ com as mesmas perguntas de cima — é só enviar a nova foto (na página vira 'continuação').">
-            🖼 + outra imagem (mesmas perguntas)
-          </button>
-        )}
       </div>
     </div>
   );

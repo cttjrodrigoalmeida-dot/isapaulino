@@ -78,6 +78,18 @@
   background: none;
 }
 
+/* Modo pré-visualização (dentro do editor): sem o "chrome" fixo (redes,
+   timeline, flutuantes, ambiente), para caber num painel rolável. */
+.pagePreview {
+  min-height: auto;
+}
+.pagePreview .socialFixed,
+.pagePreview .timeline,
+.pagePreview .floatStack,
+.pagePreview .ambient {
+  display: none !important;
+}
+
 /* ════════════ REDES FIXAS (topo-direito, desktop) ════════════ */
 .socialFixed {
   position: fixed;

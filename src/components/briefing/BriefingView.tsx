@@ -144,6 +144,8 @@ type Refs = Record<string, string>;
 
 interface Props {
   briefing: Briefing;
+  /** modo prévia (dentro do editor): sem cursor custom nem "chrome" fixo. */
+  preview?: boolean;
 }
 
 const isRequired = (q: BriefingQuestion) => q.required !== false;
@@ -585,7 +587,7 @@ function normalizeLink(url: string): string {
 
 // (a imagem com pinos vive em SectionFigure.tsx — compartilhada com o admin)
 
-export default function BriefingView({ briefing: b }: Props) {
+export default function BriefingView({ briefing: b, preview = false }: Props) {
   const linked = getProposalByNumber(b.proposalNumber);
   const clientName = linked?.client ?? b.client ?? "—";
   const projectTitle = linked?.serviceTitle ?? b.serviceTitle ?? b.title;
@@ -927,9 +929,9 @@ export default function BriefingView({ briefing: b }: Props) {
   );
 
   return (
-    <PrintContext.Provider value={printing}>
-      <div className={styles.page} data-theme={theme} ref={pageRef}>
-        {!printing && theme === "dark" && <CustomCursor />}
+    <PrintContext.Provider value={printing || preview}>
+      <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} data-theme={theme} ref={pageRef}>
+        {!printing && !preview && theme === "dark" && <CustomCursor />}
         <div className={styles.ambient} aria-hidden />
 
         {/* redes sociais fixas (topo-direito, desktop) — 2x2 */}
