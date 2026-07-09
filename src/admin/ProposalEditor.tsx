@@ -22,6 +22,9 @@ import styles from "./Admin.module.css";
 
 type Status = "draft" | "published";
 
+// Largura do painel de prévia (usada no drawer e para "encolher" o editor à esquerda).
+const PREVIEW_W = "min(48vw, 760px)";
+
 // Extrai a quantidade de dias do texto de validade (ex.: "7 dias úteis" → 7).
 function daysFromValidity(validity: string): number | null {
   const m = validity.match(/\d+/);
@@ -228,7 +231,21 @@ export default function ProposalEditor({
   }
 
   return (
-    <div className={styles.container}>
+    <div
+      className={styles.container}
+      style={
+        showPreview
+          ? {
+              // Encolhe o editor p/ a esquerda enquanto a prévia estiver aberta,
+              // reservando a largura do painel (senão ele tapa os campos da direita).
+              maxWidth: "none",
+              marginLeft: 0,
+              marginRight: `calc(${PREVIEW_W} + 20px)`,
+              transition: "margin-right .22s ease",
+            }
+          : { transition: "margin-right .22s ease" }
+      }
+    >
       <div className={styles.pageHead}>
         <div>
           <div className={styles.pageTitle}>
@@ -438,7 +455,7 @@ export default function ProposalEditor({
         <div
           style={{
             position: "fixed", top: 0, right: 0, zIndex: 60,
-            width: "min(48vw, 760px)", height: "100vh",
+            width: PREVIEW_W, height: "100vh",
             background: "#0a0a0a", borderLeft: "1px solid var(--color-border)",
             boxShadow: "-10px 0 40px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column",
           }}
