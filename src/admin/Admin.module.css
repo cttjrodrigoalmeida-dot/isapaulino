@@ -195,9 +195,9 @@
 
 /* ── Container ── */
 .container {
-  max-width: 1040px;
+  max-width: 1360px;
   margin: 0 auto;
-  padding: 34px 24px 90px;
+  padding: 34px 28px 90px;
 }
 .pageHead {
   display: flex;

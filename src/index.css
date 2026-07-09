@@ -53,6 +53,12 @@
   --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Resumo de propostas (ProposalsSummary): empilha em telas estreitas. */
+@media (max-width: 1080px) {
+  .ps-row1 { grid-template-columns: 1fr !important; }
+  .ps-row2 { grid-template-columns: 1fr !important; }
+}
+
 /* ── Reset ── */
 *, *::before, *::after {
   box-sizing: border-box;

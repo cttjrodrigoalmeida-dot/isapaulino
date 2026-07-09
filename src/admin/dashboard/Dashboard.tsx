@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Cell } from "recharts";
 import { api, type DashboardOverview } from "../api";
+import ProposalsSummary from "../ProposalsSummary";
 import s from "./Dashboard.module.css";
 import { formatBRL, formatBRLShort, timeAgo, saudacao } from "./format";
 import {
@@ -130,48 +131,13 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
       </div>
 
       {/* Propostas por valor: aprovadas x não aprovadas */}
-      <div className={`${s.grid} ${s.cols3}`}>
-        <div className={s.card} style={{ gridColumn: "span 3" }}>
-          <div className={s.cardHead}>
-            <div>
-              <div className={s.cardTitleX}>Propostas por valor</div>
-              <div className={s.cardSub}>Aprovadas (faturamento) x não aprovadas (oportunidades perdidas)</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ flex: "1 1 320px", minWidth: 240, height: 130 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={[
-                    { name: "Aprovadas", value: proposals.approvedValue },
-                    { name: "Não aprovadas", value: proposals.lostValue },
-                  ]}
-                  layout="vertical"
-                  margin={{ top: 6, right: 12, bottom: 0, left: 0 }}
-                >
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12, fill: "var(--color-text-secondary)" }} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{ fill: "rgba(127, 127, 127, 0.12)" }} contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, fontSize: 12 }} formatter={(v) => [formatBRL(Number(v)), "Valor"]} />
-                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-                    <Cell fill="#22c55e" />
-                    <Cell fill="#ef4444" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: "#22c55e" }}>{formatBRL(proposals.approvedValue)}</div>
-                <div className={s.kpiNote}>Aprovadas · {proposals.approvedCount}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: "#ef4444" }}>{formatBRL(proposals.lostValue)}</div>
-                <div className={s.kpiNote}>Não aprovadas · {proposals.lostCount}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ProposalsSummary
+        totalValue={proposals.totalValue}
+        approvedValue={proposals.approvedValue}
+        lostValue={proposals.lostValue}
+        approvedCount={proposals.approvedCount}
+        lostCount={proposals.lostCount}
+      />
 
       {/* Funil + Receitas 12m + Atenção hoje */}
       <div className={`${s.grid} ${s.cols3}`}>

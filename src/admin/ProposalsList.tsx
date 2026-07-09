@@ -1,10 +1,15 @@
-import { useEffect, useState, useCallback } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type ProposalSummary, type ProposalOutcome } from "./api";
 import { formatBRL } from "./dashboard/format";
-import { groupByYear } from "./grouping";
+import ProposalsSummary from "./ProposalsSummary";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import styles from "./Admin.module.css";
+
+// Ano derivado do número (AANN): "2624" → "2026".
+const yearOf = (number: string) => (/^\d{2}/.test(number) ? `20${number.slice(0, 2)}` : "Outros");
+
+type OutcomeFilter = "todas" | "aprovada" | "nao-aprovada";
+const PAGE_SIZE = 8;
 
 export default function ProposalsList({
   onNew,
@@ -17,7 +22,9 @@ export default function ProposalsList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [year, setYear] = useState<string>("");
+  const [tab, setTab] = useState<OutcomeFilter>("todas");
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -35,6 +42,18 @@ export default function ProposalsList({
   useEffect(() => {
     load();
   }, [load]);
+
+  // Anos disponíveis + seleciona o mais recente por padrão.
+  const years = useMemo(() => {
+    const set = new Set(items.map((p) => yearOf(p.number)));
+    return [...set].sort((a, b) => (a === "Outros" ? 1 : b === "Outros" ? -1 : b.localeCompare(a)));
+  }, [items]);
+  useEffect(() => {
+    if (years.length && !years.includes(year)) setYear(years[0]);
+  }, [years, year]);
+  useEffect(() => {
+    setPage(1);
+  }, [tab, year]);
 
   const remove = async (number: string) => {
     if (!confirm(`Excluir a proposta Nº ${number}? Esta ação não pode ser desfeita.`)) return;
@@ -64,11 +83,12 @@ export default function ProposalsList({
     }
   };
 
-  const setOutcome = async (number: string, outcome: ProposalOutcome) => {
-    setBusy(number);
+  const toggleOutcome = async (p: ProposalSummary) => {
+    const outcome: ProposalOutcome = p.outcome === "aprovada" ? "nao-aprovada" : "aprovada";
+    setBusy(p.number);
     try {
-      await api.setProposalOutcome(number, outcome);
-      setItems((prev) => prev.map((p) => (p.number === number ? { ...p, outcome } : p)));
+      await api.setProposalOutcome(p.number, outcome);
+      setItems((prev) => prev.map((x) => (x.number === p.number ? { ...x, outcome } : x)));
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Erro ao alterar o resultado.");
     } finally {
@@ -76,25 +96,25 @@ export default function ProposalsList({
     }
   };
 
-  const toggleYear = (year: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(year)) next.delete(year);
-      else next.add(year);
-      return next;
-    });
+  // Propostas do ano selecionado (base do resumo) e da aba (base da tabela).
+  const yearItems = useMemo(() => items.filter((p) => yearOf(p.number) === year), [items, year]);
+  const filtered = useMemo(
+    () => (tab === "todas" ? yearItems : yearItems.filter((p) => (tab === "aprovada" ? p.outcome === "aprovada" : p.outcome !== "aprovada"))),
+    [yearItems, tab]
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const groups = groupByYear(items);
+  const approvedValue = yearItems.filter((p) => p.outcome === "aprovada").reduce((s, p) => s + (p.value || 0), 0);
+  const lostValue = yearItems.filter((p) => p.outcome !== "aprovada").reduce((s, p) => s + (p.value || 0), 0);
+  const approvedCount = yearItems.filter((p) => p.outcome === "aprovada").length;
+  const lostCount = yearItems.length - approvedCount;
 
-  // Faturamento x oportunidades perdidas (por valor).
-  const approved = items.filter((p) => p.outcome === "aprovada");
-  const lost = items.filter((p) => p.outcome !== "aprovada");
-  const approvedValue = approved.reduce((s, p) => s + (p.value || 0), 0);
-  const lostValue = lost.reduce((s, p) => s + (p.value || 0), 0);
-  const chartData = [
-    { name: "Aprovadas", value: approvedValue, fill: "#22c55e" },
-    { name: "Não aprovadas", value: lostValue, fill: "#ef4444" },
-  ];
+  const counts = {
+    todas: yearItems.length,
+    aprovada: approvedCount,
+    "nao-aprovada": lostCount,
+  };
 
   return (
     <div className={styles.container}>
@@ -103,52 +123,31 @@ export default function ProposalsList({
           <div className={styles.pageTitle}>Propostas</div>
           <div className={styles.pageHint}>Crie, edite e publique as propostas dos clientes.</div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className={styles.btn} onClick={load} disabled={loading}>
-            Atualizar
-          </button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onNew}>
-            + Nova proposta
-          </button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {years.length > 0 && (
+            <select className={styles.input} style={{ width: "auto", minWidth: 110 }} value={year} onChange={(e) => setYear(e.target.value)}>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          )}
+          <button className={styles.btn} onClick={load} disabled={loading}>Atualizar</button>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onNew}>+ Nova proposta</button>
         </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
 
+      {/* Abas: Todas · Aprovadas · Não aprovadas */}
       {!loading && items.length > 0 && (
-        <div className={styles.card} style={{ marginBottom: 18 }}>
-          <div className={styles.cardTitle}>Propostas por valor</div>
-          <div className={styles.pageHint} style={{ marginTop: -4, marginBottom: 10 }}>
-            Quanto o escritório converteu em vendas x quanto deixou de faturar (oportunidades perdidas).
-          </div>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ flex: "1 1 320px", minWidth: 260, height: 140 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} layout="vertical" margin={{ top: 6, right: 16, bottom: 0, left: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={104} tick={{ fontSize: 12, fill: "var(--color-text-secondary)" }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    cursor={{ fill: "rgba(127, 127, 127, 0.12)" }}
-                    contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, fontSize: 12 }}
-                    formatter={(v) => [formatBRL(Number(v)), "Valor"]}
-                  />
-                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-                    {chartData.map((d, i) => <Cell key={i} fill={d.fill} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#22c55e" }}>{formatBRL(approvedValue)}</div>
-                <div className={styles.pageHint} style={{ margin: 0 }}>Aprovadas · {approved.length}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#ef4444" }}>{formatBRL(lostValue)}</div>
-                <div className={styles.pageHint} style={{ margin: 0 }}>Não aprovadas · {lost.length}</div>
-              </div>
-            </div>
-          </div>
+        <div className={styles.tabs}>
+          {([
+            ["todas", "Todas"],
+            ["aprovada", "Aprovadas"],
+            ["nao-aprovada", "Não aprovadas"],
+          ] as [OutcomeFilter, string][]).map(([id, label]) => (
+            <button key={id} className={`${styles.tab} ${tab === id ? styles.tabActive : ""}`} onClick={() => setTab(id)}>
+              {label} <span style={{ opacity: 0.6 }}>· {counts[id]}</span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -159,107 +158,105 @@ export default function ProposalsList({
           Nenhuma proposta ainda. Clique em <strong>“+ Nova proposta”</strong> para começar.
         </div>
       ) : (
-        groups.map((g) => {
-          const open = !collapsed.has(g.year);
-          return (
-            <div key={g.year} className={styles.yearGroup}>
-              <button className={styles.yearHead} onClick={() => toggleYear(g.year)}>
-                <span className={`${styles.yearCaret} ${open ? styles.yearCaretOpen : ""}`}>
-                  <Caret />
-                </span>
-                <span className={styles.yearLabel}>{g.year}</span>
-                <span className={styles.yearCount}>
-                  {g.items.length} proposta{g.items.length === 1 ? "" : "s"}
-                </span>
-              </button>
+        <>
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Nº</th>
+                  <th>Cliente</th>
+                  <th>Serviço</th>
+                  <th>Data</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: "right" }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map((p) => (
+                  <tr key={p.number}>
+                    <td className={styles.rowNumber}>
+                      {p.number}
+                      {p.status !== "published" && (
+                        <div style={{ fontSize: 10, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>rascunho</div>
+                      )}
+                    </td>
+                    <td>{p.client || "—"}</td>
+                    <td>{p.serviceTitle || "—"}</td>
+                    <td>{p.date || "—"}</td>
+                    <td className={styles.mono}>{p.value ? formatBRL(p.value) : "—"}</td>
+                    <td>
+                      <button
+                        onClick={() => toggleOutcome(p)}
+                        disabled={busy === p.number}
+                        title="Clique para alternar entre Aprovada e Não aprovada"
+                        style={{
+                          cursor: "pointer",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          padding: "6px 12px",
+                          borderRadius: 999,
+                          border: "1px solid",
+                          ...(p.outcome === "aprovada"
+                            ? { color: "#4d7c0f", background: "rgba(132,204,22,0.16)", borderColor: "rgba(132,204,22,0.45)" }
+                            : { color: "#be185d", background: "rgba(236,72,153,0.14)", borderColor: "rgba(236,72,153,0.45)" }),
+                        }}
+                      >
+                        {p.outcome === "aprovada" ? "Aprovada" : "Não aprovada"}
+                      </button>
+                    </td>
+                    <td>
+                      <div className={styles.rowActions} style={{ flexWrap: "nowrap" }}>
+                        {p.status === "published" && (
+                          <a className={`${styles.btn} ${styles.btnGhost}`} href={`/proposta/${p.number}`} target="_blank" rel="noopener noreferrer">Ver</a>
+                        )}
+                        <button className={styles.btn} onClick={() => onEdit(p.number)}>Editar</button>
+                        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => duplicate(p.number)} disabled={busy === p.number}>Duplicar</button>
+                        <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => remove(p.number)} disabled={busy === p.number}>Excluir</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pageItems.length === 0 && (
+                  <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>Nenhuma proposta neste filtro.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              {open && (
-                <div className={styles.tableScroll}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Nº</th>
-                      <th>Cliente</th>
-                      <th>Serviço</th>
-                      <th>Valor</th>
-                      <th>Status</th>
-                      <th>Resultado</th>
-                      <th style={{ textAlign: "right" }}>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {g.items.map((p) => (
-                      <tr key={p.number}>
-                        <td className={styles.rowNumber}>{p.number}</td>
-                        <td>{p.client || "—"}</td>
-                        <td>{p.serviceTitle || "—"}</td>
-                        <td className={styles.mono}>{p.value ? formatBRL(p.value) : "—"}</td>
-                        <td>
-                          <span className={`${styles.badge} ${p.status === "published" ? styles.badgePublished : styles.badgeDraft}`}>
-                            {p.status === "published" ? "Publicada" : "Rascunho"}
-                          </span>
-                        </td>
-                        <td>
-                          <select
-                            className={styles.input}
-                            style={{ padding: "6px 8px", fontSize: 12, width: "auto", minWidth: 130 }}
-                            value={p.outcome}
-                            onChange={(e) => setOutcome(p.number, e.target.value as ProposalOutcome)}
-                            disabled={busy === p.number}
-                          >
-                            <option value="aprovada">✓ Aprovada</option>
-                            <option value="nao-aprovada">✕ Não aprovada</option>
-                          </select>
-                        </td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            {p.status === "published" && (
-                              <a
-                                className={`${styles.btn} ${styles.btnGhost}`}
-                                href={`/proposta/${p.number}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Ver
-                              </a>
-                            )}
-                            <button className={styles.btn} onClick={() => onEdit(p.number)}>
-                              Editar
-                            </button>
-                            <button
-                              className={`${styles.btn} ${styles.btnGhost}`}
-                              onClick={() => duplicate(p.number)}
-                              disabled={busy === p.number}
-                            >
-                              Duplicar
-                            </button>
-                            <button
-                              className={`${styles.btn} ${styles.btnDanger}`}
-                              onClick={() => remove(p.number)}
-                              disabled={busy === p.number}
-                            >
-                              Excluir
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* Paginação */}
+          {filtered.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap", gap: 10 }}>
+              <span className={styles.pageHint}>
+                Mostrando {(page - 1) * PAGE_SIZE + 1} a {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} proposta{filtered.length === 1 ? "" : "s"}
+              </span>
+              {totalPages > 1 && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className={styles.btn} onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>‹</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                    <button key={n} className={`${styles.btn} ${n === page ? styles.btnPrimary : ""}`} onClick={() => setPage(n)}>{n}</button>
+                  ))}
+                  <button className={styles.btn} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>›</button>
                 </div>
               )}
             </div>
-          );
-        })
+          )}
+
+          {/* Resumo por valor (rodapé) */}
+          <div style={{ marginTop: 26 }}>
+            <ProposalsSummary
+              totalValue={approvedValue + lostValue}
+              approvedValue={approvedValue}
+              lostValue={lostValue}
+              approvedCount={approvedCount}
+              lostCount={lostCount}
+            />
+          </div>
+        </>
       )}
     </div>
-  );
-}
-
-function Caret() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="m9 6 6 6-6 6" />
-    </svg>
   );
 }
