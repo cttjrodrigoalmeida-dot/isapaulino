@@ -223,10 +223,16 @@ export default function AreaCliente() {
 
         {d.history.length > 0 && (
           <section className={styles.section}>
-            <h2 className={styles.h2}>Serviços adicionais</h2>
+            <h2 className={styles.h2}>Histórico financeiro</h2>
             <div className={styles.card}>
               {d.history.map((h) => {
-                const paid = h.status === "paid";
+                // pago / cobrado (aguardando pagamento) / pendente (lançado, ainda não cobrado)
+                const hs =
+                  h.status === "paid"
+                    ? { label: "Pago", cls: styles.stPaid }
+                    : h.status === "charged"
+                    ? { label: "A pagar", cls: styles.stPending }
+                    : { label: "Pendente", cls: styles.stPending };
                 return (
                   <div key={h.id} className={styles.row}>
                     <div className={styles.rowMain}>
@@ -234,9 +240,9 @@ export default function AreaCliente() {
                       <span className={styles.rowSub}>{fmtDate(h.date)}</span>
                     </div>
                     <span className={styles.rowValue}>{fmtBRL(h.amount)}</span>
-                    <span className={`${styles.badge} ${paid ? styles.stPaid : styles.stPending}`}>{paid ? "Pago" : "A pagar"}</span>
+                    <span className={`${styles.badge} ${hs.cls}`}>{hs.label}</span>
                     <span className={styles.rowAction}>
-                      {!paid && h.invoiceUrl && (
+                      {h.status === "charged" && h.invoiceUrl && (
                         <a className={`${styles.btn} ${styles.btnPrimary}`} href={h.invoiceUrl} target="_blank" rel="noopener noreferrer">Pagar</a>
                       )}
                     </span>

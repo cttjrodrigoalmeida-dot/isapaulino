@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Proposal } from "../components/proposal/types";
 import { SAMPLE_PROPOSAL } from "../components/proposal/sampleProposal";
+import ProposalView from "../components/proposal/ProposalView";
 import { api, ApiError } from "./api";
 // Numeração com prefixo de ano (AANN): os 2 primeiros dígitos são sempre o ano.
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
@@ -71,6 +72,7 @@ export default function ProposalEditor({
   const [pixDiscount, setPixDiscount] = useState(5);
   const [maxInstallments, setMaxInstallments] = useState(4);
   const [tab, setTab] = useState<"campos" | "json">("campos");
+  const [showPreview, setShowPreview] = useState(false);
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,9 +240,14 @@ export default function ProposalEditor({
               : "Valores (subtotais, total, PIX e parcelas) são calculados automaticamente."}
           </div>
         </div>
-        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
-          ← Voltar
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
+            {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
+          </button>
+          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
+            ← Voltar
+          </button>
+        </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
@@ -425,6 +432,33 @@ export default function ProposalEditor({
           </button>
         </div>
       </div>
+
+      {/* Painel de pré-visualização ao vivo (atualiza a cada alteração) */}
+      {showPreview && (
+        <div
+          style={{
+            position: "fixed", top: 0, right: 0, zIndex: 60,
+            width: "min(48vw, 760px)", height: "100vh",
+            background: "#0a0a0a", borderLeft: "1px solid var(--color-border)",
+            boxShadow: "-10px 0 40px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column",
+          }}
+        >
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "10px 14px", borderBottom: "1px solid var(--color-border)",
+            background: "var(--color-surface)", color: "var(--color-text-primary)",
+          }}>
+            <strong style={{ fontSize: 13 }}>Prévia ao vivo · Nº {proposal.number}</strong>
+            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+          </div>
+          <div style={{ flex: 1, overflow: "auto" }}>
+            {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}
+            <div style={{ zoom: 0.62 }}>
+              <ProposalView proposal={proposal} preview />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Cell } from "recharts";
-import { api, ApiError, type Installment, type InstallmentStatus, type DashboardOverview } from "../api";
+import { api, ApiError, type Installment, type InstallmentStatus, type DashboardOverview, type Client } from "../api";
 import { formatBRL, formatBRLShort } from "./format";
+import CurrencyInput from "../CurrencyInput";
 import s from "./Dashboard.module.css";
 import admin from "../Admin.module.css";
+
+const PAY_METHODS = ["PIX", "Dinheiro", "Transferência", "Boleto", "Cartão", "Outro"];
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 const INST_STATUS: Record<InstallmentStatus, { label: string; cls: string }> = {
   pending: { label: "Pendente", cls: "badgeDraft" },
@@ -32,6 +38,46 @@ export default function Financeiro() {
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Recebimento manual (modal)
+  const [payOpen, setPayOpen] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [pay, setPay] = useState({ clientId: "", amount: null as number | null, date: todayISO(), method: "PIX", description: "" });
+  const [paySaving, setPaySaving] = useState(false);
+  const [payErr, setPayErr] = useState<string | null>(null);
+
+  const openPay = async () => {
+    setPayErr(null);
+    setPay({ clientId: "", amount: null, date: todayISO(), method: "PIX", description: "" });
+    setPayOpen(true);
+    if (clients.length === 0) {
+      try {
+        const { clients } = await api.listClients();
+        setClients(clients);
+      } catch { /* segue sem lista */ }
+    }
+  };
+  const confirmPay = async () => {
+    if (!pay.clientId) { setPayErr("Selecione o cliente."); return; }
+    if (!pay.amount || pay.amount <= 0) { setPayErr("Informe o valor recebido."); return; }
+    setPaySaving(true);
+    setPayErr(null);
+    try {
+      await api.registerManualPayment({
+        client_id: pay.clientId,
+        amount: pay.amount,
+        date: pay.date,
+        method: pay.method,
+        description: pay.description.trim() || undefined,
+      });
+      setPayOpen(false);
+      await load();
+    } catch (err) {
+      setPayErr(err instanceof ApiError ? err.message : "Erro ao registrar.");
+    } finally {
+      setPaySaving(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,9 +110,14 @@ export default function Financeiro() {
           <h1 className={s.greetTitle}>Financeiro</h1>
           <p className={s.greetSub}>Parcelas, recebimentos e a receber. Cobranças via ASAAS quando configurado.</p>
         </div>
-        <button className={`${admin.btn} ${admin.btnGhost}`} onClick={load} disabled={loading}>
-          Atualizar
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className={`${admin.btn} ${admin.btnGhost}`} onClick={load} disabled={loading}>
+            Atualizar
+          </button>
+          <button className={`${admin.btn} ${admin.btnPrimary}`} onClick={openPay}>
+            ＋ Registrar recebimento manual
+          </button>
+        </div>
       </div>
 
       {error && <div className={admin.error}>{error}</div>}
@@ -166,6 +217,54 @@ export default function Financeiro() {
             })}
           </tbody>
         </table>
+      )}
+
+      {/* Modal: registrar recebimento manual (fora do ASAAS) */}
+      {payOpen && (
+        <div className={s.modalOverlay} onClick={() => setPayOpen(false)}>
+          <div className={s.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={s.modalTitle}>Registrar recebimento manual</h2>
+            <p className={s.modalSub}>
+              Para pagamentos recebidos fora do ASAAS (ex.: PIX da proposta). Entra em “Recebido” e na área do cliente.
+            </p>
+            {payErr && <div className={admin.error}>{payErr}</div>}
+            <div className={admin.field}>
+              <label className={admin.label}>Cliente *</label>
+              <select className={admin.input} value={pay.clientId} onChange={(e) => setPay((p) => ({ ...p, clientId: e.target.value }))}>
+                <option value="">— Selecione o cliente —</option>
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className={admin.row2}>
+              <div className={admin.field}>
+                <label className={admin.label}>Valor recebido *</label>
+                <CurrencyInput className={admin.input} value={pay.amount} onChange={(v) => setPay((p) => ({ ...p, amount: v }))} />
+              </div>
+              <div className={admin.field}>
+                <label className={admin.label}>Data</label>
+                <input className={admin.input} type="date" value={pay.date} onChange={(e) => setPay((p) => ({ ...p, date: e.target.value }))} />
+              </div>
+            </div>
+            <div className={admin.row2}>
+              <div className={admin.field}>
+                <label className={admin.label}>Forma</label>
+                <select className={admin.input} value={pay.method} onChange={(e) => setPay((p) => ({ ...p, method: e.target.value }))}>
+                  {PAY_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className={admin.field}>
+                <label className={admin.label}>Descrição (opcional)</label>
+                <input className={admin.input} value={pay.description} onChange={(e) => setPay((p) => ({ ...p, description: e.target.value }))} placeholder="ex.: Entrada do projeto" />
+              </div>
+            </div>
+            <div className={s.modalActions}>
+              <button className={`${admin.btn} ${admin.btnGhost}`} onClick={() => setPayOpen(false)} disabled={paySaving}>Cancelar</button>
+              <button className={`${admin.btn} ${admin.btnPrimary}`} onClick={confirmPay} disabled={paySaving}>
+                {paySaving ? "Salvando…" : "Registrar recebimento"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

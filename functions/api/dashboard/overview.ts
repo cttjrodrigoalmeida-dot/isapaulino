@@ -68,6 +68,7 @@ interface ProposalRow {
   client: string | null;
   date: string | null;
   status: string;
+  outcome: string;
   data: string;
   updated_at: string;
 }
@@ -91,7 +92,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes, annualGoalRes, calendarRes, clientsRes] = await Promise.all([
       env.DB.prepare(
-        "SELECT number, client, date, status, data, updated_at FROM proposals"
+        "SELECT number, client, date, status, outcome, data, updated_at FROM proposals"
       ).all<ProposalRow>(),
       env.DB.prepare(
         "SELECT number, title, status, updated_at FROM briefings"
@@ -137,9 +138,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     }
 
     // ── Propostas: status, valores, ranking, faturamento por mês ──
+    // Faturamento = só propostas APROVADAS (outcome='aprovada'). As não
+    // aprovadas ficam registradas mas não contam como receita.
     let pDraft = 0;
     let pPublished = 0;
-    let totalValue = 0;
+    let totalValue = 0;      // todas (referência)
+    let approvedValue = 0;   // faturamento (aprovadas)
+    let lostValue = 0;       // oportunidades perdidas (não aprovadas)
+    let approvedCount = 0;
+    let lostCount = 0;
     const byClient = new Map<string, { total: number; count: number }>();
 
     // 12 baldes mensais terminando no mês atual
@@ -166,22 +173,29 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       }
       totalValue += value;
 
-      const clientName = (p.client ?? "Sem cliente").trim() || "Sem cliente";
-      const agg = byClient.get(clientName) ?? { total: 0, count: 0 };
-      agg.total += value;
-      agg.count += 1;
-      byClient.set(clientName, agg);
+      const approved = p.outcome === "aprovada";
+      if (approved) { approvedValue += value; approvedCount++; }
+      else { lostValue += value; lostCount++; }
 
-      const dt = parseDateBR(p.date);
-      if (dt) {
-        const key = `${dt.y}-${String(dt.m).padStart(2, "0")}`;
-        const idx = bucketIndex.get(key);
-        if (idx !== undefined) buckets[idx].value += value;
+      // Ranking e faturamento por mês contam SÓ aprovadas (receita real).
+      if (approved) {
+        const clientName = (p.client ?? "Sem cliente").trim() || "Sem cliente";
+        const agg = byClient.get(clientName) ?? { total: 0, count: 0 };
+        agg.total += value;
+        agg.count += 1;
+        byClient.set(clientName, agg);
+
+        const dt = parseDateBR(p.date);
+        if (dt) {
+          const key = `${dt.y}-${String(dt.m).padStart(2, "0")}`;
+          const idx = bucketIndex.get(key);
+          if (idx !== undefined) buckets[idx].value += value;
+        }
       }
     }
 
     const proposalsTotal = proposals.length;
-    const avgTicket = proposalsTotal > 0 ? totalValue / proposalsTotal : 0;
+    const avgTicket = approvedCount > 0 ? approvedValue / approvedCount : 0;
 
     const clientRanking = [...byClient.entries()]
       .map(([client, v]) => {
@@ -341,6 +355,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         published: pPublished,
         totalValue,
         avgTicket,
+        approvedValue,
+        lostValue,
+        approvedCount,
+        lostCount,
       },
       briefings: {
         total: briefings.length,

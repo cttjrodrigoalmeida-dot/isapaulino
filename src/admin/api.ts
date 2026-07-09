@@ -3,12 +3,18 @@
 import type { Proposal } from "../components/proposal/types";
 import type { Briefing } from "../components/briefing/types";
 
+export type ProposalOutcome = "aprovada" | "nao-aprovada";
+
 export interface ProposalSummary {
   number: string;
   client: string | null;
   serviceTitle: string | null;
   date: string | null;
   status: "draft" | "published";
+  /** Resultado comercial (manual). Só 'aprovada' entra no faturamento. */
+  outcome: ProposalOutcome;
+  /** Valor da proposta (R$) parseado do JSON — para os gráficos por valor. */
+  value: number;
   updatedAt: string;
 }
 
@@ -63,7 +69,7 @@ export type ClientInput = Pick<
 
 // ── Histórico Financeiro (HF) ──
 export type HistoryStatus = "pending" | "charged" | "paid" | "cancelled";
-export type HistoryKind = "adicional" | "retrabalho" | "hora-tecnica" | "outro";
+export type HistoryKind = "adicional" | "retrabalho" | "hora-tecnica" | "pagamento" | "outro";
 
 export interface HistoryItem {
   id: string;
@@ -178,6 +184,10 @@ export interface DashboardOverview {
     published: number;
     totalValue: number;
     avgTicket: number;
+    approvedValue: number;
+    lostValue: number;
+    approvedCount: number;
+    lostCount: number;
   };
   briefings: {
     total: number;
@@ -367,6 +377,11 @@ export const api = {
 
   // ── propostas ──
   listProposals: () => req<{ proposals: ProposalSummary[] }>("/api/proposals"),
+  setProposalOutcome: (number: string, outcome: ProposalOutcome) =>
+    req<{ ok: true; outcome: ProposalOutcome }>(`/api/proposals/${encodeURIComponent(number)}/outcome`, {
+      method: "POST",
+      body: JSON.stringify({ outcome }),
+    }),
   getProposal: (number: string) =>
     req<{ proposal: Proposal; status: "draft" | "published" }>(
       `/api/proposals/${encodeURIComponent(number)}`
@@ -445,6 +460,19 @@ export const api = {
     ),
   createClientHistory: (clientId: string, input: HistoryInput) =>
     req<{ ok: true; id: string }>(`/api/clients/${encodeURIComponent(clientId)}/history`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  // Recebimento manual (fora do ASAAS) — grava no HF já pago e entra na receita.
+  registerManualPayment: (input: {
+    client_id: string;
+    contract_id?: string | null;
+    amount: number;
+    date?: string;
+    description?: string;
+    method?: string;
+  }) =>
+    req<{ ok: true; id: string }>("/api/payments/manual", {
       method: "POST",
       body: JSON.stringify(input),
     }),

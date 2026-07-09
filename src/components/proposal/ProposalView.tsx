@@ -11,6 +11,7 @@ import {
 } from "./proposalDefaults";
 import { faqs } from "../FAQ";
 import CustomCursor from "../CustomCursor";
+import { exportElementToPdf, waitForRenderReady } from "../../lib/pdfExport";
 import styles from "./ProposalView.module.css";
 
 // Durante a exportação em PDF, desligamos as animações e abrimos
@@ -253,9 +254,12 @@ function CopyButton({ value }: { value: string }) {
 
 interface Props {
   proposal: Proposal;
+  /** Modo pré-visualização (dentro do editor): sem cursor custom e sem
+   *  animações (renderiza estático), para atualizar ao vivo a cada tecla. */
+  preview?: boolean;
 }
 
-export default function ProposalView({ proposal: p }: Props) {
+export default function ProposalView({ proposal: p, preview = false }: Props) {
   const contact = p.contact ?? DEFAULT_CONTACT;
   const pixCopyValue = p.pixKeyValue ?? p.pixKey;
   const about = p.studioAbout ?? DEFAULT_STUDIO_ABOUT;
@@ -280,23 +284,28 @@ export default function ProposalView({ proposal: p }: Props) {
   const scrollToTop = () =>
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-  // Exportar em PDF: ativa o modo impressão (desliga animações e abre
-  // as seções colapsáveis), espera o React pintar o conteúdo visível e
-  // só então abre a janela de impressão ("Salvar como PDF").
+  // Exportar em PDF (1 clique baixa): ativa o modo "impressão" (desliga
+  // animações e abre as seções colapsáveis), espera o layout final e gera o
+  // PDF no navegador — sem abrir a tela de impressão. Fallback: window.print().
   const [printing, setPrinting] = useState(false);
-  useEffect(() => {
-    if (!printing) return;
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => window.print());
-    });
-    const done = () => setPrinting(false);
-    window.addEventListener("afterprint", done);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener("afterprint", done);
-    };
-  }, [printing]);
-  const exportPdf = () => setPrinting(true);
+  const [exporting, setExporting] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const exportPdf = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setPrinting(true);
+    await waitForRenderReady();
+    try {
+      if (pageRef.current) {
+        await exportElementToPdf(pageRef.current, `Proposta-${p.number}`, { background: "#0a0a0a" });
+      }
+    } catch {
+      window.print();
+    } finally {
+      setPrinting(false);
+      setExporting(false);
+    }
+  };
 
   // ── Portfólio: "Ver Mais" + lightbox (ampliar — somente desktop) ──
   const GALLERY_INITIAL = 4;
@@ -334,9 +343,9 @@ export default function ProposalView({ proposal: p }: Props) {
   )}`;
 
   return (
-    <PrintContext.Provider value={printing}>
-    <div className={styles.page}>
-      {!printing && <CustomCursor />}
+    <PrintContext.Provider value={printing || preview}>
+    <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} ref={pageRef}>
+      {!printing && !preview && <CustomCursor />}
       {/* fundo ambiente sutil (fixo) + glows de destaque */}
       <div className={styles.ambient} aria-hidden />
       <div className={styles.glowTop} aria-hidden />
@@ -376,10 +385,12 @@ export default function ProposalView({ proposal: p }: Props) {
             type="button"
             onClick={exportPdf}
             className={styles.pdfButton}
-            aria-label="Exportar proposta em PDF"
+            aria-label="Baixar proposta em PDF"
+            data-pdf-ignore
+            disabled={exporting}
           >
             <IconDownload />
-            <span>Exportar PDF</span>
+            <span>{exporting ? "Gerando…" : "Baixar PDF"}</span>
           </button>
         </div>
 
@@ -388,7 +399,7 @@ export default function ProposalView({ proposal: p }: Props) {
             <SectionLabel>PROPOSTA DE ORÇAMENTO · Nº {p.number}</SectionLabel>
             <h1 className={styles.heroTitle}>{p.serviceTitle}</h1>
             <div className={styles.heroTags}>
-              {p.serviceTags.map((t) => (
+              {(p.serviceTags ?? []).map((t) => (
                 <span key={t} className={styles.tag}>
                   {t}
                 </span>
@@ -498,11 +509,11 @@ export default function ProposalView({ proposal: p }: Props) {
             <p className={styles.letterIntro}>{p.scopeIntro}</p>
             {p.scopeNote && <p className={styles.paragraph}>{p.scopeNote}</p>}
 
-            {p.ambientes.length > 0 && (
+            {(p.ambientes ?? []).length > 0 && (
               <>
                 <span className={styles.miniLabel}>Ambientes do escopo</span>
                 <div className={styles.chips}>
-                  {p.ambientes.map((a) => (
+                  {(p.ambientes ?? []).map((a) => (
                     <span key={a} className={styles.chip}>
                       {a}
                     </span>
@@ -618,7 +629,7 @@ export default function ProposalView({ proposal: p }: Props) {
           </Reveal>
 
           <div className={styles.investGrid}>
-            {p.investmentBlocks.map((block, i) => (
+            {(p.investmentBlocks ?? []).map((block, i) => (
               <Reveal key={block.title} delay={i * 0.1} className={styles.investCard}>
                 <div className={styles.investHead}>
                   <h3 className={styles.investTitle}>{block.title}</h3>
@@ -715,7 +726,7 @@ export default function ProposalView({ proposal: p }: Props) {
                         <span>Valor da parcela</span>
                       </div>
                       <ul className={styles.parcList}>
-                        {p.installmentPlan.rows.map((row) => (
+                        {(p.installmentPlan.rows ?? []).map((row) => (
                           <li key={row.label} className={styles.parcRow}>
                             <span className={styles.parcLabel}>{row.label}</span>
                             <span className={styles.dots} aria-hidden />
@@ -1010,10 +1021,12 @@ export default function ProposalView({ proposal: p }: Props) {
               type="button"
               onClick={exportPdf}
               className={styles.pdfButtonCta}
-              aria-label="Exportar proposta em PDF"
+              aria-label="Baixar proposta em PDF"
+              data-pdf-ignore
+              disabled={exporting}
             >
               <IconDownload />
-              <span>Baixar essa proposta em PDF</span>
+              <span>{exporting ? "Gerando PDF…" : "Baixar essa proposta em PDF"}</span>
             </button>
 
             <div className={styles.socialRow}>

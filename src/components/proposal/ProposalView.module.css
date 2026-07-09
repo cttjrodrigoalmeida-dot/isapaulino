@@ -16,6 +16,20 @@
   --color-accent: #cccccc;
 }
 
+/* Modo pré-visualização (dentro do editor): sem o "chrome" fixo (redes,
+   flutuantes, glows, ambiente, lightbox), para caber num painel rolável. */
+.pagePreview {
+  min-height: auto;
+}
+.pagePreview .socialFixed,
+.pagePreview .floatStack,
+.pagePreview .glowTop,
+.pagePreview .glowBottom,
+.pagePreview .ambient,
+.pagePreview .lightbox {
+  display: none !important;
+}
+
 /* fundo ambiente fixo — luz suave em qualquer ponto da rolagem (na cor de acento) */
 .ambient {
   position: fixed;

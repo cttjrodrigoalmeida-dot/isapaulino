@@ -12,6 +12,7 @@ import { getProposalByNumber } from "../proposal/proposalsRegistry";
 import CustomCursor from "../CustomCursor";
 import FadeIn from "../FadeIn";
 import SectionFigure from "./SectionFigure";
+import { exportElementToPdf, waitForRenderReady } from "../../lib/pdfExport";
 import styles from "./BriefingView.module.css";
 
 // Modo impressão: desliga zoom/animações e troca controles por texto fixo.
@@ -799,21 +800,27 @@ export default function BriefingView({ briefing: b }: Props) {
   }, []);
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  // ── PDF ──
+  // ── PDF (1 clique baixa; sem abrir a tela de impressão) ──
   const [printing, setPrinting] = useState(false);
-  useEffect(() => {
-    if (!printing) return;
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => window.print());
-    });
-    const done = () => setPrinting(false);
-    window.addEventListener("afterprint", done);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener("afterprint", done);
-    };
-  }, [printing]);
-  const exportPdf = () => setPrinting(true);
+  const [exporting, setExporting] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const exportPdf = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setPrinting(true);
+    await waitForRenderReady();
+    try {
+      if (pageRef.current) {
+        const bg = theme === "light" ? "#f3f4f6" : "#0a0a0a";
+        await exportElementToPdf(pageRef.current, `Briefing-${b.number}`, { background: bg });
+      }
+    } catch {
+      window.print();
+    } finally {
+      setPrinting(false);
+      setExporting(false);
+    }
+  };
 
   // ── Validação ao enviar ──
   const validate = useCallback((): string[] => {
@@ -921,7 +928,7 @@ export default function BriefingView({ briefing: b }: Props) {
 
   return (
     <PrintContext.Provider value={printing}>
-      <div className={styles.page} data-theme={theme}>
+      <div className={styles.page} data-theme={theme} ref={pageRef}>
         {!printing && theme === "dark" && <CustomCursor />}
         <div className={styles.ambient} aria-hidden />
 
@@ -1020,9 +1027,9 @@ export default function BriefingView({ briefing: b }: Props) {
                 >
                   {theme === "dark" ? <IconSun /> : <IconMoon />}
                 </button>
-                <button type="button" onClick={exportPdf} className={styles.pdfButton} aria-label="Exportar briefing em PDF">
+                <button type="button" onClick={exportPdf} className={styles.pdfButton} aria-label="Baixar briefing em PDF" data-pdf-ignore disabled={exporting}>
                   <IconDownload />
-                  <span>Exportar PDF</span>
+                  <span>{exporting ? "Gerando…" : "Baixar PDF"}</span>
                 </button>
               </div>
             </div>
@@ -1160,9 +1167,9 @@ export default function BriefingView({ briefing: b }: Props) {
               </p>
             )}
             <div className={styles.ctaButtons}>
-              <button type="button" onClick={exportPdf} className={styles.pdfButtonCta}>
+              <button type="button" onClick={exportPdf} className={styles.pdfButtonCta} data-pdf-ignore disabled={exporting}>
                 <IconDownload />
-                <span>Exportar PDF</span>
+                <span>{exporting ? "Gerando PDF…" : "Baixar PDF"}</span>
               </button>
               <button type="button" onClick={handleSubmit} className={styles.sendBtn}>
                 <IconWhatsApp />

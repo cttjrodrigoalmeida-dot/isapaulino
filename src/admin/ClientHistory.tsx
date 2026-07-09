@@ -8,6 +8,7 @@ const KIND_LABEL: Record<HistoryKind, string> = {
   adicional: "Adicional",
   retrabalho: "Retrabalho",
   "hora-tecnica": "Hora técnica",
+  pagamento: "Pagamento",
   outro: "Outro",
 };
 const STATUS_META: Record<HistoryStatus, { label: string; cls: string }> = {

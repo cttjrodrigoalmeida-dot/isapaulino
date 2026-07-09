@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Cell } from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { api, type DashboardOverview } from "../api";
 import s from "./Dashboard.module.css";
 import { formatBRL, formatBRLShort, timeAgo, saudacao } from "./format";
@@ -121,12 +121,56 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
 
       {/* KPIs */}
       <div className={`${s.grid} ${s.kpiRow}`}>
-        <Kpi icon={<IcRevenue />} label="Em propostas" value={formatBRLShort(proposals.totalValue)} note={`${proposals.total} proposta${proposals.total === 1 ? "" : "s"}`} />
+        <Kpi icon={<IcRevenue />} label="Propostas aprovadas" value={formatBRLShort(proposals.approvedValue)} note={`${proposals.approvedCount} de ${proposals.total}`} />
         <Kpi icon={<IcReceived />} label="Recebido" value={formatBRLShort(finance.recebido)} note="Parcelas recebidas" />
         <Kpi icon={<IcToReceive />} label="A receber" value={formatBRLShort(finance.aReceber)} note="Parcelas em aberto" />
         <Kpi icon={<IcOverdue />} label="Em atraso" value={String(finance.atrasados)} note={finance.atrasados === 1 ? "parcela vencida" : "parcelas vencidas"} />
-        <Kpi icon={<IcTicket />} label="Ticket médio" value={formatBRLShort(proposals.avgTicket)} note="Por proposta" />
+        <Kpi icon={<IcTicket />} label="Ticket médio" value={formatBRLShort(proposals.avgTicket)} note="Por proposta aprovada" />
         <Kpi icon={<IcGrowth />} label="Crescimento" value={DASH} soon />
+      </div>
+
+      {/* Propostas por valor: aprovadas x não aprovadas */}
+      <div className={`${s.grid} ${s.cols3}`}>
+        <div className={s.card} style={{ gridColumn: "span 3" }}>
+          <div className={s.cardHead}>
+            <div>
+              <div className={s.cardTitleX}>Propostas por valor</div>
+              <div className={s.cardSub}>Aprovadas (faturamento) x não aprovadas (oportunidades perdidas)</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ flex: "1 1 320px", minWidth: 240, height: 130 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={[
+                    { name: "Aprovadas", value: proposals.approvedValue },
+                    { name: "Não aprovadas", value: proposals.lostValue },
+                  ]}
+                  layout="vertical"
+                  margin={{ top: 6, right: 12, bottom: 0, left: 0 }}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12, fill: "var(--color-text-secondary)" }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: "rgba(127, 127, 127, 0.12)" }} contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, fontSize: 12 }} formatter={(v) => [formatBRL(Number(v)), "Valor"]} />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                    <Cell fill="#22c55e" />
+                    <Cell fill="#ef4444" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#22c55e" }}>{formatBRL(proposals.approvedValue)}</div>
+                <div className={s.kpiNote}>Aprovadas · {proposals.approvedCount}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#ef4444" }}>{formatBRL(proposals.lostValue)}</div>
+                <div className={s.kpiNote}>Não aprovadas · {proposals.lostCount}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Funil + Receitas 12m + Atenção hoje */}
@@ -149,7 +193,7 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
           </div>
         </Card>
 
-        <Card title="Faturamento (propostas)" sub="Últimos 12 meses">
+        <Card title="Faturamento (propostas)" sub="Só aprovadas · últimos 12 meses">
           <div style={{ height: 180 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueByMonth} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>

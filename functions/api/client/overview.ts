@@ -26,9 +26,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        WHERE c.client_id = ? AND i.status != 'deleted' ORDER BY i.due_date ASC`
     ).bind(clientId).all()).results ?? [];
 
+    // Histórico Financeiro: mostra tudo que foi lançado (pendente/cobrado/pago),
+    // exceto o que foi cancelado — para o cliente saber tudo o que foi feito.
     const history = (await env.DB.prepare(
       `SELECT id, date, description, amount, kind, status, asaas_payment_id AS asaasPaymentId, invoice_url AS invoiceUrl
-       FROM client_history WHERE client_id = ? AND status IN ('charged', 'paid') ORDER BY date DESC`
+       FROM client_history WHERE client_id = ? AND status != 'cancelled' ORDER BY date DESC`
     ).bind(clientId).all()).results ?? [];
 
     // Arquivos compartilhados com este cliente (docs/ com clientId no metadata).

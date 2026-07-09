@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
-import { api, ApiError, type ProposalSummary } from "./api";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { api, ApiError, type ProposalSummary, type ProposalOutcome } from "./api";
+import { formatBRL } from "./dashboard/format";
 import { groupByYear } from "./grouping";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import styles from "./Admin.module.css";
@@ -62,6 +64,18 @@ export default function ProposalsList({
     }
   };
 
+  const setOutcome = async (number: string, outcome: ProposalOutcome) => {
+    setBusy(number);
+    try {
+      await api.setProposalOutcome(number, outcome);
+      setItems((prev) => prev.map((p) => (p.number === number ? { ...p, outcome } : p)));
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Erro ao alterar o resultado.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const toggleYear = (year: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -71,6 +85,16 @@ export default function ProposalsList({
     });
 
   const groups = groupByYear(items);
+
+  // Faturamento x oportunidades perdidas (por valor).
+  const approved = items.filter((p) => p.outcome === "aprovada");
+  const lost = items.filter((p) => p.outcome !== "aprovada");
+  const approvedValue = approved.reduce((s, p) => s + (p.value || 0), 0);
+  const lostValue = lost.reduce((s, p) => s + (p.value || 0), 0);
+  const chartData = [
+    { name: "Aprovadas", value: approvedValue, fill: "#22c55e" },
+    { name: "Não aprovadas", value: lostValue, fill: "#ef4444" },
+  ];
 
   return (
     <div className={styles.container}>
@@ -90,6 +114,43 @@ export default function ProposalsList({
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
+
+      {!loading && items.length > 0 && (
+        <div className={styles.card} style={{ marginBottom: 18 }}>
+          <div className={styles.cardTitle}>Propostas por valor</div>
+          <div className={styles.pageHint} style={{ marginTop: -4, marginBottom: 10 }}>
+            Quanto o escritório converteu em vendas x quanto deixou de faturar (oportunidades perdidas).
+          </div>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ flex: "1 1 320px", minWidth: 260, height: 140 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical" margin={{ top: 6, right: 16, bottom: 0, left: 0 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" width={104} tick={{ fontSize: 12, fill: "var(--color-text-secondary)" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ fill: "rgba(127, 127, 127, 0.12)" }}
+                    contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, fontSize: 12 }}
+                    formatter={(v) => [formatBRL(Number(v)), "Valor"]}
+                  />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                    {chartData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#22c55e" }}>{formatBRL(approvedValue)}</div>
+                <div className={styles.pageHint} style={{ margin: 0 }}>Aprovadas · {approved.length}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#ef4444" }}>{formatBRL(lostValue)}</div>
+                <div className={styles.pageHint} style={{ margin: 0 }}>Não aprovadas · {lost.length}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className={styles.loading}>Carregando…</div>
@@ -120,8 +181,9 @@ export default function ProposalsList({
                       <th>Nº</th>
                       <th>Cliente</th>
                       <th>Serviço</th>
-                      <th>Data</th>
+                      <th>Valor</th>
                       <th>Status</th>
+                      <th>Resultado</th>
                       <th style={{ textAlign: "right" }}>Ações</th>
                     </tr>
                   </thead>
@@ -131,11 +193,23 @@ export default function ProposalsList({
                         <td className={styles.rowNumber}>{p.number}</td>
                         <td>{p.client || "—"}</td>
                         <td>{p.serviceTitle || "—"}</td>
-                        <td>{p.date || "—"}</td>
+                        <td className={styles.mono}>{p.value ? formatBRL(p.value) : "—"}</td>
                         <td>
                           <span className={`${styles.badge} ${p.status === "published" ? styles.badgePublished : styles.badgeDraft}`}>
                             {p.status === "published" ? "Publicada" : "Rascunho"}
                           </span>
+                        </td>
+                        <td>
+                          <select
+                            className={styles.input}
+                            style={{ padding: "6px 8px", fontSize: 12, width: "auto", minWidth: 130 }}
+                            value={p.outcome}
+                            onChange={(e) => setOutcome(p.number, e.target.value as ProposalOutcome)}
+                            disabled={busy === p.number}
+                          >
+                            <option value="aprovada">✓ Aprovada</option>
+                            <option value="nao-aprovada">✕ Não aprovada</option>
+                          </select>
                         </td>
                         <td>
                           <div className={styles.rowActions}>

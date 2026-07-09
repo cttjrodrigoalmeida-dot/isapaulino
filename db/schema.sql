@@ -25,11 +25,16 @@ CREATE TABLE IF NOT EXISTS proposals (
   client        TEXT,                       -- para a listagem
   service_title TEXT,                       -- para a listagem
   date          TEXT,                       -- para a listagem
-  status        TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published'
+  status        TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published' (visibilidade)
+  -- Resultado comercial (definido manualmente): 'aprovada' | 'nao-aprovada'.
+  -- Só 'aprovada' entra no faturamento/indicadores. Nova proposta nasce 'nao-aprovada'.
+  outcome       TEXT NOT NULL DEFAULT 'nao-aprovada',
   data          TEXT NOT NULL,              -- JSON do tipo Proposal
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Migração p/ bancos já existentes (rodar uma vez, local e remoto):
+--   ALTER TABLE proposals ADD COLUMN outcome TEXT NOT NULL DEFAULT 'nao-aprovada';
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
 CREATE INDEX IF NOT EXISTS idx_proposals_updated ON proposals(updated_at DESC);

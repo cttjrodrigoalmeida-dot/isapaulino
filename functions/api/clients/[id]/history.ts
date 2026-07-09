@@ -14,7 +14,7 @@ export interface HistoryInput {
   status?: string;
 }
 
-export const HISTORY_KINDS = ["adicional", "retrabalho", "hora-tecnica", "outro"];
+export const HISTORY_KINDS = ["adicional", "retrabalho", "hora-tecnica", "pagamento", "outro"];
 
 const COLS = `id, client_id AS clientId, contract_id AS contractId, date, description, amount, kind, status,
   asaas_payment_id AS asaasPaymentId, invoice_url AS invoiceUrl, paid_at AS paidAt, created_at AS createdAt`;

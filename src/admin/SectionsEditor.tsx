@@ -1,4 +1,6 @@
 import type { Proposal } from "../components/proposal/types";
+import { DEFAULT_NOT_INCLUDED } from "../components/proposal/proposalDefaults";
+import ListEditor from "./ListEditor";
 import styles from "./Admin.module.css";
 
 // Prazo de entrega + controles de visibilidade das seções fixas.
@@ -61,9 +63,21 @@ export default function SectionsEditor({
           {toggle("notIncluded", "O que não está incluso")}
         </div>
         <p className={styles.pageHint} style={{ marginTop: 12 }}>
-          O conteúdo das cláusulas, “não incluso” e “sobre o estúdio” usa o padrão da marca;
+          O conteúdo das cláusulas e do “sobre o estúdio” usa o padrão da marca;
           para textos específicos desta proposta, use a aba JSON avançado.
         </p>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.cardTitle}>O que NÃO está incluso</div>
+        <p className={styles.pageHint} style={{ marginTop: -4, marginBottom: 12 }}>
+          Editável por proposta — o processo é diferente dependendo do projeto. Cada linha é um item da lista.
+        </p>
+        <ListEditor
+          items={proposal.notIncluded ?? DEFAULT_NOT_INCLUDED}
+          onChange={(v) => set("notIncluded", v)}
+          placeholder="ex.: Plantas Técnicas além das mencionadas na cláusula 02."
+        />
       </div>
     </>
   );

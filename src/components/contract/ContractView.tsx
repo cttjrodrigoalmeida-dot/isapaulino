@@ -1,4 +1,4 @@
-import { useEffect, useState, createContext, useContext, Fragment } from "react";
+import { useEffect, useState, useRef, createContext, useContext, Fragment } from "react";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import type {
@@ -9,6 +9,7 @@ import type {
   SignatureStatus,
 } from "./types";
 import CustomCursor from "../CustomCursor";
+import { exportElementToPdf, waitForRenderReady } from "../../lib/pdfExport";
 import styles from "./ContractView.module.css";
 
 const PrintContext = createContext(false);
@@ -871,31 +872,42 @@ export default function ContractView({ doc, pdfMode = false }: { doc: ContractDo
   // pdfMode (URL ?pdf=1): renderiza tudo visível para o Browser Rendering
   // capturar o PDF no servidor — SEM abrir o diálogo de impressão do navegador.
   const [printing, setPrinting] = useState(pdfMode);
+  const [exporting, setExporting] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // pdfMode (?pdf=1 → Browser Rendering do Autentique): sinaliza pronto p/ captura.
     if (pdfMode) {
-      // Espera as fontes carregarem e sinaliza que a página está pronta p/ o PDF.
       (document as Document & { fonts?: FontFaceSet }).fonts?.ready.then(() => {
         document.documentElement.setAttribute("data-pdf-ready", "1");
       }) ?? document.documentElement.setAttribute("data-pdf-ready", "1");
-      return;
     }
-    if (!printing) return;
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
-    const done = () => setPrinting(false);
-    window.addEventListener("afterprint", done);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener("afterprint", done);
-    };
-  }, [printing, pdfMode]);
+  }, [pdfMode]);
+
+  // "Baixar PDF" do cliente: gera no navegador (1 clique baixa), sem diálogo.
+  const exportPdf = async () => {
+    if (exporting || pdfMode) return;
+    setExporting(true);
+    setPrinting(true);
+    await waitForRenderReady();
+    try {
+      if (pageRef.current) {
+        await exportElementToPdf(pageRef.current, `Contrato-${doc.contractNumber || doc.clientName || "documento"}`, { background: "#ffffff" });
+      }
+    } catch {
+      window.print();
+    } finally {
+      setPrinting(false);
+      setExporting(false);
+    }
+  };
 
   const waLink = `https://wa.me/${doc.contact.whatsapp}`;
   const signed = doc.signature.status === "assinado";
 
   return (
     <PrintContext.Provider value={printing}>
-      <div className={styles.page}>
+      <div className={styles.page} ref={pageRef}>
         {!printing && <CustomCursor />}
         <div className={styles.sheet}>
           {/* ── Cabeçalho ── */}
@@ -905,8 +917,8 @@ export default function ContractView({ doc, pdfMode = false }: { doc: ContractDo
                 <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.logoImg} />
               </div>
               {!printing && (
-                <button className={styles.pdfBtn} onClick={() => setPrinting(true)}>
-                  <IconDownload /> BAIXAR PDF
+                <button className={styles.pdfBtn} onClick={exportPdf} disabled={exporting}>
+                  <IconDownload /> {exporting ? "GERANDO…" : "BAIXAR PDF"}
                 </button>
               )}
             </div>
@@ -957,7 +969,7 @@ export default function ContractView({ doc, pdfMode = false }: { doc: ContractDo
           {doc.clauses.map((clause) => (
             <Fragment key={clause.number}>
               <Reveal className={styles.section}>
-                <ClauseCard clause={clause} doc={doc} onPrint={() => setPrinting(true)} waLink={waLink} />
+                <ClauseCard clause={clause} doc={doc} onPrint={exportPdf} waLink={waLink} />
               </Reveal>
               {clause.number === "05" && (
                 <Reveal className={styles.section}>
