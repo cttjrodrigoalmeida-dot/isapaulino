@@ -47,6 +47,9 @@
 }
 .sheet { max-width: 980px; margin: 0 auto; padding: 0 clamp(18px, 5vw, 48px); }
 
+/* Modo pré-visualização (dentro do editor): não força 100vh, p/ caber no painel rolável. */
+.pagePreview { min-height: auto; }
+
 /* ════════ CABEÇALHO ════════ */
 .header { margin-bottom: 20px; }
 .headerTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }

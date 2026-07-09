@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus } from "../components/contract/types";
 import { blankContractDoc } from "../components/contract/newContractDoc";
+import ContractView from "../components/contract/ContractView";
 import ListEditor from "./ListEditor";
 import {
   Txt,
@@ -16,6 +17,9 @@ import {
 import styles from "./Admin.module.css";
 
 type Tab = "campos" | "json";
+
+// Largura do painel de prévia (usada no drawer e para "encolher" o editor à esquerda).
+const PREVIEW_W = "min(48vw, 760px)";
 
 const SIGN_STATUS: { value: SignatureStatus; label: string }[] = [
   { value: "aguardando", label: "Aguardando assinatura" },
@@ -58,6 +62,7 @@ export default function ContractEditor({
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
 
   const [doc, setDoc] = useState<ContractDoc | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [clientId, setClientId] = useState("");
   const [title, setTitle] = useState("");
   const [legacyContent, setLegacyContent] = useState("");
@@ -321,7 +326,21 @@ export default function ContractEditor({
   const publicUrl = slug ? `${window.location.origin}/contrato/${slug}` : null;
 
   return (
-    <div className={styles.container}>
+    <div
+      className={styles.container}
+      style={
+        showPreview
+          ? {
+              // Encolhe o editor p/ a esquerda enquanto a prévia estiver aberta,
+              // reservando a largura do painel (senão ele tapa os campos da direita).
+              maxWidth: "none",
+              marginLeft: 0,
+              marginRight: `calc(${PREVIEW_W} + 20px)`,
+              transition: "margin-right .22s ease",
+            }
+          : { transition: "margin-right .22s ease" }
+      }
+    >
       <div ref={topRef} />
       <div className={styles.pageHead}>
         <div>
@@ -330,9 +349,14 @@ export default function ContractEditor({
             Documento 100% editável. Use a aba <strong>JSON avançado</strong> para qualquer campo não listado.
           </div>
         </div>
-        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
-          ← Voltar
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
+            {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
+          </button>
+          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
+            ← Voltar
+          </button>
+        </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
@@ -779,6 +803,33 @@ export default function ContractEditor({
           )}
         </div>
       </div>
+
+      {/* Painel de pré-visualização ao vivo (atualiza a cada alteração) */}
+      {showPreview && (
+        <div
+          style={{
+            position: "fixed", top: 0, right: 0, zIndex: 60,
+            width: PREVIEW_W, height: "100vh",
+            background: "#ffffff", borderLeft: "1px solid var(--color-border)",
+            boxShadow: "-10px 0 40px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column",
+          }}
+        >
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "10px 14px", borderBottom: "1px solid var(--color-border)",
+            background: "var(--color-surface)", color: "var(--color-text-primary)",
+          }}>
+            <strong style={{ fontSize: 13 }}>Prévia ao vivo · {doc.documentTitle || "Contrato"}</strong>
+            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+          </div>
+          <div style={{ flex: 1, overflow: "auto" }}>
+            {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}
+            <div style={{ zoom: 0.64 }}>
+              <ContractView doc={doc} preview />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

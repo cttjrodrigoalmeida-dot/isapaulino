@@ -868,7 +868,7 @@ function ClauseCard({
 }
 
 // ── Componente principal ───────────────────────────────────────
-export default function ContractView({ doc, pdfMode = false }: { doc: ContractDoc; pdfMode?: boolean }) {
+export default function ContractView({ doc, pdfMode = false, preview = false }: { doc: ContractDoc; pdfMode?: boolean; preview?: boolean }) {
   // pdfMode (URL ?pdf=1): renderiza tudo visível para o Browser Rendering
   // capturar o PDF no servidor — SEM abrir o diálogo de impressão do navegador.
   const [printing, setPrinting] = useState(pdfMode);
@@ -906,9 +906,9 @@ export default function ContractView({ doc, pdfMode = false }: { doc: ContractDo
   const signed = doc.signature.status === "assinado";
 
   return (
-    <PrintContext.Provider value={printing}>
-      <div className={styles.page} ref={pageRef}>
-        {!printing && <CustomCursor />}
+    <PrintContext.Provider value={printing || preview}>
+      <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} ref={pageRef}>
+        {!printing && !preview && <CustomCursor />}
         <div className={styles.sheet}>
           {/* ── Cabeçalho ── */}
           <header className={styles.header}>
@@ -916,7 +916,7 @@ export default function ContractView({ doc, pdfMode = false }: { doc: ContractDo
               <div className={styles.logoBox}>
                 <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.logoImg} />
               </div>
-              {!printing && (
+              {!printing && !preview && (
                 <button className={styles.pdfBtn} onClick={exportPdf} disabled={exporting}>
                   <IconDownload /> {exporting ? "GERANDO…" : "BAIXAR PDF"}
                 </button>
