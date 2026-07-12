@@ -2,8 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus } from "../components/contract/types";
 import { blankContractDoc } from "../components/contract/newContractDoc";
+import { DEFAULT_TABELA_CUSTOS } from "../components/contract/contractDefaults";
 import ContractView from "../components/contract/ContractView";
 import ListEditor from "./ListEditor";
+import CurrencyInput from "./CurrencyInput";
+import { formatBRL, valorPorExtenso, parseBRL as parseBRLNum } from "./proposalCalc";
+import { buildParcelas } from "./contractCalc";
 import {
   Txt,
   Area,
@@ -35,6 +39,12 @@ function parseBRL(s?: string): number | null {
   if (!cleaned) return null;
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
+}
+
+// Data de hoje no formato "DD/MM/AAAA".
+function todayBR(): string {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
 // Ícone da "caneta" usado nos botões de enviar para assinatura (topo e barra inferior).
@@ -126,7 +136,7 @@ export default function ContractEditor({
         } else {
           const fresh = blankContractDoc();
           setDoc(fresh);
-          setTitle(fresh.documentTitle);
+          setTitle(fresh.documentTitle.replace(/\n/g, " "));
           setStatus("draft");
         }
       } catch (err) {
@@ -144,46 +154,60 @@ export default function ContractEditor({
     setDoc((prev) => (prev ? { ...prev, ...partial } : prev));
   }, []);
 
-  // Preenche a CONTRATANTE (e nomes de exibição) com os dados do cliente selecionado.
-  const fillFromClient = () => {
-    const c = clients.find((x) => x.id === clientId);
-    if (!c || !doc) return;
-    const endereco = [c.address, c.city, c.state].filter(Boolean).join(", ");
-    patch({
-      clientName: c.name || doc.clientName,
-      contratante: {
-        ...doc.contratante,
-        name: c.name || doc.contratante.name,
-        role: c.role || doc.contratante.role,
-        nacionalidade: c.nacionalidade || doc.contratante.nacionalidade,
-        nascimento: c.birth_date || doc.contratante.nascimento,
-        cpfCnpj: c.cpf_cnpj || doc.contratante.cpfCnpj,
-        email: c.email || doc.contratante.email,
-        contato: c.phone || doc.contratante.contato,
-        endereco: endereco || doc.contratante.endereco,
-      },
-      signature: {
-        ...doc.signature,
-        contratante: {
-          ...doc.signature.contratante,
-          name: c.name || doc.signature.contratante.name,
-          role: c.role || doc.signature.contratante.role,
-        },
-      },
-    });
-    setNotice("Dados do cliente aplicados à CONTRATANTE.");
-  };
-
-  // Seleciona o cliente e puxa o nº da proposta dele → preenche nº do contrato
-  // e nº da proposta (ambos editáveis). Pega a proposta mais recente do cliente.
-  const selectClient = (cid: string) => {
-    setClientId(cid);
+  // Aplica os dados do cliente ao contrato: CONTRATANTE, nomes de exibição
+  // (Cliente/Projeto/Data) e nº do contrato/proposta. Projeto e nº vêm da
+  // proposta mais recente do cliente; Data vira hoje (se ainda vazia).
+  const applyClient = (cid: string) => {
     const c = clients.find((x) => x.id === cid);
     if (!c) return;
-    const mine = proposals
+    const latest = proposals
       .filter((p) => (p.client || "").trim().toLowerCase() === (c.name || "").trim().toLowerCase())
-      .sort((a, b) => Number(b.number) - Number(a.number));
-    if (mine.length > 0) patch({ proposalNumber: mine[0].number, contractNumber: mine[0].number });
+      .sort((a, b) => Number(b.number) - Number(a.number))[0];
+    const endereco = [c.address, c.city, c.state].filter(Boolean).join(", ");
+    setDoc((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        clientName: c.name || prev.clientName,
+        projectName: latest?.serviceTitle || prev.projectName,
+        serviceTitle: !prev.serviceTitle && latest?.serviceTitle ? latest.serviceTitle : prev.serviceTitle,
+        date: prev.date || todayBR(),
+        contractNumber: latest?.number || prev.contractNumber,
+        proposalNumber: latest?.number || prev.proposalNumber,
+        contratante: {
+          ...prev.contratante,
+          name: c.name || prev.contratante.name,
+          role: c.role || prev.contratante.role,
+          nacionalidade: c.nacionalidade || prev.contratante.nacionalidade,
+          nascimento: c.birth_date || prev.contratante.nascimento,
+          cpfCnpj: c.cpf_cnpj || prev.contratante.cpfCnpj,
+          email: c.email || prev.contratante.email,
+          contato: c.phone || prev.contratante.contato,
+          endereco: endereco || prev.contratante.endereco,
+        },
+        signature: {
+          ...prev.signature,
+          contratante: {
+            ...prev.signature.contratante,
+            name: c.name || prev.signature.contratante.name,
+            role: c.role || prev.signature.contratante.role,
+          },
+        },
+      };
+    });
+  };
+
+  // Botão "Preencher do cliente" (reforço manual): reaplica os dados do cliente.
+  const fillFromClient = () => {
+    if (!clientId) return;
+    applyClient(clientId);
+    setNotice("Dados do cliente aplicados ao contrato.");
+  };
+
+  // Ao selecionar o cliente no seletor: preenche tudo automaticamente.
+  const selectClient = (cid: string) => {
+    setClientId(cid);
+    applyClient(cid);
   };
 
   const goJsonTab = () => {
@@ -323,6 +347,28 @@ export default function ContractEditor({
   const setSp = (partial: Partial<typeof sp>) => patch({ sixPagamento: { ...sp, ...partial } });
   const tc = doc.sixTabelaCustos ?? { intro: "", tabelas: [], observacoes: [] };
   const setTc = (partial: Partial<typeof tc>) => patch({ sixTabelaCustos: { ...tc, ...partial } });
+  // Valor total → extenso automático; se já há parcelas, recalcula os valores.
+  const setValorTotal = (n: number | null) => {
+    if (n == null) return setSp({ valorTotal: "", valorTotalExtenso: "" });
+    const valorTotal = formatBRL(n);
+    const partial: Partial<typeof sp> = { valorTotal, valorTotalExtenso: valorPorExtenso(n) };
+    if (sp.parcelas.length > 0) partial.parcelas = buildParcelas(valorTotal, sp.parcelas.length, doc.date);
+    setSp(partial);
+  };
+  // Nº de parcelas → gera parcelas (valor, extenso e vencimento 01–05 automáticos).
+  const setNumParcelas = (n: number) => setSp({ parcelas: buildParcelas(sp.valorTotal, n, doc.date) });
+  // Troca a variante da Seção 06; ao ir p/ "tabela-custos" e ainda não haver
+  // tabela, materializa o modelo padrão (só ajustar valores por projeto).
+  const changeVariant = (v: ContractDoc["sixVariant"]) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const next: ContractDoc = { ...prev, sixVariant: v };
+      if (v === "tabela-custos" && (!prev.sixTabelaCustos || prev.sixTabelaCustos.tabelas.length === 0)) {
+        next.sixTabelaCustos = structuredClone(DEFAULT_TABELA_CUSTOS);
+      }
+      return next;
+    });
+  };
   const publicUrl = slug ? `${window.location.origin}/contrato/${slug}` : null;
 
   return (
@@ -455,7 +501,8 @@ export default function ContractEditor({
               <Txt label="Título interno (listagem)" value={title} onChange={setTitle} placeholder="Ex.: Contrato — Paulo Henrique" />
             </div>
             <div className={styles.placeholderHint}>
-              Ao selecionar o cliente, os nº do contrato e da proposta são puxados da proposta dele (editáveis na aba abaixo).
+              Ao selecionar o cliente, os dados da <strong>CONTRATANTE</strong>, Cliente, Projeto, Data e os nº do contrato/proposta
+              são preenchidos automaticamente (tudo editável).
             </div>
           </div>
 
@@ -468,7 +515,12 @@ export default function ContractEditor({
             </div>
             <div className={styles.row2}>
               <Txt label="Data" value={doc.date} onChange={(v) => patch({ date: v })} placeholder="24/06/2026" />
-              <Txt label="Título do documento" value={doc.documentTitle} onChange={(v) => patch({ documentTitle: v })} />
+              <Area
+                label="Título do documento (Enter quebra a linha)"
+                value={doc.documentTitle}
+                onChange={(v) => patch({ documentTitle: v })}
+                rows={2}
+              />
             </div>
             <div className={styles.row2}>
               <Txt label="Subtítulo do serviço" value={doc.serviceTitle} onChange={(v) => patch({ serviceTitle: v })} />
@@ -519,14 +571,18 @@ export default function ContractEditor({
             </div>
           </div>
 
-          {/* ── Prazo (cláusula 05) ── */}
+          {/* ── Prazo de entrega (cláusula 05) ── */}
           <div className={styles.card}>
-            <div className={styles.cardTitle}>Prazo — cards (cláusula 05)</div>
+            <div className={styles.cardTitle}>Prazo de entrega (serviços e prazos)</div>
+            <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
+              Cada card é um <strong>serviço + prazo</strong> exibido no bloco "PRAZO DE ENTREGA" (cláusula 05).
+              Adicione só os serviços deste contrato — o <strong>último</strong> card é o "DISPONÍVEL PARA INICIAR" (destaque vermelho).
+            </div>
             <InfoCardsEditor
               cards={doc.prazoCards}
               onChange={(v) => patch({ prazoCards: v })}
-              valueLabel="Destaque"
-              labelLabel="Legenda"
+              valueLabel="Prazo (destaque)"
+              labelLabel="Serviço (legenda)"
             />
           </div>
 
@@ -549,7 +605,7 @@ export default function ContractEditor({
               <select
                 className={styles.input}
                 value={doc.sixVariant}
-                onChange={(e) => patch({ sixVariant: e.target.value as ContractDoc["sixVariant"] })}
+                onChange={(e) => changeVariant(e.target.value as ContractDoc["sixVariant"])}
                 style={{ width: 260 }}
               >
                 <option value="pagamento">Preço / pagamento (parcelas)</option>
@@ -560,15 +616,41 @@ export default function ContractEditor({
             {doc.sixVariant === "pagamento" ? (
               <>
                 <div className={styles.row2}>
-                  <Txt label="Valor total" value={sp.valorTotal} onChange={(v) => setSp({ valorTotal: v })} mono placeholder="R$ 2.000,00" />
-                  <Txt label="Valor total por extenso" value={sp.valorTotalExtenso ?? ""} onChange={(v) => setSp({ valorTotalExtenso: v })} />
+                  <div className={styles.field}>
+                    <label className={styles.label}>Valor total (R$)</label>
+                    <CurrencyInput
+                      value={sp.valorTotal ? parseBRLNum(sp.valorTotal) : null}
+                      onChange={setValorTotal}
+                      className={`${styles.input} ${styles.mono}`}
+                    />
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Nº de parcelas</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={24}
+                      className={styles.input}
+                      value={sp.parcelas.length || ""}
+                      onChange={(e) => setNumParcelas(Number(e.target.value))}
+                      placeholder="ex.: 4"
+                    />
+                  </div>
                 </div>
+                <Txt
+                  label="Valor total por extenso (automático — editável)"
+                  value={sp.valorTotalExtenso ?? ""}
+                  onChange={(v) => setSp({ valorTotalExtenso: v })}
+                />
                 <div className={styles.field}>
                   <label className={styles.label}>Resumo do pagamento</label>
                   <ListEditor items={sp.resumo} onChange={(v) => setSp({ resumo: v })} placeholder="ex.: 4 parcelas mensais" />
                 </div>
                 <div className={styles.field}>
                   <label className={styles.label}>Parcelas</label>
+                  <div className={styles.placeholderHint} style={{ marginBottom: 8 }}>
+                    Geradas automaticamente (valor total ÷ nº de parcelas, vencimento entre os dias 01–05). Edite qualquer campo se precisar.
+                  </div>
                   <ParcelasEditor parcelas={sp.parcelas} onChange={(v) => setSp({ parcelas: v })} />
                 </div>
               </>

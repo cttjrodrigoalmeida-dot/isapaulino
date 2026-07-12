@@ -2,6 +2,7 @@
 // Cada um recebe uma fatia do ContractDoc + onChange. Reaproveita as classes
 // do Admin.module.css e o ListEditor. Qualquer campo não coberto aqui continua
 // 100% editável pela aba "JSON avançado".
+import { useState, type ReactNode } from "react";
 import type {
   ContractParty,
   ContractClause,
@@ -11,7 +12,54 @@ import type {
   CostTable,
 } from "../components/contract/types";
 import ListEditor from "./ListEditor";
+import CurrencyInput from "./CurrencyInput";
+import { formatBRL, valorPorExtenso, parseBRL as parseBRLNum } from "./proposalCalc";
 import styles from "./Admin.module.css";
+
+// Accordion leve do admin: cabeçalho clicável (título + ações à direita) e
+// corpo colapsável. Usado p/ deixar as cláusulas em botões expansíveis.
+function Accordion({
+  title,
+  right,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  right?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={styles.blockCard}>
+      <div
+        className={styles.blockHead}
+        style={{ cursor: "pointer", alignItems: "center", marginBottom: open ? undefined : 0 }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
+      >
+        <span className={styles.blockTag} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ transition: "transform .2s", transform: open ? "rotate(90deg)" : "none", display: "inline-flex" }}>▸</span>
+          {title}
+        </span>
+        {right && (
+          <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
+            {right}
+          </div>
+        )}
+      </div>
+      {open && <div style={{ marginTop: 12 }}>{children}</div>}
+    </div>
+  );
+}
 
 // ── Campos primitivos ─────────────────────────────────────────────
 export function Txt({
@@ -201,6 +249,9 @@ export function ParcelasEditor({
     next[i] = { ...next[i], ...patch };
     onChange(next);
   };
+  // Ao editar o valor, o "por extenso" é recalculado automaticamente.
+  const setValor = (i: number, n: number | null) =>
+    n == null ? set(i, { valor: "", valorExtenso: undefined }) : set(i, { valor: formatBRL(n), valorExtenso: valorPorExtenso(n) });
   const add = () =>
     onChange([
       ...parcelas,
@@ -232,10 +283,17 @@ export function ParcelasEditor({
             <Txt label="Rótulo" value={p.label} onChange={(v) => set(i, { label: v })} />
           </div>
           <div className={styles.row2}>
-            <Txt label="Valor" value={p.valor} onChange={(v) => set(i, { valor: v })} mono />
-            <Txt label="Vencimento" value={p.vencimento} onChange={(v) => set(i, { vencimento: v })} />
+            <div className={styles.field}>
+              <label className={styles.label}>Valor (R$)</label>
+              <CurrencyInput
+                value={p.valor ? parseBRLNum(p.valor) : null}
+                onChange={(n) => setValor(i, n)}
+                className={`${styles.input} ${styles.mono}`}
+              />
+            </div>
+            <Txt label="Vencimento" value={p.vencimento} onChange={(v) => set(i, { vencimento: v })} placeholder="01/08/2026 a 05/08/2026" />
           </div>
-          <Txt label="Valor por extenso (opcional)" value={p.valorExtenso ?? ""} onChange={(v) => set(i, { valorExtenso: v || undefined })} />
+          <Txt label="Valor por extenso (automático — editável)" value={p.valorExtenso ?? ""} onChange={(v) => set(i, { valorExtenso: v || undefined })} />
         </div>
       ))}
       <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={add}>
@@ -273,11 +331,15 @@ export function ClausesEditor({
 
   return (
     <div className={styles.lineList}>
+      <div className={styles.placeholderHint} style={{ marginBottom: 4 }}>
+        Cada cláusula fica em um botão expansível — clique no título para abrir e editar.
+      </div>
       {clauses.map((cl, ci) => (
-        <div key={ci} className={styles.blockCard}>
-          <div className={styles.blockHead}>
-            <span className={styles.blockTag}>Cláusula {cl.number || ci + 1}</span>
-            <div style={{ display: "flex", gap: 6 }}>
+        <Accordion
+          key={ci}
+          title={`Cláusula ${cl.number || ci + 1}${cl.title ? " · " + cl.title : ""}`}
+          right={
+            <>
               <button type="button" className={styles.iconBtn} onClick={() => move(ci, -1)} aria-label="Subir">↑</button>
               <button type="button" className={styles.iconBtn} onClick={() => move(ci, 1)} aria-label="Descer">↓</button>
               <button
@@ -288,8 +350,9 @@ export function ClausesEditor({
               >
                 ×
               </button>
-            </div>
-          </div>
+            </>
+          }
+        >
           <div className={styles.row2}>
             <Txt label="Número" value={cl.number} onChange={(v) => setClause(ci, { number: v })} mono />
             <Txt label="Rótulo (eyebrow)" value={cl.eyebrow ?? ""} onChange={(v) => setClause(ci, { eyebrow: v || undefined })} />
@@ -342,7 +405,7 @@ export function ClausesEditor({
               + lista
             </button>
           </div>
-        </div>
+        </Accordion>
       ))}
       <button
         type="button"

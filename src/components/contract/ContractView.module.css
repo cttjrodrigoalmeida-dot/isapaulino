@@ -107,6 +107,7 @@
   color: var(--c-ink);
   margin: 18px 0 0;
   max-width: 15em;
+  white-space: pre-line; /* respeita a quebra de linha manual (\n) do título */
 }
 .tags { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
 .tag {
@@ -217,6 +218,8 @@
 .partyCard { border: 1px solid var(--c-line-2); border-radius: var(--border-radius-standard); padding: clamp(20px, 2.6vw, 28px); background: var(--c-card-2); }
 .partyCard:nth-child(even) { border-radius: var(--border-radius-mirror); }
 .partyIcon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px 0 12px 0; background: #efece6; color: var(--c-taupe); margin-bottom: 16px; }
+/* creme só p/ CONTRATANTE; CONTRATADA usa o cinza neutro da paleta */
+.partyIconContratada { background: var(--c-pill-bg); color: var(--c-pill-ink); }
 .partyTag {
   display: inline-block;
   font-family: var(--font-mono);

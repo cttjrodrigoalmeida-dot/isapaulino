@@ -283,7 +283,7 @@ function PartyCard({ party }: { party: ContractParty }) {
   ];
   return (
     <div className={styles.partyCard}>
-      <span className={styles.partyIcon}><IconUser /></span>
+      <span className={`${styles.partyIcon} ${/CONTRATADA/i.test(party.label) ? styles.partyIconContratada : ""}`}><IconUser /></span>
       <span className={`${styles.partyTag} ${/CONTRATADA/i.test(party.label) ? styles.partyTagContratada : styles.partyTagContratante}`}>{party.label}</span>
       <h3 className={styles.partyName}>{party.name}</h3>
       <span className={styles.partyRole}>{party.role}</span>
@@ -352,11 +352,15 @@ function SideBox({ label, rows }: { label?: string; rows: SideRow[] }) {
 
 // ── Cláusula 05 (prazo) ────────────────────────────────────────
 function PrazoCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }) {
-  const rows: SideRow[] = doc.prazoCards.map((c, i) => ({
-    icon: i === doc.prazoCards.length - 1 ? <IconClock /> : <IconCalendar />,
-    title: c.value,
-    caption: c.label,
-  }));
+  const rows: SideRow[] = doc.prazoCards.map((c, i) => {
+    const isLast = i === doc.prazoCards.length - 1;
+    return {
+      icon: isLast ? <IconClock /> : <IconCalendar />,
+      iconMod: isLast ? styles.sideIconPink : undefined, // "disponível para iniciar" em vermelho
+      title: c.value,
+      caption: c.label,
+    };
+  });
   return (
     <SectionCard tab={clause.eyebrow ?? clause.title}>
       <ClauseHead number={clause.number} title={clause.title} />

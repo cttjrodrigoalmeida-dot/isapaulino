@@ -32,7 +32,7 @@ export function blankContractDoc(): ContractDoc {
     contractNumber: "",
     proposalNumber: "",
     date: "",
-    documentTitle: "CONTRATO DE PRESTAÇÃO DE SERVIÇO",
+    documentTitle: "CONTRATO DE\nPRESTAÇÃO DE SERVIÇO",
     serviceTitle: "DETALHAMENTO EXECUTIVO",
     tags: [],
     projectName: "",
