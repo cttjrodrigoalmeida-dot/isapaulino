@@ -41,3 +41,4 @@ dist-ssr
 
 # Scripts/arquivos de trabalho temporários (não fazem parte do sistema)
 scratch/
+_worker.bundle
