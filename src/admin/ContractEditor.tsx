@@ -169,7 +169,9 @@ export default function ContractEditor({
       return {
         ...prev,
         clientName: c.name || prev.clientName,
-        projectName: latest?.serviceTitle || prev.projectName,
+        // Nome do projeto NÃO vem do serviceTitle da proposta — só do briefing
+        // (preenchido pelo bloco assíncrono abaixo) ou mantém o que já existe.
+        projectName: prev.projectName,
         serviceTitle: !prev.serviceTitle && latest?.serviceTitle ? latest.serviceTitle : prev.serviceTitle,
         date: prev.date || todayBR(),
         contractNumber: latest?.number || prev.contractNumber,
@@ -196,19 +198,23 @@ export default function ContractEditor({
       };
     });
 
-    // Tenta preencher o nome do projeto a partir do briefing vinculado à proposta mais recente
+    // Tenta preencher o nome do projeto a partir do briefing vinculado à proposta
+    // mais recente do cliente. Busca a resposta da pergunta "QUAL É O NOME DO SEU
+    // PROJETO?" (info-01 no briefing padrão). Se não houver resposta ainda, usa
+    // o título do briefing como fallback (geralmente contém o nome do projeto).
     if (latest?.number) {
       (async () => {
         try {
           const { briefings } = await api.listBriefings();
+          // Busca briefing com o mesmo proposalNumber da proposta
           const linkedBriefing = briefings.find((b) => b.proposalNumber === latest.number);
           if (linkedBriefing) {
             const { briefing } = await api.getBriefing(linkedBriefing.number);
-            // A primeira pergunta do briefing geralmente é "Qual é o nome do seu projeto?"
+            // Pergunta padrão de nome do projeto no briefing: id "info-01"
             const projectNameQuestion = briefing.sections
               .flatMap((s) => s.questions)
-              .find((q) => /nome do.*projeto/i.test(q.text) || /nome do projeto/i.test(q.text));
-            // Tentamos buscar a resposta mais recente para essa pergunta
+              .find((q) => q.id === "info-01" || /nome do.*projeto/i.test(q.text));
+
             if (projectNameQuestion) {
               try {
                 const { responses } = await api.listBriefingResponses(linkedBriefing.number);
@@ -217,9 +223,28 @@ export default function ContractEditor({
                   const projectName = latestResp.answers[projectNameQuestion.id].trim();
                   if (projectName) {
                     setDoc((prev) => prev ? { ...prev, projectName } : prev);
+                    return; // já preencheu, sai
                   }
                 }
-              } catch { /* sem resposta ainda, ok */ }
+              } catch { /* sem resposta ainda */ }
+            }
+
+            // Fallback: se o briefing tem o título (ex.: "Apartamento JK"),
+            // usa ele como nome do projeto quando não é genérico.
+            const title = briefing.title?.trim() || "";
+            if (
+              title &&
+              !/briefing de detalhamento/i.test(title) &&
+              !/briefing/i.test(title.replace(/\s+/g, ""))
+            ) {
+              setDoc((prev) => prev ? { ...prev, projectName: title } : prev);
+              return;
+            }
+
+            // Último fallback: nome do cliente no briefing
+            const clientFromBriefing = briefing.client?.trim();
+            if (clientFromBriefing) {
+              setDoc((prev) => prev ? { ...prev, projectName: clientFromBriefing } : prev);
             }
           }
         } catch { /* briefing não encontrado, ok */ }
