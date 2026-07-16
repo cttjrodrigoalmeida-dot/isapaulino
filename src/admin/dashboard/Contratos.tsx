@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import ContractsList from "../ContractsList";
 import ContractEditor from "../ContractEditor";
 import ContractPayments from "../ContractPayments";
-import ContratosCharts from "./ContratosCharts";
 
 type View =
   | { name: "list" }
@@ -12,7 +11,6 @@ type View =
 export default function Contratos({ requestNew }: { requestNew?: number | null }) {
   const [view, setView] = useState<View>({ name: "list" });
 
-  // Atalho "Novo contrato" → abre o editor em modo novo.
   useEffect(() => {
     if (requestNew) setView({ name: "editor", id: null });
   }, [requestNew]);
@@ -38,14 +36,10 @@ export default function Contratos({ requestNew }: { requestNew?: number | null }
   }
 
   return (
-    <div>
-      {/* Gráficos do módulo de contratos */}
-      <ContratosCharts />
-      <ContractsList
-        onNew={() => setView({ name: "editor", id: null })}
-        onEdit={(id) => setView({ name: "editor", id })}
-        onPayments={(id, title) => setView({ name: "payments", id, title })}
-      />
-    </div>
+    <ContractsList
+      onNew={() => setView({ name: "editor", id: null })}
+      onEdit={(id) => setView({ name: "editor", id })}
+      onPayments={(id, title) => setView({ name: "payments", id, title })}
+    />
   );
 }
