@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Cell, LabelList } from "recharts";
 import { api, ApiError, type BriefingSummary } from "./api";
-import { formatBRLShort } from "./dashboard/format";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import styles from "./Admin.module.css";
 
@@ -44,12 +43,6 @@ const IcClock = () => (
     <path d="M12 7.5V12l3 2" />
   </svg>
 );
-const IcX = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4a121f" strokeWidth="3" strokeLinecap="round" aria-hidden>
-    <path d="M6 6l12 12M18 6L6 18" />
-  </svg>
-);
-
 export default function BriefingsList({
   onNew, onEdit, onResponses,
 }: {

@@ -1,0 +1,4705 @@
+------formdata-undici-090530180999
+Content-Disposition: form-data; name="metadata"
+
+{"main_module":"functionsWorker-0.6186035181465163.js"}
+------formdata-undici-090530180999
+Content-Disposition: form-data; name="functionsWorker-0.6186035181465163.js"; filename="functionsWorker-0.6186035181465163.js"
+Content-Type: application/javascript+module
+
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+
+// api/_lib/http.ts
+var JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
+function json(data, init = {}) {
+  return new Response(JSON.stringify(data), {
+    ...init,
+    headers: { ...JSON_HEADERS, ...init.headers || {} }
+  });
+}
+__name(json, "json");
+function error(status, message, init = {}) {
+  return new Response(JSON.stringify({ error: message }), {
+    ...init,
+    status,
+    headers: { ...JSON_HEADERS, ...init.headers || {} }
+  });
+}
+__name(error, "error");
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    throw new HttpError(400, "Corpo da requisi\xE7\xE3o inv\xE1lido (esperado JSON).");
+  }
+}
+__name(readJson, "readJson");
+var HttpError = class extends Error {
+  status;
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+};
+__name(HttpError, "HttpError");
+function toErrorResponse(e) {
+  if (e instanceof HttpError)
+    return error(e.status, e.message);
+  const message = e instanceof Error ? e.message : "Erro interno";
+  return error(500, message);
+}
+__name(toErrorResponse, "toErrorResponse");
+
+// api/_lib/auth.ts
+var SESSION_COOKIE = "ips_session";
+var SESSION_TTL_MS = 1e3 * 60 * 60 * 12;
+var enc = new TextEncoder();
+var te = /* @__PURE__ */ __name((s) => new Uint8Array(enc.encode(s)), "te");
+function bytesToB64(bytes) {
+  let bin = "";
+  for (const b of bytes)
+    bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+__name(bytesToB64, "bytesToB64");
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++)
+    out[i] = bin.charCodeAt(i);
+  return out;
+}
+__name(b64ToBytes, "b64ToBytes");
+function b64url(s) {
+  return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+__name(b64url, "b64url");
+function unb64url(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4)
+    s += "=";
+  return s;
+}
+__name(unb64url, "unb64url");
+async function pbkdf2(password, salt, iterations) {
+  const key = await crypto.subtle.importKey("raw", te(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    key,
+    256
+  );
+  return new Uint8Array(bits);
+}
+__name(pbkdf2, "pbkdf2");
+var HASH_ITERATIONS = 1e5;
+async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const derived = await pbkdf2(password, salt, HASH_ITERATIONS);
+  return `pbkdf2$${HASH_ITERATIONS}$${bytesToB64(salt)}$${bytesToB64(derived)}`;
+}
+__name(hashPassword, "hashPassword");
+async function verifyPassword(password, stored) {
+  const parts = stored.split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2")
+    return false;
+  const iterations = parseInt(parts[1], 10);
+  const salt = b64ToBytes(parts[2]);
+  const expected = b64ToBytes(parts[3]);
+  const actual = await pbkdf2(password, salt, iterations);
+  return timingSafeEqual(actual, expected);
+}
+__name(verifyPassword, "verifyPassword");
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length)
+    return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++)
+    diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+__name(timingSafeEqual, "timingSafeEqual");
+async function hmac(secret, data) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    te(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, te(data));
+  return b64url(bytesToB64(new Uint8Array(sig)));
+}
+__name(hmac, "hmac");
+async function createSessionToken(username, secret) {
+  const payload = { sub: username, exp: Date.now() + SESSION_TTL_MS };
+  const payloadB64 = b64url(btoa(JSON.stringify(payload)));
+  const sig = await hmac(secret, payloadB64);
+  return `${payloadB64}.${sig}`;
+}
+__name(createSessionToken, "createSessionToken");
+async function verifySessionToken(token, secret) {
+  const dot = token.indexOf(".");
+  if (dot < 0)
+    return null;
+  const payloadB64 = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  const expected = await hmac(secret, payloadB64);
+  if (sig !== expected)
+    return null;
+  try {
+    const session = JSON.parse(atob(unb64url(payloadB64)));
+    if (!session.exp || session.exp < Date.now())
+      return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+__name(verifySessionToken, "verifySessionToken");
+function sessionCookie(token) {
+  const maxAge = Math.floor(SESSION_TTL_MS / 1e3);
+  return `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+}
+__name(sessionCookie, "sessionCookie");
+function clearSessionCookie() {
+  return `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+}
+__name(clearSessionCookie, "clearSessionCookie");
+function readCookie(request, name) {
+  const header = request.headers.get("Cookie");
+  if (!header)
+    return null;
+  for (const part of header.split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name)
+      return v.join("=");
+  }
+  return null;
+}
+__name(readCookie, "readCookie");
+async function getSession(request, env) {
+  const token = readCookie(request, SESSION_COOKIE);
+  if (!token)
+    return null;
+  return verifySessionToken(token, env.SESSION_SECRET);
+}
+__name(getSession, "getSession");
+async function requireAuth(request, env) {
+  const session = await getSession(request, env);
+  if (!session)
+    throw new HttpError(401, "N\xE3o autenticado.");
+  return session;
+}
+__name(requireAuth, "requireAuth");
+
+// api/_lib/asaas.ts
+var DEFAULT_URL = "https://api.asaas.com/v3";
+function asaasConfigured(env) {
+  return !!env.ASAAS_API_KEY;
+}
+__name(asaasConfigured, "asaasConfigured");
+function baseUrl(env) {
+  return (env.ASAAS_API_URL || DEFAULT_URL).replace(/\/+$/, "");
+}
+__name(baseUrl, "baseUrl");
+async function asaasFetch(env, path, init = {}) {
+  if (!env.ASAAS_API_KEY) {
+    throw new HttpError(400, "Integra\xE7\xE3o ASAAS n\xE3o configurada (defina ASAAS_API_KEY).");
+  }
+  const res = await fetch(`${baseUrl(env)}${path}`, {
+    ...init,
+    headers: {
+      access_token: env.ASAAS_API_KEY,
+      "Content-Type": "application/json",
+      // O ASAAS EXIGE User-Agent (o fetch do Workers não envia por padrão).
+      "User-Agent": "IsabelaPaulinoStudio/1.0",
+      ...init.headers || {}
+    }
+  });
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : {};
+  if (!res.ok) {
+    const msg = body?.errors?.[0]?.description || `Erro ASAAS ${res.status}`;
+    throw new HttpError(res.status === 401 ? 400 : res.status, `ASAAS: ${msg}`);
+  }
+  return body;
+}
+__name(asaasFetch, "asaasFetch");
+async function findOrCreateCustomer(env, client) {
+  const cpf = client.cpfCnpj.replace(/\D+/g, "");
+  const found = await asaasFetch(
+    env,
+    `/customers?cpfCnpj=${encodeURIComponent(cpf)}`
+  );
+  if (found.data && found.data.length > 0)
+    return found.data[0].id;
+  const created = await asaasFetch(env, "/customers", {
+    method: "POST",
+    body: JSON.stringify({
+      name: client.name,
+      cpfCnpj: cpf,
+      email: client.email || void 0,
+      phone: client.phone ? client.phone.replace(/\D+/g, "") : void 0
+    })
+  });
+  return created.id;
+}
+__name(findOrCreateCustomer, "findOrCreateCustomer");
+async function createPayment(env, input) {
+  return asaasFetch(env, "/payments", {
+    method: "POST",
+    body: JSON.stringify({ billingType: "UNDEFINED", ...input })
+  });
+}
+__name(createPayment, "createPayment");
+async function deletePayment(env, asaasPaymentId) {
+  await asaasFetch(env, `/payments/${encodeURIComponent(asaasPaymentId)}`, { method: "DELETE" });
+}
+__name(deletePayment, "deletePayment");
+async function getPayment(env, asaasPaymentId) {
+  return asaasFetch(env, `/payments/${encodeURIComponent(asaasPaymentId)}`);
+}
+__name(getPayment, "getPayment");
+
+// api/clients/[id]/history/[hid]/generate-asaas.ts
+var onRequestPost = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    if (!asaasConfigured(env)) {
+      return error(400, "Integra\xE7\xE3o ASAAS n\xE3o configurada. Defina ASAAS_API_KEY para gerar cobran\xE7as.");
+    }
+    const hid = String(params.hid);
+    const body = await readJson(request).catch(() => ({}));
+    const row = await env.DB.prepare(
+      `SELECT h.id, h.amount, h.description, h.status, h.asaas_payment_id,
+              c.name, c.cpf_cnpj, c.email, c.phone
+       FROM client_history h JOIN clients c ON c.id = h.client_id
+       WHERE h.id = ?`
+    ).bind(hid).first();
+    if (!row)
+      return error(404, "Lan\xE7amento n\xE3o encontrado.");
+    if (row.asaas_payment_id)
+      return json({ ok: true, asaasPaymentId: row.asaas_payment_id, message: "Cobran\xE7a j\xE1 gerada." });
+    if (!row.amount || row.amount <= 0)
+      return error(400, "O lan\xE7amento precisa ter um valor maior que zero.");
+    if (!row.cpf_cnpj)
+      return error(400, "O cliente precisa ter CPF/CNPJ para gerar cobran\xE7as.");
+    let dueDate = typeof body.due_date === "string" && body.due_date.trim() ? body.due_date.trim() : "";
+    if (!dueDate) {
+      const d = /* @__PURE__ */ new Date();
+      d.setDate(d.getDate() + 3);
+      dueDate = d.toISOString().slice(0, 10);
+    }
+    const customerId = await findOrCreateCustomer(env, {
+      name: row.name || "Cliente",
+      cpfCnpj: row.cpf_cnpj,
+      email: row.email,
+      phone: row.phone
+    });
+    const payment = await createPayment(env, {
+      customer: customerId,
+      value: row.amount,
+      dueDate,
+      description: `HF \u2014 ${row.description}`,
+      externalReference: row.id
+    });
+    await env.DB.prepare(
+      "UPDATE client_history SET asaas_payment_id = ?, invoice_url = ?, status = 'charged', updated_at = datetime('now') WHERE id = ?"
+    ).bind(payment.id, payment.invoiceUrl ?? null, row.id).run();
+    return json({ ok: true, asaasPaymentId: payment.id, url: payment.invoiceUrl || "" });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/clients/[id]/history/[hid].ts
+var KINDS = ["adicional", "retrabalho", "hora-tecnica", "outro"];
+var STATUSES = ["pending", "charged", "paid", "cancelled"];
+var onRequestPut = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const hid = String(params.hid);
+    const body = await readJson(request);
+    const existing = await env.DB.prepare(
+      "SELECT description, amount, kind, status, date FROM client_history WHERE id = ?"
+    ).bind(hid).first();
+    if (!existing)
+      return error(404, "Lan\xE7amento n\xE3o encontrado.");
+    const description = typeof body.description === "string" && body.description.trim() ? body.description.trim() : existing.description;
+    const amount = typeof body.amount === "number" && Number.isFinite(body.amount) && body.amount >= 0 ? body.amount : existing.amount;
+    const kind = KINDS.includes(body.kind ?? "") ? body.kind : existing.kind;
+    const status = STATUSES.includes(body.status ?? "") ? body.status : existing.status;
+    const date = typeof body.date === "string" && body.date.trim() ? body.date.trim() : existing.date;
+    const paidAt = status === "paid" ? "datetime('now')" : null;
+    await env.DB.prepare(
+      `UPDATE client_history
+       SET description = ?, amount = ?, kind = ?, status = ?, date = ?,
+           paid_at = ${paidAt ? "COALESCE(paid_at, datetime('now'))" : "paid_at"},
+           updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(description, amount, kind, status, date, hid).run();
+    return json({ ok: true, id: hid, status });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+var onRequestDelete = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const hid = String(params.hid);
+    const res = await env.DB.prepare("DELETE FROM client_history WHERE id = ?").bind(hid).run();
+    if (!res.meta.changes)
+      return error(404, "Lan\xE7amento n\xE3o encontrado.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/contracts/public/[slug].ts
+var COLS = `c.title, c.content, c.data, c.value, c.deadline, c.status,
+  c.autentique_url AS autentiqueUrl, c.signed_at AS signedAt, c.published_at AS publishedAt, cl.name AS clientName`;
+var onRequestGet = /* @__PURE__ */ __name(async ({ env, params }) => {
+  try {
+    const slug = String(params.slug);
+    const contract = await env.DB.prepare(
+      `SELECT ${COLS} FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.slug = ?`
+    ).bind(slug).first();
+    if (!contract || contract.status !== "published" && contract.status !== "signed") {
+      return error(404, "Contrato n\xE3o encontrado.");
+    }
+    return json({ contract });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/briefings/[number]/responses.ts
+var MAX_ANSWERS_BYTES = 256 * 1024;
+var onRequestPost2 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    const number = String(params.number);
+    const body = await readJson(request);
+    const answers = body.answers;
+    if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
+      return error(400, "Respostas inv\xE1lidas.");
+    }
+    const answersStr = JSON.stringify(answers);
+    if (answersStr.length > MAX_ANSWERS_BYTES)
+      return error(413, "Respostas muito grandes.");
+    const refs = body.refImages;
+    const refImages = refs && typeof refs === "object" && !Array.isArray(refs) ? Object.fromEntries(
+      Object.entries(refs).filter(
+        ([, url]) => typeof url === "string" && url.startsWith("/api/files/")
+      )
+    ) : {};
+    const refImagesStr = Object.keys(refImages).length ? JSON.stringify(refImages) : null;
+    const b = await env.DB.prepare("SELECT status FROM briefings WHERE number = ?").bind(number).first();
+    if (!b || b.status !== "published")
+      return error(404, "Briefing n\xE3o encontrado.");
+    const client = body.client ?? null;
+    const { results: prev } = await env.DB.prepare(
+      `SELECT id, ref_images AS refImages FROM briefing_responses
+       WHERE briefing_number = ? AND ((client = ?) OR (client IS NULL AND ? IS NULL))
+       ORDER BY submitted_at DESC`
+    ).bind(number, client, client).all();
+    if (prev && prev.length > 0) {
+      const keepId = prev[0].id;
+      const removeIds = prev.slice(1).map((r) => r.id);
+      const stmts = [
+        env.DB.prepare(
+          "UPDATE briefing_responses SET answers = ?, ref_images = ?, submitted_at = datetime('now') WHERE id = ?"
+        ).bind(answersStr, refImagesStr, keepId)
+      ];
+      if (removeIds.length > 0) {
+        stmts.push(
+          env.DB.prepare(
+            `DELETE FROM briefing_responses WHERE id IN (${removeIds.map(() => "?").join(",")})`
+          ).bind(...removeIds)
+        );
+      }
+      await env.DB.batch(stmts);
+      try {
+        const keep = new Set(Object.values(refImages));
+        const oldUrls = /* @__PURE__ */ new Set();
+        for (const p of prev) {
+          const map = p.refImages ? JSON.parse(p.refImages) : {};
+          for (const u of Object.values(map))
+            oldUrls.add(u);
+        }
+        for (const url of oldUrls) {
+          if (keep.has(url))
+            continue;
+          const key = url.replace(/^\/api\/files\//, "");
+          if (key.startsWith("briefing-refs/"))
+            await env.R2.delete(key);
+        }
+      } catch {
+      }
+      return json({ ok: true, id: keepId, updated: true, merged: removeIds.length });
+    }
+    const res = await env.DB.prepare(
+      "INSERT INTO briefing_responses (briefing_number, client, answers, ref_images) VALUES (?, ?, ?, ?)"
+    ).bind(number, client, answersStr, refImagesStr).run();
+    return json({ ok: true, id: res.meta.last_row_id }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+var onRequestGet2 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const number = String(params.number);
+    const { results } = await env.DB.prepare(
+      `SELECT id, client, answers, ref_images AS refImages, submitted_at AS submittedAt
+       FROM briefing_responses WHERE briefing_number = ? ORDER BY submitted_at DESC`
+    ).bind(number).all();
+    const responses = (results ?? []).map((r) => ({
+      id: r.id,
+      client: r.client,
+      submittedAt: r.submittedAt,
+      answers: JSON.parse(r.answers),
+      refImages: r.refImages ? JSON.parse(r.refImages) : {}
+    }));
+    return json({ responses });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/briefings/[number]/upload.ts
+var MAX_BYTES = 15 * 1024 * 1024;
+var INLINE_IMAGES = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+  "image/gif": "gif"
+};
+function extFromName(name) {
+  const m = /\.([a-z0-9]{1,8})$/i.exec(name ?? "");
+  return m ? m[1].toLowerCase() : "bin";
+}
+__name(extFromName, "extFromName");
+var onRequestPost3 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    const number = String(params.number);
+    const b = await env.DB.prepare("SELECT status FROM briefings WHERE number = ?").bind(number).first();
+    if (!b || b.status !== "published")
+      return error(404, "Briefing n\xE3o encontrado.");
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof File))
+      return error(400, "Envie um arquivo no campo 'file'.");
+    if (file.size > MAX_BYTES)
+      return error(413, "Arquivo muito grande (m\xE1x. 15 MB).");
+    const inlineExt = INLINE_IMAGES[file.type];
+    const ext = inlineExt ?? extFromName(file.name);
+    const key = `briefing-refs/${number}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const httpMetadata = inlineExt ? { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" } : {
+      contentType: "application/octet-stream",
+      contentDisposition: `attachment; filename="${(file.name || "anexo").replace(/"/g, "")}"`,
+      cacheControl: "public, max-age=31536000, immutable"
+    };
+    await env.R2.put(key, file.stream(), { httpMetadata });
+    return json({ ok: true, url: `/api/files/${key}`, key }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/_lib/client-auth.ts
+var CLIENT_COOKIE = "ips_cliente";
+var SESSION_TTL_MS2 = 1e3 * 60 * 60 * 24 * 30;
+var MAGIC_TTL_MS = 1e3 * 60 * 60 * 24 * 30;
+var enc2 = new TextEncoder();
+var te2 = /* @__PURE__ */ __name((s) => new Uint8Array(enc2.encode(s)), "te");
+function bytesToB642(bytes) {
+  let bin = "";
+  for (const b of bytes)
+    bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+__name(bytesToB642, "bytesToB64");
+function b64url2(s) {
+  return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+__name(b64url2, "b64url");
+function unb64url2(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4)
+    s += "=";
+  return s;
+}
+__name(unb64url2, "unb64url");
+async function hmac2(secret, data) {
+  const key = await crypto.subtle.importKey("raw", te2(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, te2(data));
+  return b64url2(bytesToB642(new Uint8Array(sig)));
+}
+__name(hmac2, "hmac");
+async function sign(payload, secret) {
+  const p = b64url2(btoa(JSON.stringify(payload)));
+  const sig = await hmac2(secret, p);
+  return `${p}.${sig}`;
+}
+__name(sign, "sign");
+async function verify(token, secret, aud) {
+  const dot = token.indexOf(".");
+  if (dot < 0)
+    return null;
+  const p = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  if (sig !== await hmac2(secret, p))
+    return null;
+  try {
+    const t = JSON.parse(atob(unb64url2(p)));
+    if (!t.exp || t.exp < Date.now() || t.aud !== aud || !t.sub)
+      return null;
+    return t;
+  } catch {
+    return null;
+  }
+}
+__name(verify, "verify");
+function createClientMagicToken(clientId, secret, version = 1) {
+  return sign({ sub: clientId, aud: "magic", exp: Date.now() + MAGIC_TTL_MS, v: version }, secret);
+}
+__name(createClientMagicToken, "createClientMagicToken");
+function createClientSessionToken(clientId, secret, verified = true) {
+  return sign({ sub: clientId, aud: "client", exp: Date.now() + SESSION_TTL_MS2, ver: verified }, secret);
+}
+__name(createClientSessionToken, "createClientSessionToken");
+function verifyMagicToken(token, secret) {
+  return verify(token, secret, "magic");
+}
+__name(verifyMagicToken, "verifyMagicToken");
+function clientSessionCookie(token) {
+  const maxAge = Math.floor(SESSION_TTL_MS2 / 1e3);
+  return `${CLIENT_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+}
+__name(clientSessionCookie, "clientSessionCookie");
+function clearClientCookie() {
+  return `${CLIENT_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+}
+__name(clearClientCookie, "clearClientCookie");
+function readCookie2(request, name) {
+  const header = request.headers.get("Cookie");
+  if (!header)
+    return null;
+  for (const part of header.split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name)
+      return v.join("=");
+  }
+  return null;
+}
+__name(readCookie2, "readCookie");
+async function getClientSession(request, env) {
+  const token = readCookie2(request, CLIENT_COOKIE);
+  if (!token)
+    return null;
+  return verify(token, env.SESSION_SECRET, "client");
+}
+__name(getClientSession, "getClientSession");
+async function requireClient(request, env) {
+  const t = await getClientSession(request, env);
+  if (!t)
+    throw new HttpError(401, "N\xE3o autenticado.");
+  return t.sub;
+}
+__name(requireClient, "requireClient");
+async function requireVerifiedClient(request, env) {
+  const t = await getClientSession(request, env);
+  if (!t)
+    throw new HttpError(401, "N\xE3o autenticado.");
+  if (t.ver === false)
+    throw new HttpError(428, "Confirme seu CPF para acessar.");
+  return t.sub;
+}
+__name(requireVerifiedClient, "requireVerifiedClient");
+
+// api/clients/[id]/access.ts
+async function buildLink(request, env, id, version) {
+  const token = await createClientMagicToken(id, env.SESSION_SECRET, version);
+  const base = new URL(request.url).origin.replace(/\/+$/, "");
+  return `${base}/api/client/magic?token=${token}`;
+}
+__name(buildLink, "buildLink");
+var onRequestGet3 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const c = await env.DB.prepare("SELECT access_enabled, access_token_version AS v FROM clients WHERE id = ?").bind(id).first();
+    if (!c)
+      return error(404, "Cliente n\xE3o encontrado.");
+    const enabled = !!c.access_enabled;
+    const link = enabled ? await buildLink(request, env, id, c.v ?? 1) : "";
+    return json({ enabled, link });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut2 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const body = await readJson(request);
+    const c = await env.DB.prepare("SELECT access_enabled, access_token_version AS v FROM clients WHERE id = ?").bind(id).first();
+    if (!c)
+      return error(404, "Cliente n\xE3o encontrado.");
+    let version = c.v ?? 1;
+    if (body.regenerate) {
+      version += 1;
+      await env.DB.prepare("UPDATE clients SET access_token_version = ?, updated_at = datetime('now') WHERE id = ?").bind(version, id).run();
+    }
+    if (typeof body.enabled === "boolean") {
+      await env.DB.prepare("UPDATE clients SET access_enabled = ?, updated_at = datetime('now') WHERE id = ?").bind(body.enabled ? 1 : 0, id).run();
+    }
+    const enabled = typeof body.enabled === "boolean" ? body.enabled : !!c.access_enabled;
+    const link = enabled ? await buildLink(request, env, id, version) : "";
+    return json({ ok: true, enabled, link });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+
+// api/clients/[id]/history.ts
+var HISTORY_KINDS = ["adicional", "retrabalho", "hora-tecnica", "pagamento", "outro"];
+var COLS2 = `id, client_id AS clientId, contract_id AS contractId, date, description, amount, kind, status,
+  asaas_payment_id AS asaasPaymentId, invoice_url AS invoiceUrl, paid_at AS paidAt, created_at AS createdAt`;
+var onRequestGet4 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const clientId = String(params.id);
+    const { results } = await env.DB.prepare(
+      `SELECT ${COLS2} FROM client_history WHERE client_id = ? ORDER BY date DESC, created_at DESC`
+    ).bind(clientId).all();
+    const items = results ?? [];
+    let pending = 0, charged = 0, paid = 0;
+    for (const it of items) {
+      const amt = Number(it.amount) || 0;
+      if (it.status === "paid")
+        paid += amt;
+      else if (it.status === "charged")
+        charged += amt;
+      else if (it.status === "pending")
+        pending += amt;
+    }
+    return json({ items, totals: { pending, charged, paid } });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost4 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const clientId = String(params.id);
+    const body = await readJson(request);
+    const description = (body.description ?? "").trim();
+    if (!description)
+      return error(400, "Informe a descri\xE7\xE3o do lan\xE7amento.");
+    const amount = typeof body.amount === "number" && Number.isFinite(body.amount) && body.amount >= 0 ? body.amount : 0;
+    const kind = HISTORY_KINDS.includes(body.kind ?? "") ? body.kind : "adicional";
+    const contractId = typeof body.contract_id === "string" && body.contract_id.trim() ? body.contract_id.trim() : null;
+    const date = typeof body.date === "string" && body.date.trim() ? body.date.trim() : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const client = await env.DB.prepare("SELECT id FROM clients WHERE id = ?").bind(clientId).first();
+    if (!client)
+      return error(404, "Cliente n\xE3o encontrado.");
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO client_history (id, client_id, contract_id, date, description, amount, kind)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, clientId, contractId, date, description, amount, kind).run();
+    return json({ ok: true, id }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/clients/[id]/photo.ts
+var PREFIX = "uploads/clients/";
+var MAX_BYTES2 = 5 * 1024 * 1024;
+var ALLOWED = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+function extOf(type, name) {
+  if (type === "image/jpeg")
+    return "jpg";
+  if (type === "image/png")
+    return "png";
+  if (type === "image/webp")
+    return "webp";
+  if (type === "image/gif")
+    return "gif";
+  const m = /\.([a-z0-9]{1,8})$/i.exec(name || "");
+  return m ? m[1].toLowerCase() : "jpg";
+}
+__name(extOf, "extOf");
+var keyToUrl = /* @__PURE__ */ __name((key) => `/api/files/${key}`, "keyToUrl");
+function urlToKey(url) {
+  if (!url)
+    return null;
+  const i = url.indexOf("/api/files/");
+  const key = i >= 0 ? url.slice(i + "/api/files/".length) : "";
+  return key.startsWith(PREFIX) ? key : null;
+}
+__name(urlToKey, "urlToKey");
+var onRequestPost5 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const row = await env.DB.prepare("SELECT photo_url FROM clients WHERE id = ?").bind(id).first();
+    if (!row)
+      return error(404, "Cliente n\xE3o encontrado.");
+    const form = await request.formData().catch(() => null);
+    const file = form?.get("file");
+    if (!(file instanceof File))
+      return error(400, "Envie uma imagem no campo 'file'.");
+    if (file.size === 0)
+      return error(400, "Arquivo vazio.");
+    if (file.size > MAX_BYTES2)
+      return error(413, "Imagem muito grande (m\xE1x. 5 MB).");
+    if (file.type && !ALLOWED.has(file.type))
+      return error(415, "Formato inv\xE1lido (use JPG, PNG, WEBP ou GIF).");
+    const key = `${PREFIX}${id}-${crypto.randomUUID()}.${extOf(file.type, file.name)}`;
+    await env.R2.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type || "image/jpeg" },
+      customMetadata: { clientId: id }
+    });
+    const url = keyToUrl(key);
+    await env.DB.prepare("UPDATE clients SET photo_url = ?, updated_at = datetime('now') WHERE id = ?").bind(url, id).run();
+    const oldKey = urlToKey(row.photo_url);
+    if (oldKey && oldKey !== key)
+      await env.R2.delete(oldKey).catch(() => {
+      });
+    return json({ ok: true, photo_url: url }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+var onRequestDelete2 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const row = await env.DB.prepare("SELECT photo_url FROM clients WHERE id = ?").bind(id).first();
+    if (!row)
+      return error(404, "Cliente n\xE3o encontrado.");
+    const key = urlToKey(row.photo_url);
+    if (key)
+      await env.R2.delete(key).catch(() => {
+      });
+    await env.DB.prepare("UPDATE clients SET photo_url = NULL, updated_at = datetime('now') WHERE id = ?").bind(id).run();
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/contracts/[id]/generate-asaas.ts
+var onRequestPost6 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    if (!asaasConfigured(env)) {
+      return error(400, "Integra\xE7\xE3o ASAAS n\xE3o configurada. Defina ASAAS_API_KEY para criar cobran\xE7as.");
+    }
+    const contractId = String(params.id);
+    const row = await env.DB.prepare(
+      `SELECT c.title AS title, cl.name AS name, cl.cpf_cnpj AS cpf_cnpj, cl.email AS email, cl.phone AS phone
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
+    ).bind(contractId).first();
+    if (!row)
+      return error(404, "Contrato n\xE3o encontrado.");
+    if (!row.cpf_cnpj)
+      return error(400, "O cliente do contrato precisa ter CPF/CNPJ para gerar cobran\xE7as.");
+    const { results: missing } = await env.DB.prepare(
+      "SELECT asaas_payment_id AS pid, id FROM installments WHERE contract_id = ? AND asaas_payment_id IS NOT NULL AND (invoice_url IS NULL OR invoice_url = '')"
+    ).bind(contractId).all();
+    let backfilled = 0;
+    for (const m of missing ?? []) {
+      try {
+        const p = await getPayment(env, m.pid);
+        if (p.invoiceUrl) {
+          await env.DB.prepare("UPDATE installments SET invoice_url = ?, updated_at = datetime('now') WHERE id = ?").bind(p.invoiceUrl, m.id).run();
+          backfilled++;
+        }
+      } catch {
+      }
+    }
+    const { results } = await env.DB.prepare(
+      "SELECT id, installment_number, due_date, amount FROM installments WHERE contract_id = ? AND asaas_payment_id IS NULL ORDER BY installment_number ASC"
+    ).bind(contractId).all();
+    const pending = results ?? [];
+    if (pending.length === 0)
+      return json({ ok: true, created: 0, backfilled, message: backfilled ? `${backfilled} link(s) de cobran\xE7a atualizado(s).` : "Nenhuma parcela pendente para gerar." });
+    const customerId = await findOrCreateCustomer(env, {
+      name: row.name || "Cliente",
+      cpfCnpj: row.cpf_cnpj,
+      email: row.email,
+      phone: row.phone
+    });
+    let created = 0;
+    for (const inst of pending) {
+      const label = inst.installment_number === 0 ? "Entrada" : `Parcela ${inst.installment_number}`;
+      const payment = await createPayment(env, {
+        customer: customerId,
+        value: inst.amount,
+        dueDate: inst.due_date,
+        description: `${row.title} \u2014 ${label}`,
+        externalReference: inst.id
+      });
+      await env.DB.prepare(
+        "UPDATE installments SET asaas_payment_id = ?, invoice_url = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(payment.id, payment.invoiceUrl ?? null, inst.id).run();
+      created++;
+    }
+    await env.DB.prepare(
+      "UPDATE contract_payments SET status = 'sent', updated_at = datetime('now') WHERE contract_id = ?"
+    ).bind(contractId).run();
+    return json({ ok: true, created, backfilled });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/contracts/[id]/payments.ts
+function todayISO() {
+  const d = /* @__PURE__ */ new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+__name(todayISO, "todayISO");
+function addMonths(iso, n) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const base = new Date(y, m - 1 + n, 1);
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const day = Math.min(d || 1, lastDay);
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+__name(addMonths, "addMonths");
+var INSTALLMENT_COLS = "id, contract_id AS contractId, payment_config_id AS paymentConfigId, asaas_payment_id AS asaasPaymentId, invoice_url AS invoiceUrl, installment_number AS installmentNumber, due_date AS dueDate, amount, status, payment_date AS paymentDate, payment_method AS paymentMethod, notes";
+var onRequestGet5 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const contractId = String(params.id);
+    const config = await env.DB.prepare(
+      `SELECT id, contract_id AS contractId, total_value AS totalValue, down_payment AS downPayment,
+              installments_count AS installmentsCount, status, created_at AS createdAt
+       FROM contract_payments WHERE contract_id = ?`
+    ).bind(contractId).first();
+    const { results } = await env.DB.prepare(
+      `SELECT ${INSTALLMENT_COLS} FROM installments WHERE contract_id = ? ORDER BY installment_number ASC`
+    ).bind(contractId).all();
+    return json({ config: config ?? null, installments: results ?? [] });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost7 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const contractId = String(params.id);
+    const body = await readJson(request);
+    const contract = await env.DB.prepare("SELECT id FROM contracts WHERE id = ?").bind(contractId).first();
+    if (!contract)
+      return error(404, "Contrato n\xE3o encontrado.");
+    const total = Number(body.total_value);
+    const down = Number(body.down_payment ?? 0);
+    const count = Math.trunc(Number(body.installments_count));
+    if (!Number.isFinite(total) || total <= 0)
+      return error(400, "Valor total inv\xE1lido.");
+    if (!Number.isFinite(down) || down < 0 || down > total)
+      return error(400, "Valor de entrada inv\xE1lido.");
+    if (!Number.isFinite(count) || count < 1 || count > 60)
+      return error(400, "N\xFAmero de parcelas inv\xE1lido (1 a 60).");
+    const firstDue = /^\d{4}-\d{2}-\d{2}$/.test(body.first_due_date ?? "") ? body.first_due_date : addMonths(todayISO(), 1);
+    const lock = await env.DB.prepare(
+      "SELECT COUNT(*) AS locked FROM installments WHERE contract_id = ? AND (status != 'pending' OR asaas_payment_id IS NOT NULL)"
+    ).bind(contractId).first();
+    if ((lock?.locked ?? 0) > 0) {
+      return error(409, "J\xE1 existem parcelas pagas ou enviadas ao ASAAS; n\xE3o \xE9 poss\xEDvel reconfigurar.");
+    }
+    const list = [];
+    if (down > 0)
+      list.push({ number: 0, due: firstDue, cents: Math.round(down * 100) });
+    const remainderCents = Math.round((total - down) * 100);
+    const baseCents = Math.floor(remainderCents / count);
+    for (let i = 1; i <= count; i++) {
+      const cents = i === count ? remainderCents - baseCents * (count - 1) : baseCents;
+      const due = down > 0 ? addMonths(firstDue, i) : addMonths(firstDue, i - 1);
+      list.push({ number: i, due, cents });
+    }
+    const configId = crypto.randomUUID();
+    const stmts = [
+      env.DB.prepare("DELETE FROM installments WHERE contract_id = ?").bind(contractId),
+      env.DB.prepare("DELETE FROM contract_payments WHERE contract_id = ?").bind(contractId),
+      env.DB.prepare(
+        `INSERT INTO contract_payments (id, contract_id, total_value, down_payment, installments_count, status)
+         VALUES (?, ?, ?, ?, ?, 'pending')`
+      ).bind(configId, contractId, total, down, count),
+      ...list.map(
+        (it) => env.DB.prepare(
+          `INSERT INTO installments (id, contract_id, payment_config_id, installment_number, due_date, amount, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'pending')`
+        ).bind(crypto.randomUUID(), contractId, configId, it.number, it.due, it.cents / 100)
+      )
+    ];
+    await env.DB.batch(stmts);
+    return json({ ok: true, configId, count: list.length }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+var onRequestDelete3 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const contractId = String(params.id);
+    const contract = await env.DB.prepare("SELECT id FROM contracts WHERE id = ?").bind(contractId).first();
+    if (!contract)
+      return error(404, "Contrato n\xE3o encontrado.");
+    let cancelled = 0;
+    if (asaasConfigured(env)) {
+      const { results } = await env.DB.prepare(
+        "SELECT asaas_payment_id AS id FROM installments WHERE contract_id = ? AND asaas_payment_id IS NOT NULL"
+      ).bind(contractId).all();
+      for (const r of results ?? []) {
+        try {
+          await deletePayment(env, r.id);
+          cancelled++;
+        } catch {
+        }
+      }
+    }
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM installments WHERE contract_id = ?").bind(contractId),
+      env.DB.prepare("DELETE FROM contract_payments WHERE contract_id = ?").bind(contractId)
+    ]);
+    return json({ ok: true, cancelled });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/_lib/slug.ts
+function slugify(text) {
+  return (text || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+}
+__name(slugify, "slugify");
+function uniqueSlug(text) {
+  const base = slugify(text) || "contrato";
+  const suffix = crypto.randomUUID().slice(0, 6);
+  return `${base}-${suffix}`;
+}
+__name(uniqueSlug, "uniqueSlug");
+
+// api/contracts/[id]/publish.ts
+var onRequestPost8 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const row = await env.DB.prepare(
+      `SELECT c.slug AS slug, c.title AS title, cl.name AS clientName
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id
+       WHERE c.id = ?`
+    ).bind(id).first();
+    if (!row)
+      return error(404, "Contrato n\xE3o encontrado.");
+    const slug = row.slug || uniqueSlug(row.clientName || row.title || "contrato");
+    await env.DB.prepare(
+      `UPDATE contracts
+       SET slug = ?, status = 'published', published_at = COALESCE(published_at, datetime('now')), updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(slug, id).run();
+    await env.DB.prepare(
+      "UPDATE clients SET access_enabled = 1, updated_at = datetime('now') WHERE id = (SELECT client_id FROM contracts WHERE id = ?)"
+    ).bind(id).run();
+    return json({ ok: true, slug, status: "published" });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/_lib/autentique.ts
+var DEFAULT_URL2 = "https://api.autentique.com.br/v2/graphql";
+function autentiqueConfigured(env) {
+  return !!env.AUTENTIQUE_TOKEN;
+}
+__name(autentiqueConfigured, "autentiqueConfigured");
+function apiUrl(env) {
+  return (env.AUTENTIQUE_API_URL || DEFAULT_URL2).replace(/\/+$/, "");
+}
+__name(apiUrl, "apiUrl");
+function requireToken(env) {
+  if (!env.AUTENTIQUE_TOKEN) {
+    throw new HttpError(400, "Integra\xE7\xE3o Autentique n\xE3o configurada (defina AUTENTIQUE_TOKEN).");
+  }
+  return env.AUTENTIQUE_TOKEN;
+}
+__name(requireToken, "requireToken");
+function describeGraphQLError(e) {
+  let detail = e.message || "erro desconhecido";
+  const ext = e.extensions;
+  const v = ext && typeof ext === "object" ? ext.validation : void 0;
+  if (v && typeof v === "object") {
+    const parts = Object.entries(v).map(([field, msgs]) => {
+      const text = Array.isArray(msgs) ? msgs.join(", ") : String(msgs);
+      return `${field}: ${text}`;
+    });
+    if (parts.length)
+      detail += ` \u2014 ${parts.join(" | ")}`;
+  }
+  return detail;
+}
+__name(describeGraphQLError, "describeGraphQLError");
+function unwrap(status, body) {
+  if (body.errors && body.errors.length > 0) {
+    throw new HttpError(400, `Autentique: ${describeGraphQLError(body.errors[0])}`);
+  }
+  if (!body.data) {
+    throw new HttpError(status >= 400 ? status : 502, `Autentique: resposta inv\xE1lida (${status}).`);
+  }
+  return body.data;
+}
+__name(unwrap, "unwrap");
+async function graphqlJson(env, query, variables) {
+  const token = requireToken(env);
+  const res = await fetch(apiUrl(env), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables })
+  });
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : {};
+  return unwrap(res.status, body);
+}
+__name(graphqlJson, "graphqlJson");
+async function graphqlMultipart(env, form) {
+  const token = requireToken(env);
+  const res = await fetch(apiUrl(env), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    // sem Content-Type: o boundary é automático
+    body: form
+  });
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : {};
+  return unwrap(res.status, body);
+}
+__name(graphqlMultipart, "graphqlMultipart");
+var CREATE_DOCUMENT = `
+mutation CreateDocument($document: DocumentInput!, $signers: [SignerInput!]!, $file: Upload!) {
+  createDocument(document: $document, signers: $signers, file: $file) {
+    id
+    name
+    signatures { public_id name email link { short_link } }
+  }
+}`;
+async function createSignatureDocument(env, opts) {
+  const operations = {
+    query: CREATE_DOCUMENT,
+    variables: {
+      document: { name: opts.name },
+      signers: opts.signers.map((s) => ({
+        email: s.email,
+        action: s.action || "SIGN",
+        ...s.name ? { name: s.name } : {}
+      })),
+      file: null
+    }
+  };
+  const form = new FormData();
+  form.append("operations", JSON.stringify(operations));
+  form.append("map", JSON.stringify({ file: ["variables.file"] }));
+  form.append("file", opts.file, opts.fileName || "contrato.pdf");
+  const data = await graphqlMultipart(env, form);
+  return data.createDocument;
+}
+__name(createSignatureDocument, "createSignatureDocument");
+async function createSignatureLink(env, publicId) {
+  const safe = String(publicId).replace(/[^\w-]/g, "");
+  if (!safe)
+    return null;
+  try {
+    const data = await graphqlJson(
+      env,
+      `mutation { createLinkToSignature(public_id: "${safe}") { short_link } }`,
+      {}
+    );
+    return data.createLinkToSignature?.short_link ?? null;
+  } catch {
+    return null;
+  }
+}
+__name(createSignatureLink, "createSignatureLink");
+var DOCUMENT_QUERY = `
+query Document($id: UUID!) {
+  document(id: $id) {
+    id
+    name
+    signatures { public_id email name action { name } signed { created_at } rejected { created_at } link { short_link } }
+  }
+}`;
+function actionableSignatures(sigs) {
+  return sigs.filter((s) => !!s.action);
+}
+__name(actionableSignatures, "actionableSignatures");
+async function getDocument(env, id) {
+  const data = await graphqlJson(env, DOCUMENT_QUERY, { id });
+  return data.document;
+}
+__name(getDocument, "getDocument");
+function isFullySigned(doc) {
+  const signers = actionableSignatures(doc.signatures);
+  return signers.length > 0 && signers.every((s) => !!s.signed);
+}
+__name(isFullySigned, "isFullySigned");
+
+// api/_lib/notifications.ts
+async function createNotification(env, n) {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO notifications (id, type, title, body, link, dedup_key)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(dedup_key) DO NOTHING`
+    ).bind(crypto.randomUUID(), n.type, n.title, n.body ?? null, n.link ?? null, n.dedupKey ?? null).run();
+  } catch {
+  }
+}
+__name(createNotification, "createNotification");
+
+// api/contracts/[id]/refresh-signature.ts
+var onRequestPost9 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    if (!autentiqueConfigured(env)) {
+      return error(400, "Integra\xE7\xE3o Autentique n\xE3o configurada (defina AUTENTIQUE_TOKEN).");
+    }
+    const contractId = String(params.id);
+    const row = await env.DB.prepare(
+      `SELECT c.autentique_document_id AS docId, c.status AS status, c.autentique_url AS url,
+              c.title AS title, cl.name AS clientName, cl.email AS clientEmail, c.data AS data
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
+    ).bind(contractId).first();
+    if (!row)
+      return error(404, "Contrato n\xE3o encontrado.");
+    if (!row.docId)
+      return error(400, "Este contrato ainda n\xE3o foi enviado para assinatura.");
+    const doc = await getDocument(env, row.docId);
+    const realSigners = actionableSignatures(doc.signatures);
+    const signers = realSigners.map((s) => ({
+      name: s.name,
+      email: s.email,
+      signed: !!s.signed,
+      signedAt: s.signed?.created_at ?? null,
+      rejected: !!s.rejected,
+      link: s.link?.short_link ?? null
+    }));
+    const fullySigned = isFullySigned(doc);
+    let pendingLink = signers.find((s) => !s.signed && s.link)?.link ?? "";
+    if (!pendingLink) {
+      let contratanteEmail = row.clientEmail || "";
+      if (row.data) {
+        try {
+          const d = JSON.parse(row.data);
+          if (d?.contratante?.email)
+            contratanteEmail = d.contratante.email;
+        } catch {
+        }
+      }
+      const el = contratanteEmail.toLowerCase();
+      const ordered = [
+        ...realSigners.filter((s) => el && (s.email || "").toLowerCase() === el),
+        ...realSigners.filter((s) => !el || (s.email || "").toLowerCase() !== el)
+      ];
+      for (const s of ordered) {
+        if (s.signed)
+          continue;
+        const l = await createSignatureLink(env, s.public_id);
+        if (l) {
+          pendingLink = l;
+          break;
+        }
+      }
+    }
+    let status = row.status;
+    if (fullySigned && row.status !== "signed") {
+      const signedAt = signers.map((s) => s.signedAt).filter(Boolean).sort().pop() || (/* @__PURE__ */ new Date()).toISOString();
+      await env.DB.prepare(
+        "UPDATE contracts SET status = 'signed', signed_at = ?, autentique_url = COALESCE(NULLIF(?, ''), autentique_url), updated_at = datetime('now') WHERE id = ?"
+      ).bind(signedAt, pendingLink, contractId).run();
+      await createNotification(env, {
+        type: "signature",
+        title: "Contrato assinado por todas as partes",
+        body: `${row.clientName ?? "Cliente"} \u2014 ${row.title ?? "contrato"}`,
+        link: "#contratos",
+        dedupKey: `signed:${contractId}`
+      });
+      status = "signed";
+    } else if (!row.url && pendingLink) {
+      await env.DB.prepare(
+        "UPDATE contracts SET autentique_url = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(pendingLink, contractId).run();
+    }
+    return json({ ok: true, fullySigned, status, signers, autentiqueUrl: row.url || pendingLink || null });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/_lib/contract-pdf.ts
+function browserRenderingAvailable(env) {
+  return !!(env.BROWSER_RENDER_TOKEN && env.CF_ACCOUNT_ID);
+}
+__name(browserRenderingAvailable, "browserRenderingAvailable");
+async function renderContractPdf(env, origin, slug) {
+  if (!browserRenderingAvailable(env)) {
+    throw new HttpError(400, "Gera\xE7\xE3o autom\xE1tica de PDF indispon\xEDvel (defina BROWSER_RENDER_TOKEN). Envie o PDF manualmente.");
+  }
+  const url = `${origin.replace(/\/+$/, "")}/contrato/${encodeURIComponent(slug)}?pdf=1`;
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/browser-rendering/pdf`;
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.BROWSER_RENDER_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      url,
+      gotoOptions: { waitUntil: "networkidle0", timeout: 3e4 },
+      // Espera o sinal de "pronto" (fontes carregadas + conteúdo revelado).
+      waitForSelector: { selector: "[data-pdf-ready]", timeout: 15e3 },
+      pdfOptions: {
+        format: "a4",
+        printBackground: true,
+        margin: { top: "12mm", bottom: "14mm", left: "10mm", right: "10mm" }
+      }
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let msg = `Browser Rendering ${res.status}`;
+    try {
+      const j = JSON.parse(text);
+      msg = j?.errors?.[0]?.message || j?.messages?.[0]?.message || msg;
+    } catch {
+    }
+    throw new HttpError(502, `Erro ao gerar o PDF: ${msg}`);
+  }
+  const buf = await res.arrayBuffer();
+  return new Blob([buf], { type: "application/pdf" });
+}
+__name(renderContractPdf, "renderContractPdf");
+
+// api/contracts/[id]/send-autentique.ts
+function party(data, key) {
+  if (data && typeof data === "object") {
+    const p = data[key];
+    if (p && typeof p === "object") {
+      const rec = p;
+      return {
+        name: typeof rec.name === "string" ? rec.name : void 0,
+        email: typeof rec.email === "string" ? rec.email : void 0
+      };
+    }
+  }
+  return {};
+}
+__name(party, "party");
+var onRequestPost10 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    if (!autentiqueConfigured(env)) {
+      return error(400, "Integra\xE7\xE3o Autentique n\xE3o configurada. Defina AUTENTIQUE_TOKEN para enviar para assinatura.");
+    }
+    const contractId = String(params.id);
+    const row = await env.DB.prepare(
+      `SELECT c.title AS title, c.data AS data, c.slug AS slug, c.status AS status, cl.name AS clientName, cl.email AS clientEmail
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
+    ).bind(contractId).first();
+    if (!row)
+      return error(404, "Contrato n\xE3o encontrado.");
+    const form = await request.formData().catch(() => null);
+    const uploaded = form?.get("file");
+    let file;
+    if (uploaded instanceof Blob && uploaded.size > 0) {
+      file = uploaded;
+    } else if (browserRenderingAvailable(env)) {
+      if (!row.slug)
+        return error(400, "Publique o contrato antes de gerar o PDF automaticamente (ou envie o PDF manualmente).");
+      const origin = new URL(request.url).origin;
+      file = await renderContractPdf(env, origin, row.slug);
+    } else {
+      return error(400, "Envie o PDF do contrato no campo 'file' para assinatura.");
+    }
+    let doc = null;
+    if (row.data) {
+      try {
+        doc = JSON.parse(row.data);
+      } catch {
+      }
+    }
+    const contratante = party(doc, "contratante");
+    const contratada = party(doc, "contratada");
+    const contratanteEmail = contratante.email || row.clientEmail || "";
+    if (!contratanteEmail) {
+      return error(400, "O contrato precisa do e-mail da CONTRATANTE (ou do cliente) para enviar para assinatura.");
+    }
+    const signers = [
+      { email: contratanteEmail, name: contratante.name || row.clientName || void 0, action: "SIGN" }
+    ];
+    if (contratada.email) {
+      signers.push({ email: contratada.email, name: contratada.name || void 0, action: "SIGN" });
+    }
+    const document = await createSignatureDocument(env, {
+      name: row.title || `Contrato ${contractId}`,
+      signers,
+      file,
+      fileName: `${(row.title || "contrato").replace(/[^\w.-]+/g, "_")}.pdf`
+    });
+    const emailLower = contratanteEmail.toLowerCase();
+    const ordered = [
+      ...document.signatures.filter((s) => emailLower && (s.email || "").toLowerCase() === emailLower),
+      ...document.signatures.filter((s) => !emailLower || (s.email || "").toLowerCase() !== emailLower)
+    ];
+    let link = "";
+    for (const s of ordered) {
+      if (!s.public_id)
+        continue;
+      const l = await createSignatureLink(env, s.public_id);
+      if (l) {
+        link = l;
+        break;
+      }
+    }
+    if (!link)
+      link = ordered.find((s) => s.link?.short_link)?.link?.short_link || "";
+    await env.DB.prepare(
+      `UPDATE contracts
+       SET autentique_document_id = ?, autentique_url = COALESCE(NULLIF(?, ''), autentique_url), updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(document.id, link, contractId).run();
+    return json({ ok: true, documentId: document.id, url: link, signatures: document.signatures });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/contracts/[id]/sync-payments.ts
+function mapStatus(asaas) {
+  switch (asaas) {
+    case "RECEIVED":
+    case "RECEIVED_IN_CASH":
+      return "received";
+    case "CONFIRMED":
+      return "confirmed";
+    case "OVERDUE":
+      return "overdue";
+    case "PENDING":
+      return "pending";
+    default:
+      return null;
+  }
+}
+__name(mapStatus, "mapStatus");
+var BRL = /* @__PURE__ */ __name((v) => v == null ? "" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v), "BRL");
+var onRequestPost11 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    if (!asaasConfigured(env)) {
+      return error(400, "Integra\xE7\xE3o ASAAS n\xE3o configurada (defina ASAAS_API_KEY).");
+    }
+    const contractId = String(params.id);
+    const ctx = await env.DB.prepare(
+      `SELECT c.title AS title, cl.name AS clientName
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
+    ).bind(contractId).first();
+    if (!ctx)
+      return error(404, "Contrato n\xE3o encontrado.");
+    const { results } = await env.DB.prepare(
+      "SELECT id, asaas_payment_id, status, invoice_url, installment_number FROM installments WHERE contract_id = ? AND asaas_payment_id IS NOT NULL"
+    ).bind(contractId).all();
+    const rows = results ?? [];
+    if (rows.length === 0)
+      return json({ ok: true, updated: 0, message: "Nenhuma cobran\xE7a gerada para sincronizar." });
+    let updated = 0;
+    const parcels = [];
+    for (const r of rows) {
+      let p;
+      try {
+        p = await getPayment(env, r.asaas_payment_id);
+      } catch {
+        continue;
+      }
+      const mapped = mapStatus(p.status);
+      const wasPaid = r.status === "received" || r.status === "confirmed";
+      const isPaid = mapped === "received" || mapped === "confirmed";
+      const paymentDate = isPaid ? p.paymentDate ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) : null;
+      if (mapped && (mapped !== r.status || !r.invoice_url && p.invoiceUrl)) {
+        await env.DB.prepare(
+          `UPDATE installments
+           SET status = ?, payment_date = COALESCE(?, payment_date),
+               payment_method = CASE WHEN ? THEN COALESCE(payment_method,'ASAAS') ELSE payment_method END,
+               invoice_url = COALESCE(invoice_url, ?), updated_at = datetime('now')
+           WHERE id = ?`
+        ).bind(mapped, paymentDate, isPaid ? 1 : 0, p.invoiceUrl ?? null, r.id).run();
+        updated++;
+      }
+      if (isPaid && !wasPaid) {
+        await createNotification(env, {
+          type: "payment",
+          title: `Pagamento recebido${BRL(p.value) ? " \xB7 " + BRL(p.value) : ""}`,
+          body: `${ctx.clientName ?? "Cliente"} \u2014 ${ctx.title ?? "contrato"}`,
+          link: "#financeiro",
+          dedupKey: `pay:${r.asaas_payment_id}:${mapped}`
+        });
+      }
+      parcels.push({ number: r.installment_number, status: mapped ?? r.status });
+    }
+    return json({ ok: true, updated, parcels });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/proposals/[number]/outcome.ts
+var onRequestPost12 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const number = String(params.number);
+    const body = await readJson(request);
+    const outcome = body.outcome === "aprovada" ? "aprovada" : "nao-aprovada";
+    const res = await env.DB.prepare(
+      "UPDATE proposals SET outcome = ?, updated_at = datetime('now') WHERE number = ?"
+    ).bind(outcome, number).run();
+    if (!res.meta.changes)
+      return error(404, "Proposta n\xE3o encontrada.");
+    return json({ ok: true, outcome });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/auth/change-password.ts
+var onRequestPost13 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const session = await requireAuth(request, env);
+    const { currentPassword, newPassword } = await readJson(request);
+    if (!currentPassword || !newPassword) {
+      return error(400, "Informe a senha atual e a nova senha.");
+    }
+    if (newPassword.length < 6) {
+      return error(400, "A nova senha precisa ter ao menos 6 caracteres.");
+    }
+    const row = await env.DB.prepare(
+      "SELECT password_hash FROM admin_users WHERE username = ?"
+    ).bind(session.sub).first();
+    if (!row || !await verifyPassword(currentPassword, row.password_hash)) {
+      return error(401, "Senha atual incorreta.");
+    }
+    const newHash = await hashPassword(newPassword);
+    await env.DB.prepare("UPDATE admin_users SET password_hash = ? WHERE username = ?").bind(newHash, session.sub).run();
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/auth/login.ts
+var onRequestPost14 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const { username, password } = await readJson(request);
+    if (!username || !password)
+      return error(400, "Informe usu\xE1rio e senha.");
+    const ip = request.headers.get("CF-Connecting-IP");
+    if (ip) {
+      const fails = await env.DB.prepare(
+        "SELECT COUNT(*) AS n FROM audit_logs WHERE path = '/api/auth/login' AND status = 401 AND ip = ? AND at > datetime('now', '-10 minutes')"
+      ).bind(ip).first().catch(() => null);
+      if ((fails?.n ?? 0) >= 5) {
+        return error(429, "Muitas tentativas de login. Aguarde 10 minutos e tente novamente.");
+      }
+    }
+    const row = await env.DB.prepare(
+      "SELECT username, password_hash FROM admin_users WHERE username = ?"
+    ).bind(username).first();
+    if (!row || !await verifyPassword(password, row.password_hash)) {
+      return error(401, "Usu\xE1rio ou senha inv\xE1lidos.");
+    }
+    const token = await createSessionToken(row.username, env.SESSION_SECRET);
+    return json(
+      { ok: true, user: { username: row.username } },
+      { headers: { "Set-Cookie": sessionCookie(token) } }
+    );
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/auth/logout.ts
+var onRequestPost15 = /* @__PURE__ */ __name(async () => {
+  return json({ ok: true }, { headers: { "Set-Cookie": clearSessionCookie() } });
+}, "onRequestPost");
+
+// api/auth/me.ts
+var onRequestGet6 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const session = await requireAuth(request, env);
+    const row = await env.DB.prepare("SELECT name FROM admin_users WHERE username = ?").bind(session.sub).first();
+    return json({ user: { username: session.sub, name: row?.name ?? "" } });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/auth/profile.ts
+var onRequestGet7 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const session = await requireAuth(request, env);
+    const row = await env.DB.prepare("SELECT username, name FROM admin_users WHERE username = ?").bind(session.sub).first();
+    if (!row)
+      return error(404, "Usu\xE1rio n\xE3o encontrado.");
+    return json({ username: row.username, name: row.name ?? "" });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut3 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const session = await requireAuth(request, env);
+    const body = await readJson(request);
+    const row = await env.DB.prepare("SELECT username, name, password_hash FROM admin_users WHERE username = ?").bind(session.sub).first();
+    if (!row)
+      return error(404, "Usu\xE1rio n\xE3o encontrado.");
+    const newName = typeof body.name === "string" ? body.name.trim() : void 0;
+    const newUsername = typeof body.username === "string" ? body.username.trim() : void 0;
+    if (newUsername !== void 0 && !newUsername) {
+      return error(400, "O usu\xE1rio (login) n\xE3o pode ficar vazio.");
+    }
+    if (newUsername && newUsername !== row.username) {
+      const taken = await env.DB.prepare("SELECT 1 FROM admin_users WHERE username = ?").bind(newUsername).first();
+      if (taken)
+        return error(409, "Esse nome de usu\xE1rio j\xE1 est\xE1 em uso.");
+    }
+    let newHash = null;
+    if (body.newPassword) {
+      if (!body.currentPassword || !await verifyPassword(body.currentPassword, row.password_hash)) {
+        return error(401, "Senha atual incorreta.");
+      }
+      if (body.newPassword.length < 6) {
+        return error(400, "A nova senha precisa ter ao menos 6 caracteres.");
+      }
+      newHash = await hashPassword(body.newPassword);
+    }
+    const finalUsername = newUsername || row.username;
+    const finalName = newName !== void 0 ? newName || null : row.name;
+    if (newHash) {
+      await env.DB.prepare("UPDATE admin_users SET username = ?, name = ?, password_hash = ? WHERE username = ?").bind(finalUsername, finalName, newHash, row.username).run();
+    } else {
+      await env.DB.prepare("UPDATE admin_users SET username = ?, name = ? WHERE username = ?").bind(finalUsername, finalName, row.username).run();
+    }
+    const headers = {};
+    if (finalUsername !== session.sub) {
+      const token = await createSessionToken(finalUsername, env.SESSION_SECRET);
+      headers["Set-Cookie"] = sessionCookie(token);
+    }
+    return json({ ok: true, username: finalUsername, name: finalName ?? "" }, { headers });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+
+// api/client/download.ts
+var onRequestGet8 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const clientId = await requireVerifiedClient(request, env);
+    const key = new URL(request.url).searchParams.get("key") || "";
+    if (!key.startsWith("docs/"))
+      return error(400, "Chave inv\xE1lida.");
+    const obj = await env.R2.get(key);
+    if (!obj)
+      return error(404, "Arquivo n\xE3o encontrado.");
+    if (obj.customMetadata?.clientId !== clientId)
+      return error(403, "Acesso negado.");
+    const headers = new Headers();
+    obj.writeHttpMetadata(headers);
+    headers.set("etag", obj.httpEtag);
+    const name = (obj.customMetadata?.name || key.split("/").pop() || "arquivo").replace(/"/g, "");
+    headers.set("Content-Disposition", `attachment; filename="${name}"`);
+    headers.set("Cache-Control", "private, no-store");
+    return new Response(obj.body, { headers });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/client/logout.ts
+var onRequestPost16 = /* @__PURE__ */ __name(async () => {
+  try {
+    return json({ ok: true }, { headers: { "Set-Cookie": clearClientCookie() } });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/client/magic.ts
+var onRequestGet9 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const url = new URL(request.url);
+    const dest = new URL("/area", url.origin);
+    const token = url.searchParams.get("token") || "";
+    const magic = await verifyMagicToken(token, env.SESSION_SECRET);
+    if (!magic) {
+      dest.searchParams.set("erro", "link");
+      return Response.redirect(dest.toString(), 302);
+    }
+    const c = await env.DB.prepare("SELECT access_enabled, access_token_version AS v, cpf_cnpj FROM clients WHERE id = ?").bind(magic.sub).first();
+    if (!c || !c.access_enabled) {
+      dest.searchParams.set("erro", "acesso");
+      return Response.redirect(dest.toString(), 302);
+    }
+    if ((magic.v ?? 1) !== (c.v ?? 1)) {
+      dest.searchParams.set("erro", "link");
+      return Response.redirect(dest.toString(), 302);
+    }
+    const hasCpf = !!(c.cpf_cnpj && c.cpf_cnpj.replace(/\D+/g, "").length >= 11);
+    const session = await createClientSessionToken(magic.sub, env.SESSION_SECRET, !hasCpf);
+    if (hasCpf)
+      dest.searchParams.set("verificar", "1");
+    return new Response(null, {
+      status: 302,
+      headers: { Location: dest.toString(), "Set-Cookie": clientSessionCookie(session) }
+    });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/client/overview.ts
+var onRequestGet10 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const clientId = await requireVerifiedClient(request, env);
+    const client = await env.DB.prepare("SELECT name, email, phone FROM clients WHERE id = ?").bind(clientId).first();
+    if (!client)
+      return error(404, "Cliente n\xE3o encontrado.");
+    const contracts = (await env.DB.prepare(
+      `SELECT id, title, status, slug, value, autentique_url AS autentiqueUrl, signed_at AS signedAt
+       FROM contracts WHERE client_id = ? AND deleted_at IS NULL AND status IN ('published','signed') ORDER BY updated_at DESC`
+    ).bind(clientId).all()).results ?? [];
+    const installments = (await env.DB.prepare(
+      `SELECT i.id, i.installment_number AS number, i.due_date AS dueDate, i.amount, i.status,
+              i.payment_date AS paymentDate, i.asaas_payment_id AS asaasPaymentId, i.invoice_url AS invoiceUrl, c.title AS contractTitle
+       FROM installments i JOIN contracts c ON c.id = i.contract_id
+       WHERE c.client_id = ? AND i.status != 'deleted' ORDER BY i.due_date ASC`
+    ).bind(clientId).all()).results ?? [];
+    const history = (await env.DB.prepare(
+      `SELECT id, date, description, amount, kind, status, asaas_payment_id AS asaasPaymentId, invoice_url AS invoiceUrl
+       FROM client_history WHERE client_id = ? AND status != 'cancelled' ORDER BY date DESC`
+    ).bind(clientId).all()).results ?? [];
+    const files = [];
+    let cursor;
+    do {
+      const opts = { prefix: "docs/", cursor, limit: 1e3, include: ["customMetadata"] };
+      const page = await env.R2.list(opts);
+      for (const obj of page.objects) {
+        if (obj.customMetadata?.clientId === clientId) {
+          files.push({
+            key: obj.key,
+            name: obj.customMetadata?.name || obj.key.split("/").pop() || obj.key,
+            size: obj.size,
+            uploaded: obj.uploaded instanceof Date ? obj.uploaded.toISOString() : String(obj.uploaded)
+          });
+        }
+      }
+      cursor = page.truncated ? page.cursor : void 0;
+    } while (cursor);
+    files.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
+    return json({ client, contracts, installments, history, files });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/client/verify.ts
+var onRequestPost17 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    const clientId = await requireClient(request, env);
+    const body = await readJson(request);
+    const given = (body.cpf || "").replace(/\D+/g, "");
+    if (given.length < 4)
+      return error(400, "Informe seu CPF/CNPJ.");
+    const c = await env.DB.prepare("SELECT cpf_cnpj FROM clients WHERE id = ?").bind(clientId).first();
+    const real = (c?.cpf_cnpj || "").replace(/\D+/g, "");
+    if (!real || real !== given) {
+      return error(403, "CPF/CNPJ n\xE3o confere. Tente novamente.");
+    }
+    const session = await createClientSessionToken(clientId, env.SESSION_SECRET, true);
+    return json({ ok: true }, { headers: { "Set-Cookie": clientSessionCookie(session) } });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/dashboard/overview.ts
+function parseBRL(v) {
+  if (typeof v !== "string")
+    return 0;
+  const cleaned = v.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+__name(parseBRL, "parseBRL");
+function parseDateBR(v) {
+  if (typeof v !== "string")
+    return null;
+  const mm = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!mm)
+    return null;
+  const m = parseInt(mm[2], 10);
+  const y = parseInt(mm[3], 10);
+  if (m < 1 || m > 12)
+    return null;
+  return { y, m };
+}
+__name(parseDateBR, "parseDateBR");
+var MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+function parseBirthday(v) {
+  if (typeof v !== "string")
+    return null;
+  let day;
+  let month;
+  const iso = v.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    month = parseInt(iso[2], 10);
+    day = parseInt(iso[3], 10);
+  } else {
+    const br = v.match(/(\d{1,2})[/.\-](\d{1,2})/);
+    if (!br)
+      return null;
+    day = parseInt(br[1], 10);
+    month = parseInt(br[2], 10);
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31)
+    return null;
+  return { day, month };
+}
+__name(parseBirthday, "parseBirthday");
+var onRequestGet11 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const todayParam = new URL(request.url).searchParams.get("today");
+    const todayStr = todayParam && /^\d{4}-\d{2}-\d{2}$/.test(todayParam) ? todayParam : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes, annualGoalRes, calendarRes, clientsRes] = await Promise.all([
+      env.DB.prepare(
+        "SELECT number, client, date, status, outcome, data, updated_at FROM proposals"
+      ).all(),
+      env.DB.prepare(
+        "SELECT number, title, status, updated_at FROM briefings"
+      ).all(),
+      env.DB.prepare(
+        "SELECT briefing_number, COUNT(*) AS c FROM briefing_responses GROUP BY briefing_number"
+      ).all(),
+      env.DB.prepare(
+        "SELECT briefing_number, client, submitted_at FROM briefing_responses ORDER BY submitted_at DESC LIMIT 8"
+      ).all(),
+      env.DB.prepare("SELECT COALESCE(SUM(total_value), 0) AS faturado FROM contract_payments").first(),
+      env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM installments GROUP BY status").all(),
+      env.DB.prepare("SELECT substr(payment_date, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM installments WHERE status = 'received' AND payment_date IS NOT NULL GROUP BY ym").all(),
+      env.DB.prepare("SELECT status, COUNT(*) AS c FROM contracts WHERE deleted_at IS NULL GROUP BY status").all(),
+      // Histórico Financeiro (serviços adicionais): também são receita.
+      env.DB.prepare("SELECT status, COALESCE(SUM(amount), 0) AS amt, COUNT(*) AS cnt FROM client_history GROUP BY status").all(),
+      env.DB.prepare("SELECT substr(paid_at, 1, 7) AS ym, COALESCE(SUM(amount), 0) AS amt FROM client_history WHERE status = 'paid' AND paid_at IS NOT NULL GROUP BY ym").all(),
+      env.DB.prepare("SELECT value FROM app_settings WHERE key = 'annual_goal'").first(),
+      // Agenda: itens de hoje + atrasados não concluídos (alimentam "Atenção hoje").
+      env.DB.prepare(
+        "SELECT id, date, time, title, kind FROM calendar_events WHERE done = 0 AND date <= ? ORDER BY date ASC, time ASC LIMIT 12"
+      ).bind(todayStr).all(),
+      // Clientes (para aniversariantes e fotos no ranking).
+      env.DB.prepare(
+        "SELECT id, name, phone, birth_date, photo_url FROM clients WHERE deleted_at IS NULL"
+      ).all()
+    ]);
+    const proposals = propsRes.results ?? [];
+    const briefings = briefsRes.results ?? [];
+    const respCounts = new Map(
+      (respCountRes.results ?? []).map((r) => [r.briefing_number, r.c])
+    );
+    const responsesTotal = (respCountRes.results ?? []).reduce((s, r) => s + r.c, 0);
+    const allClients = clientsRes.results ?? [];
+    const clientByName = /* @__PURE__ */ new Map();
+    for (const c of allClients) {
+      const key = (c.name ?? "").trim().toLowerCase();
+      if (key && !clientByName.has(key))
+        clientByName.set(key, { id: c.id, phone: c.phone, photo: c.photo_url });
+    }
+    let pDraft = 0;
+    let pPublished = 0;
+    let totalValue = 0;
+    let approvedValue = 0;
+    let lostValue = 0;
+    let approvedCount = 0;
+    let lostCount = 0;
+    const byClient = /* @__PURE__ */ new Map();
+    const now = /* @__PURE__ */ new Date();
+    const buckets = [];
+    const bucketIndex = /* @__PURE__ */ new Map();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      bucketIndex.set(key, buckets.length);
+      buckets.push({ key, label: MONTHS_PT[d.getMonth()], value: 0 });
+    }
+    for (const p of proposals) {
+      if (p.status === "published")
+        pPublished++;
+      else
+        pDraft++;
+      let value = 0;
+      try {
+        const parsed = JSON.parse(p.data);
+        value = parseBRL(parsed.total);
+      } catch {
+      }
+      totalValue += value;
+      const approved = p.outcome === "aprovada";
+      if (approved) {
+        approvedValue += value;
+        approvedCount++;
+      } else {
+        lostValue += value;
+        lostCount++;
+      }
+      if (approved) {
+        const clientName = (p.client ?? "Sem cliente").trim() || "Sem cliente";
+        const agg = byClient.get(clientName) ?? { total: 0, count: 0 };
+        agg.total += value;
+        agg.count += 1;
+        byClient.set(clientName, agg);
+        const dt = parseDateBR(p.date);
+        if (dt) {
+          const key = `${dt.y}-${String(dt.m).padStart(2, "0")}`;
+          const idx = bucketIndex.get(key);
+          if (idx !== void 0)
+            buckets[idx].value += value;
+        }
+      }
+    }
+    const proposalsTotal = proposals.length;
+    const avgTicket = approvedCount > 0 ? approvedValue / approvedCount : 0;
+    const clientRanking = [...byClient.entries()].map(([client, v]) => {
+      const meta = clientByName.get(client.trim().toLowerCase());
+      return { client, total: v.total, count: v.count, photo: meta?.photo ?? null, clientId: meta?.id ?? null };
+    }).sort((a, b) => b.total - a.total).slice(0, 5);
+    let bDraft = 0;
+    let bPublished = 0;
+    let withoutResponse = 0;
+    for (const b of briefings) {
+      if (b.status === "published")
+        bPublished++;
+      else
+        bDraft++;
+      if ((respCounts.get(b.number) ?? 0) === 0)
+        withoutResponse++;
+    }
+    const activity = [];
+    for (const p of proposals) {
+      activity.push({
+        at: p.updated_at,
+        type: "proposta",
+        title: `Proposta #${p.number}`,
+        sub: p.client ?? "\u2014"
+      });
+    }
+    for (const b of briefings) {
+      activity.push({
+        at: b.updated_at,
+        type: "briefing",
+        title: `Briefing #${b.number}`,
+        sub: b.title ?? "\u2014"
+      });
+    }
+    for (const r of recentRespRes.results ?? []) {
+      activity.push({
+        at: r.submitted_at,
+        type: "resposta",
+        title: `Briefing #${r.briefing_number} respondido`,
+        sub: r.client ?? "Cliente"
+      });
+    }
+    activity.sort((a, b) => a.at < b.at ? 1 : -1);
+    const recentActivity = activity.slice(0, 8);
+    const pendencias = [];
+    if (withoutResponse > 0)
+      pendencias.push({
+        kind: "briefing",
+        count: withoutResponse,
+        label: withoutResponse === 1 ? "Briefing aguardando resposta" : "Briefings aguardando resposta"
+      });
+    if (pDraft > 0)
+      pendencias.push({
+        kind: "proposta",
+        count: pDraft,
+        label: pDraft === 1 ? "Proposta em rascunho" : "Propostas em rascunho"
+      });
+    const agendaHoje = (calendarRes.results ?? []).map((e) => ({
+      id: e.id,
+      title: e.title,
+      time: e.time,
+      kind: e.kind === "compromisso" ? "compromisso" : "tarefa",
+      date: e.date,
+      overdue: e.date < todayStr
+    }));
+    const [ty, tm, td] = todayStr.split("-").map(Number);
+    const todayMs = Date.UTC(ty, tm - 1, td);
+    const aniversariantes = allClients.map((c) => {
+      const b = parseBirthday(c.birth_date);
+      if (!b)
+        return null;
+      let next = Date.UTC(ty, b.month - 1, b.day);
+      if (next < todayMs)
+        next = Date.UTC(ty + 1, b.month - 1, b.day);
+      const days = Math.round((next - todayMs) / 864e5);
+      if (days > 30)
+        return null;
+      return {
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        photo: c.photo_url,
+        date: `${String(b.day).padStart(2, "0")}/${String(b.month).padStart(2, "0")}`,
+        days,
+        today: days === 0
+      };
+    }).filter((x) => x !== null).sort((a, b) => a.days - b.days).slice(0, 8);
+    const byStatus = new Map(
+      (instByStatusRes.results ?? []).map((r) => [r.status, { amt: r.amt, cnt: r.cnt }])
+    );
+    const hfByStatus = new Map(
+      (hfByStatusRes.results ?? []).map((r) => [r.status, { amt: r.amt, cnt: r.cnt }])
+    );
+    const hfPaid = hfByStatus.get("paid")?.amt ?? 0;
+    const hfCharged = hfByStatus.get("charged")?.amt ?? 0;
+    const faturado = (faturadoRes?.faturado ?? 0) + hfCharged + hfPaid;
+    const recebido = (byStatus.get("received")?.amt ?? 0) + hfPaid;
+    const aReceber = (byStatus.get("pending")?.amt ?? 0) + (byStatus.get("confirmed")?.amt ?? 0) + (byStatus.get("overdue")?.amt ?? 0) + hfCharged;
+    const atrasados = byStatus.get("overdue")?.cnt ?? 0;
+    const recvIndex = new Map(buckets.map((b, i) => [b.key, i]));
+    const receivedByMonth = buckets.map((b) => ({ key: b.key, label: b.label, value: 0 }));
+    for (const r of recvByMonthRes.results ?? []) {
+      const idx = recvIndex.get(r.ym);
+      if (idx !== void 0)
+        receivedByMonth[idx].value += r.amt;
+    }
+    for (const r of hfRecvByMonthRes.results ?? []) {
+      const idx = recvIndex.get(r.ym);
+      if (idx !== void 0)
+        receivedByMonth[idx].value += r.amt;
+    }
+    const contractsByStatus = new Map(
+      (contractsCountRes.results ?? []).map((r) => [r.status, r.c])
+    );
+    const contratosTotal = (contractsCountRes.results ?? []).reduce((sum, r) => sum + r.c, 0);
+    const contractsSummary = {
+      total: contratosTotal,
+      draft: contractsByStatus.get("draft") ?? 0,
+      published: contractsByStatus.get("published") ?? 0,
+      signed: contractsByStatus.get("signed") ?? 0
+    };
+    return json({
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      finance: {
+        faturado,
+        recebido,
+        aReceber,
+        atrasados,
+        receivedByMonth,
+        annualGoal: annualGoalRes?.value ? Number(annualGoalRes.value) || 0 : 0
+      },
+      proposals: {
+        total: proposalsTotal,
+        draft: pDraft,
+        published: pPublished,
+        totalValue,
+        avgTicket,
+        approvedValue,
+        lostValue,
+        approvedCount,
+        lostCount
+      },
+      briefings: {
+        total: briefings.length,
+        draft: bDraft,
+        published: bPublished,
+        responsesTotal,
+        withoutResponse
+      },
+      contracts: contractsSummary,
+      // funil: só Propostas e Briefings têm dado real; o resto depende de
+      // módulos futuros (leads/contratos/projetos/entregas).
+      funnel: {
+        leads: 0,
+        propostas: proposalsTotal,
+        contratos: contratosTotal,
+        briefings: briefings.length,
+        projetos: 0,
+        entregues: 0
+      },
+      revenueByMonth: buckets,
+      clientRanking,
+      recentActivity,
+      pendencias,
+      agendaHoje,
+      aniversariantes
+    });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/documents/download.ts
+var onRequestGet12 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const key = new URL(request.url).searchParams.get("key") || "";
+    if (!key.startsWith("docs/"))
+      return error(400, "Chave inv\xE1lida.");
+    const obj = await env.R2.get(key);
+    if (!obj)
+      return error(404, "Arquivo n\xE3o encontrado.");
+    const headers = new Headers();
+    obj.writeHttpMetadata(headers);
+    headers.set("etag", obj.httpEtag);
+    const name = (obj.customMetadata?.name || key.split("/").pop() || "arquivo").replace(/"/g, "");
+    headers.set("Content-Disposition", `attachment; filename="${name}"`);
+    headers.set("Cache-Control", "private, no-store");
+    return new Response(obj.body, { headers });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/documents/folder.ts
+function safeFolder(input) {
+  const s = (typeof input === "string" ? input : "").trim().toLowerCase();
+  const clean = s.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return clean;
+}
+__name(safeFolder, "safeFolder");
+var onRequestPost18 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const folder = safeFolder(body.folder);
+    if (!folder)
+      return error(400, "Informe um nome de pasta v\xE1lido.");
+    await env.R2.put(`docs/${folder}/.keep`, new Uint8Array(0), {
+      customMetadata: { folder, keep: "1" }
+    });
+    return json({ ok: true, folder });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+var onRequestDelete4 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const folder = safeFolder(body.folder);
+    if (!folder)
+      return error(400, "Informe um nome de pasta v\xE1lido.");
+    const prefix = `docs/${folder}/`;
+    let deleted = 0;
+    let cursor;
+    do {
+      const page = await env.R2.list({ prefix, cursor, limit: 1e3 });
+      const keys = page.objects.map((o) => o.key);
+      if (keys.length) {
+        await env.R2.delete(keys);
+        deleted += keys.length;
+      }
+      cursor = page.truncated ? page.cursor : void 0;
+    } while (cursor);
+    return json({ ok: true, deleted });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/payments/manual.ts
+var onRequestPost19 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const clientId = (body.client_id ?? "").trim();
+    if (!clientId)
+      return error(400, "Selecione o cliente.");
+    const amount = typeof body.amount === "number" && Number.isFinite(body.amount) && body.amount > 0 ? body.amount : 0;
+    if (amount <= 0)
+      return error(400, "Informe um valor v\xE1lido.");
+    const date = typeof body.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date.trim()) ? body.date.trim() : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const method = (body.method ?? "").trim();
+    const baseDesc = (body.description ?? "").trim() || "Pagamento recebido";
+    const description = method ? `${baseDesc} (${method})` : baseDesc;
+    const contractId = typeof body.contract_id === "string" && body.contract_id.trim() ? body.contract_id.trim() : null;
+    const client = await env.DB.prepare("SELECT id FROM clients WHERE id = ?").bind(clientId).first();
+    if (!client)
+      return error(404, "Cliente n\xE3o encontrado.");
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO client_history (id, client_id, contract_id, date, description, amount, kind, status, paid_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pagamento', 'paid', ?)`
+    ).bind(id, clientId, contractId, date, description, amount, date).run();
+    return json({ ok: true, id }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/_lib/backup.ts
+var TABLES = [
+  "clients",
+  "contracts",
+  "contract_payments",
+  "installments",
+  "client_history",
+  "proposals",
+  "briefings",
+  "briefing_responses",
+  "calendar_events",
+  "app_settings"
+];
+async function buildBackup(env) {
+  const data = {};
+  for (const table of TABLES) {
+    try {
+      const { results } = await env.DB.prepare(`SELECT * FROM ${table}`).all();
+      data[table] = results ?? [];
+    } catch {
+      data[table] = [];
+    }
+  }
+  const dump = JSON.stringify(
+    { app: "isapaulino-studio", version: 2, generatedAt: (/* @__PURE__ */ new Date()).toISOString(), tables: data },
+    null,
+    2
+  );
+  const filename = `backup-isapaulino-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+  return { dump, filename };
+}
+__name(buildBackup, "buildBackup");
+async function maybeAutoBackup(env) {
+  try {
+    const last = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'last_backup_at'").first();
+    const lastMs = last?.value ? Date.parse(last.value) : 0;
+    if (Date.now() - lastMs < 1e3 * 60 * 60 * 24)
+      return;
+    const { dump, filename } = await buildBackup(env);
+    await env.R2.put(`backups/${filename}`, dump, {
+      httpMetadata: { contentType: "application/json" }
+    });
+    await env.DB.prepare(
+      "INSERT INTO app_settings (key, value, updated_at) VALUES ('last_backup_at', ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')"
+    ).bind((/* @__PURE__ */ new Date()).toISOString()).run();
+  } catch {
+  }
+}
+__name(maybeAutoBackup, "maybeAutoBackup");
+
+// api/storage/backup.ts
+var onRequestGet13 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const { dump, filename } = await buildBackup(env);
+    return new Response(dump, {
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "no-store"
+      }
+    });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/storage/backups.ts
+var onRequestGet14 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const key = new URL(request.url).searchParams.get("key");
+    if (key) {
+      if (!key.startsWith("backups/"))
+        return error(400, "Chave inv\xE1lida.");
+      const obj = await env.R2.get(key);
+      if (!obj)
+        return error(404, "Backup n\xE3o encontrado.");
+      return new Response(obj.body, {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${key.split("/").pop()}"`,
+          "Cache-Control": "no-store"
+        }
+      });
+    }
+    const files = [];
+    let cursor;
+    do {
+      const page = await env.R2.list({ prefix: "backups/", cursor, limit: 1e3 });
+      for (const o of page.objects) {
+        files.push({ key: o.key, size: o.size, uploaded: o.uploaded instanceof Date ? o.uploaded.toISOString() : String(o.uploaded) });
+      }
+      cursor = page.truncated ? page.cursor : void 0;
+    } while (cursor);
+    files.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
+    return json({ backups: files });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/storage/usage.ts
+var PREFIXES = [
+  { prefix: "uploads/", label: "Imagens de proposta" },
+  { prefix: "briefing-refs/", label: "Refer\xEAncias de briefing" }
+];
+var onRequestGet15 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const usage = {};
+    for (const p of PREFIXES)
+      usage[p.prefix] = { ...p, bytes: 0, count: 0 };
+    const other = { prefix: "", label: "Outros", bytes: 0, count: 0 };
+    let totalBytes = 0;
+    let objectCount = 0;
+    let cursor;
+    do {
+      const page = await env.R2.list({ cursor, limit: 1e3 });
+      for (const obj of page.objects) {
+        totalBytes += obj.size;
+        objectCount += 1;
+        const bucket = PREFIXES.find((p) => obj.key.startsWith(p.prefix));
+        const target = bucket ? usage[bucket.prefix] : other;
+        target.bytes += obj.size;
+        target.count += 1;
+      }
+      cursor = page.truncated ? page.cursor : void 0;
+    } while (cursor);
+    const byPrefix = [...Object.values(usage), other].filter((u) => u.count > 0 || u.prefix);
+    return json({ totalBytes, objectCount, byPrefix });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/webhooks/asaas.ts
+var BRL2 = /* @__PURE__ */ __name((v) => v == null ? "" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v), "BRL");
+var EVENT_TO_STATUS = {
+  PAYMENT_CONFIRMED: "confirmed",
+  PAYMENT_RECEIVED: "received",
+  PAYMENT_OVERDUE: "overdue",
+  PAYMENT_DELETED: "deleted"
+};
+var onRequestPost20 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    if (!env.WEBHOOK_SECRET)
+      return error(401, "Webhook n\xE3o configurado.");
+    const token = request.headers.get("asaas-access-token");
+    if (token !== env.WEBHOOK_SECRET)
+      return error(401, "Token de webhook inv\xE1lido.");
+    const body = await request.json().catch(() => ({}));
+    const event = body.event ?? "";
+    const asaasPaymentId = body.payment?.id ?? null;
+    let installmentId = null;
+    if (asaasPaymentId) {
+      const inst = await env.DB.prepare("SELECT id FROM installments WHERE asaas_payment_id = ?").bind(asaasPaymentId).first();
+      installmentId = inst?.id ?? null;
+    }
+    await env.DB.prepare(
+      `INSERT INTO asaas_logs (id, webhook_event_id, event_type, asaas_payment_id, installment_id, payload)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(crypto.randomUUID(), body.id ?? null, event || "UNKNOWN", asaasPaymentId, installmentId, JSON.stringify(body)).run();
+    const newStatus = EVENT_TO_STATUS[event];
+    if (newStatus && installmentId) {
+      const isPaid = newStatus === "received" || newStatus === "confirmed";
+      const paymentDate = isPaid ? body.payment?.paymentDate ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) : null;
+      await env.DB.prepare(
+        `UPDATE installments
+         SET status = ?, payment_date = COALESCE(?, payment_date), payment_method = COALESCE(payment_method, 'ASAAS'), updated_at = datetime('now')
+         WHERE id = ?`
+      ).bind(newStatus, paymentDate, installmentId).run();
+      if (isPaid) {
+        const ctx = await env.DB.prepare(
+          `SELECT c.title AS title, cl.name AS clientName
+           FROM installments i JOIN contracts c ON c.id = i.contract_id
+           LEFT JOIN clients cl ON cl.id = c.client_id WHERE i.id = ?`
+        ).bind(installmentId).first();
+        await createNotification(env, {
+          type: "payment",
+          title: `Pagamento recebido${BRL2(body.payment?.value) ? " \xB7 " + BRL2(body.payment?.value) : ""}`,
+          body: `${ctx?.clientName ?? "Cliente"} \u2014 ${ctx?.title ?? "contrato"}`,
+          link: "#financeiro",
+          dedupKey: `pay:${asaasPaymentId}:${newStatus}`
+        });
+      }
+    }
+    if (asaasPaymentId) {
+      if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
+        const paidDate = body.payment?.paymentDate ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const hf = await env.DB.prepare(
+          `SELECT h.description AS description, cl.name AS clientName
+           FROM client_history h LEFT JOIN clients cl ON cl.id = h.client_id
+           WHERE h.asaas_payment_id = ?`
+        ).bind(asaasPaymentId).first();
+        await env.DB.prepare(
+          "UPDATE client_history SET status = 'paid', paid_at = COALESCE(paid_at, ?), updated_at = datetime('now') WHERE asaas_payment_id = ?"
+        ).bind(paidDate, asaasPaymentId).run();
+        if (hf) {
+          await createNotification(env, {
+            type: "payment",
+            title: `Pagamento recebido${BRL2(body.payment?.value) ? " \xB7 " + BRL2(body.payment?.value) : ""}`,
+            body: `${hf.clientName ?? "Cliente"} \u2014 ${hf.description ?? "servi\xE7o adicional"}`,
+            link: "#clientes",
+            dedupKey: `payhf:${asaasPaymentId}:${event}`
+          });
+        }
+      } else if (event === "PAYMENT_DELETED") {
+        await env.DB.prepare(
+          "UPDATE client_history SET status = 'cancelled', updated_at = datetime('now') WHERE asaas_payment_id = ?"
+        ).bind(asaasPaymentId).run();
+      }
+    }
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/webhooks/autentique.ts
+function findDocumentId(payload) {
+  if (!payload || typeof payload !== "object")
+    return null;
+  const obj = payload;
+  for (const k of ["document[id]", "document.id"]) {
+    if (typeof obj[k] === "string")
+      return obj[k];
+  }
+  const doc = obj.document;
+  if (doc && typeof doc === "object" && typeof doc.id === "string") {
+    return doc.id;
+  }
+  return null;
+}
+__name(findDocumentId, "findDocumentId");
+async function parseBody(request) {
+  const text = await request.text().catch(() => "");
+  if (!text)
+    return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    const out = {};
+    for (const [k, v] of new URLSearchParams(text))
+      out[k] = v;
+    return out;
+  }
+}
+__name(parseBody, "parseBody");
+var onRequestPost21 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    if (!env.AUTENTIQUE_WEBHOOK_SECRET)
+      return error(401, "Webhook n\xE3o configurado.");
+    const url = new URL(request.url);
+    if (url.searchParams.get("secret") !== env.AUTENTIQUE_WEBHOOK_SECRET) {
+      return error(401, "Segredo de webhook inv\xE1lido.");
+    }
+    const payload = await parseBody(request);
+    const documentId = findDocumentId(payload);
+    if (!documentId)
+      return json({ ok: true, ignored: "sem document id" });
+    const contract = await env.DB.prepare(
+      `SELECT c.id AS id, c.status AS status, c.title AS title, cl.name AS clientName
+       FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id
+       WHERE c.autentique_document_id = ?`
+    ).bind(documentId).first();
+    if (!contract)
+      return json({ ok: true, ignored: "documento n\xE3o vinculado" });
+    if (!autentiqueConfigured(env))
+      return json({ ok: true, ignored: "sem AUTENTIQUE_TOKEN para reconsultar" });
+    const doc = await getDocument(env, documentId);
+    if (isFullySigned(doc) && contract.status !== "signed") {
+      const signedAt = doc.signatures.map((s) => s.signed?.created_at).filter(Boolean).sort().pop() || (/* @__PURE__ */ new Date()).toISOString();
+      await env.DB.prepare(
+        "UPDATE contracts SET status = 'signed', signed_at = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(signedAt, contract.id).run();
+      try {
+        const contractRow = await env.DB.prepare(
+          "SELECT data, value FROM contracts WHERE id = ?"
+        ).bind(contract.id).first();
+        if (contractRow?.data) {
+          const cdoc = JSON.parse(contractRow.data);
+          const pag = cdoc?.sixPagamento;
+          if (pag && pag.valorTotal && pag.parcelas && pag.parcelas.length > 0) {
+            const existing = await env.DB.prepare(
+              "SELECT id FROM contract_payments WHERE contract_id = ?"
+            ).bind(contract.id).first();
+            if (!existing) {
+              const down = pag.entrada?.valor ? (() => {
+                const v = parseFloat(pag.entrada.valor.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", "."));
+                return isNaN(v) ? 0 : v;
+              })() : 0;
+              const total = (() => {
+                const v = parseFloat(pag.valorTotal.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", "."));
+                return isNaN(v) ? 0 : v;
+              })();
+              const count = pag.parcelas.length;
+              await env.DB.prepare(
+                "INSERT INTO contract_payments (contract_id, total_value, down_payment, installments_count) VALUES (?, ?, ?, ?)"
+              ).bind(contract.id, total, down, count).run();
+              for (const p of [pag.entrada, ...pag.parcelas]) {
+                if (!p)
+                  continue;
+                const amount = (() => {
+                  const v = parseFloat(p.valor.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", "."));
+                  return isNaN(v) ? 0 : v;
+                })();
+                if (!amount)
+                  continue;
+                const vencParts = p.vencimento.split(" a ");
+                const dateStr = vencParts[vencParts.length - 1]?.trim();
+                const m = dateStr?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+                const num = "number" in p ? Number(p.number) : 0;
+                await env.DB.prepare(
+                  `INSERT INTO installments (contract_id, installment_number, due_date, amount, status)
+                   VALUES (?, ?, ?, ?, 'pending')`
+                ).bind(contract.id, num, iso, amount).run();
+              }
+            }
+          }
+        }
+      } catch {
+      }
+      await createNotification(env, {
+        type: "signature",
+        title: "Contrato assinado por todas as partes",
+        body: `${contract.clientName ?? "Cliente"} \u2014 ${contract.title ?? "contrato"}`,
+        link: "#contratos",
+        dedupKey: `signed:${contract.id}`
+      });
+      return json({ ok: true, signed: true });
+    }
+    return json({ ok: true, signed: false });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/briefings/[number].ts
+var onRequestGet16 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    const number = String(params.number);
+    const row = await env.DB.prepare("SELECT data, status FROM briefings WHERE number = ?").bind(number).first();
+    if (!row)
+      return error(404, "Briefing n\xE3o encontrado.");
+    if (row.status !== "published") {
+      const session = await getSession(request, env);
+      if (!session)
+        return error(404, "Briefing n\xE3o encontrado.");
+    }
+    return json({ briefing: JSON.parse(row.data), status: row.status });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut4 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const number = String(params.number);
+    const body = await readJson(request);
+    const briefing = body.briefing;
+    if (!briefing)
+      return error(400, "Briefing inv\xE1lido.");
+    const existing = await env.DB.prepare("SELECT status FROM briefings WHERE number = ?").bind(number).first();
+    if (!existing)
+      return error(404, "Briefing n\xE3o encontrado.");
+    const status = body.status === "published" || body.status === "draft" || body.status === "cancelled" ? body.status : existing.status;
+    await env.DB.prepare(
+      `UPDATE briefings
+       SET proposal_number = ?, title = ?, status = ?, data = ?, updated_at = datetime('now')
+       WHERE number = ?`
+    ).bind(briefing.proposalNumber ?? null, briefing.title ?? null, status, JSON.stringify(briefing), number).run();
+    return json({ ok: true, number, status });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+var onRequestDelete5 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const number = String(params.number);
+    const res = await env.DB.prepare("DELETE FROM briefings WHERE number = ?").bind(number).run();
+    if (!res.meta.changes)
+      return error(404, "Briefing n\xE3o encontrado.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/calendar/[id].ts
+var onRequestPut5 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const body = await readJson(request);
+    const sets = [];
+    const binds = [];
+    if (body.title !== void 0) {
+      const t = body.title.trim();
+      if (!t)
+        return error(400, "T\xEDtulo n\xE3o pode ficar vazio.");
+      sets.push("title = ?");
+      binds.push(t.slice(0, 200));
+    }
+    if (body.notes !== void 0) {
+      sets.push("notes = ?");
+      binds.push(body.notes ? String(body.notes).slice(0, 2e3) : null);
+    }
+    if (body.time !== void 0) {
+      sets.push("time = ?");
+      binds.push(body.time && /^\d{2}:\d{2}$/.test(body.time) ? body.time : null);
+    }
+    if (body.kind !== void 0) {
+      sets.push("kind = ?");
+      binds.push(body.kind === "compromisso" ? "compromisso" : "tarefa");
+    }
+    if (body.done !== void 0) {
+      sets.push("done = ?");
+      binds.push(body.done ? 1 : 0);
+    }
+    if (sets.length === 0)
+      return error(400, "Nada para atualizar.");
+    binds.push(id);
+    const res = await env.DB.prepare(
+      `UPDATE calendar_events SET ${sets.join(", ")} WHERE id = ?`
+    ).bind(...binds).run();
+    if (!res.meta.changes)
+      return error(404, "Evento n\xE3o encontrado.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+var onRequestDelete6 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const res = await env.DB.prepare("DELETE FROM calendar_events WHERE id = ?").bind(id).run();
+    if (!res.meta.changes)
+      return error(404, "Evento n\xE3o encontrado.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/_lib/validation.ts
+function onlyDigits(s) {
+  return (s || "").replace(/\D+/g, "");
+}
+__name(onlyDigits, "onlyDigits");
+function isValidEmail(email) {
+  const e = (email || "").trim();
+  if (!e || e.length > 254)
+    return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
+__name(isValidEmail, "isValidEmail");
+function isValidCpf(cpf) {
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf))
+    return false;
+  const calc = /* @__PURE__ */ __name((slice) => {
+    let sum = 0;
+    for (let i = 0; i < slice; i++)
+      sum += Number(cpf[i]) * (slice + 1 - i);
+    const rest = sum * 10 % 11;
+    return rest === 10 ? 0 : rest;
+  }, "calc");
+  return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
+}
+__name(isValidCpf, "isValidCpf");
+function isValidCnpj(cnpj) {
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj))
+    return false;
+  const calc = /* @__PURE__ */ __name((len) => {
+    const weights = len === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    let sum = 0;
+    for (let i = 0; i < len; i++)
+      sum += Number(cnpj[i]) * weights[i];
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  }, "calc");
+  return calc(12) === Number(cnpj[12]) && calc(13) === Number(cnpj[13]);
+}
+__name(isValidCnpj, "isValidCnpj");
+function isValidCpfCnpj(value) {
+  const d = onlyDigits(value);
+  if (d.length === 11)
+    return isValidCpf(d);
+  if (d.length === 14)
+    return isValidCnpj(d);
+  return false;
+}
+__name(isValidCpfCnpj, "isValidCpfCnpj");
+
+// api/clients/[id].ts
+var COLS3 = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, created_at AS createdAt, updated_at AS updatedAt";
+function opt(v) {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s ? s : null;
+}
+__name(opt, "opt");
+var onRequestGet17 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const client = await env.DB.prepare(`SELECT ${COLS3} FROM clients WHERE id = ?`).bind(id).first();
+    if (!client)
+      return error(404, "Cliente n\xE3o encontrado.");
+    return json({ client });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut6 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const body = await readJson(request);
+    const exists = await env.DB.prepare("SELECT id FROM clients WHERE id = ?").bind(id).first();
+    if (!exists)
+      return error(404, "Cliente n\xE3o encontrado.");
+    const name = (body.name ?? "").trim();
+    if (!name)
+      return error(400, "Informe o nome do cliente.");
+    const cpf_cnpj = opt(body.cpf_cnpj);
+    const email = opt(body.email);
+    if (cpf_cnpj && !isValidCpfCnpj(cpf_cnpj))
+      return error(400, "CPF/CNPJ inv\xE1lido.");
+    if (email && !isValidEmail(email))
+      return error(400, "E-mail inv\xE1lido.");
+    await env.DB.prepare(
+      `UPDATE clients
+       SET name = ?, cpf_cnpj = ?, email = ?, phone = ?, address = ?, city = ?, state = ?,
+           role = ?, nacionalidade = ?, birth_date = ?, updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(
+      name,
+      cpf_cnpj,
+      email,
+      opt(body.phone),
+      opt(body.address),
+      opt(body.city),
+      opt(body.state),
+      opt(body.role),
+      opt(body.nacionalidade),
+      opt(body.birth_date),
+      id
+    ).run();
+    return json({ ok: true, id });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+var onRequestDelete7 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const res = await env.DB.prepare(
+      "UPDATE clients SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND deleted_at IS NULL"
+    ).bind(id).run();
+    if (!res.meta.changes)
+      return error(404, "Cliente n\xE3o encontrado.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/contracts/index.ts
+var STATUSES2 = ["draft", "published", "signed", "cancelled"];
+var LIST_COLS = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title,
+  c.value, c.status, c.slug, c.updated_at AS updatedAt, c.published_at AS publishedAt,
+  c.autentique_document_id AS autentiqueDocumentId,
+  COALESCE(json_extract(c.data, '$.contractNumber'), '') AS contractNumber`;
+function opt2(v) {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s ? s : null;
+}
+__name(opt2, "opt");
+function optContractData(v) {
+  if (typeof v !== "string" || !v.trim())
+    return null;
+  try {
+    JSON.parse(v);
+    return v;
+  } catch {
+    throw new HttpError(400, "Documento do contrato (data) inv\xE1lido: JSON malformado.");
+  }
+}
+__name(optContractData, "optContractData");
+var onRequestGet18 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const url = new URL(request.url);
+    const status = url.searchParams.get("status");
+    let query = `SELECT ${LIST_COLS} FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.deleted_at IS NULL`;
+    const binds = [];
+    if (status && STATUSES2.includes(status)) {
+      query += " AND c.status = ?";
+      binds.push(status);
+    }
+    query += " ORDER BY c.updated_at DESC";
+    const { results } = await env.DB.prepare(query).bind(...binds).all();
+    return json({ contracts: results ?? [] });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost22 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const clientId = (body.client_id ?? "").trim();
+    const title = (body.title ?? "").trim();
+    if (!clientId)
+      return error(400, "Selecione o cliente do contrato.");
+    if (!title)
+      return error(400, "Informe o t\xEDtulo do contrato.");
+    const client = await env.DB.prepare("SELECT id FROM clients WHERE id = ?").bind(clientId).first();
+    if (!client)
+      return error(400, "Cliente n\xE3o encontrado.");
+    const value = typeof body.value === "number" && Number.isFinite(body.value) ? body.value : null;
+    const data = optContractData(body.data);
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO contracts (id, client_id, title, content, data, value, deadline, autentique_url, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+    ).bind(id, clientId, title, opt2(body.content) ?? "", data, value, opt2(body.deadline), opt2(body.autentique_url)).run();
+    return json({ ok: true, id }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/contracts/[id].ts
+var COLS4 = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title, c.content, c.data,
+  c.value, c.deadline, c.status, c.slug, c.autentique_url AS autentiqueUrl,
+  c.autentique_document_id AS autentiqueDocumentId, c.signed_at AS signedAt,
+  c.created_at AS createdAt, c.updated_at AS updatedAt, c.published_at AS publishedAt`;
+var STATUSES3 = ["draft", "published", "signed", "cancelled"];
+function opt3(v) {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s ? s : null;
+}
+__name(opt3, "opt");
+var onRequestGet19 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const contract = await env.DB.prepare(
+      `SELECT ${COLS4} FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.id = ?`
+    ).bind(id).first();
+    if (!contract)
+      return error(404, "Contrato n\xE3o encontrado.");
+    return json({ contract });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut7 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const body = await readJson(request);
+    const existing = await env.DB.prepare("SELECT status FROM contracts WHERE id = ?").bind(id).first();
+    if (!existing)
+      return error(404, "Contrato n\xE3o encontrado.");
+    const clientId = (body.client_id ?? "").trim();
+    const title = (body.title ?? "").trim();
+    if (!clientId)
+      return error(400, "Selecione o cliente do contrato.");
+    if (!title)
+      return error(400, "Informe o t\xEDtulo do contrato.");
+    const status = body.status && STATUSES3.includes(body.status) ? body.status : existing.status;
+    const value = typeof body.value === "number" && Number.isFinite(body.value) ? body.value : null;
+    const data = optContractData(body.data);
+    await env.DB.prepare(
+      `UPDATE contracts
+       SET client_id = ?, title = ?, content = ?, data = ?, value = ?, deadline = ?, autentique_url = ?, status = ?, updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(clientId, title, opt3(body.content) ?? "", data, value, opt3(body.deadline), opt3(body.autentique_url), status, id).run();
+    if (status === "cancelled" && existing.status !== "cancelled") {
+      let proposalNumber = null;
+      if (data) {
+        try {
+          const doc = JSON.parse(data);
+          proposalNumber = doc?.proposalNumber || null;
+        } catch {
+        }
+      }
+      if (!proposalNumber) {
+        const c = await env.DB.prepare("SELECT data FROM contracts WHERE id = ?").bind(id).first();
+        if (c?.data) {
+          try {
+            const doc = JSON.parse(c.data);
+            proposalNumber = doc?.proposalNumber || null;
+          } catch {
+          }
+        }
+      }
+      if (proposalNumber) {
+        await env.DB.prepare(
+          "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled'"
+        ).bind(proposalNumber).run();
+        await env.DB.prepare(
+          "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
+        ).bind(proposalNumber).run();
+      }
+    }
+    return json({ ok: true, id, status });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+var onRequestDelete8 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const res = await env.DB.prepare(
+      "UPDATE contracts SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND deleted_at IS NULL"
+    ).bind(id).run();
+    if (!res.meta.changes)
+      return error(404, "Contrato n\xE3o encontrado.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/installments/[id].ts
+var COLS5 = "id, contract_id AS contractId, asaas_payment_id AS asaasPaymentId, installment_number AS installmentNumber, due_date AS dueDate, amount, status, payment_date AS paymentDate, payment_method AS paymentMethod, notes";
+var STATUSES4 = ["pending", "confirmed", "received", "overdue", "deleted"];
+var onRequestGet20 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const inst = await env.DB.prepare(`SELECT ${COLS5} FROM installments WHERE id = ?`).bind(id).first();
+    if (!inst)
+      return error(404, "Parcela n\xE3o encontrada.");
+    return json({ installment: inst });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut8 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const id = String(params.id);
+    const body = await readJson(request);
+    const existing = await env.DB.prepare("SELECT id FROM installments WHERE id = ?").bind(id).first();
+    if (!existing)
+      return error(404, "Parcela n\xE3o encontrada.");
+    const status = body.status && STATUSES4.includes(body.status) ? body.status : "received";
+    const paymentDate = (body.payment_date ?? "").trim() || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const paymentMethod = (body.payment_method ?? "").trim() || null;
+    const notes = (body.notes ?? "").trim() || null;
+    await env.DB.prepare(
+      `UPDATE installments
+       SET status = ?, payment_date = ?, payment_method = ?, notes = ?, updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(status, paymentDate, paymentMethod, notes, id).run();
+    return json({ ok: true, id, status });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+
+// api/proposals/[number].ts
+var onRequestGet21 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    const number = String(params.number);
+    const row = await env.DB.prepare("SELECT data, status FROM proposals WHERE number = ?").bind(number).first();
+    if (!row)
+      return error(404, "Proposta n\xE3o encontrada.");
+    if (row.status !== "published") {
+      const session = await getSession(request, env);
+      if (!session)
+        return error(404, "Proposta n\xE3o encontrada.");
+    }
+    return json({ proposal: JSON.parse(row.data), status: row.status });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut9 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const number = String(params.number);
+    const body = await readJson(request);
+    const proposal = body.proposal;
+    if (!proposal)
+      return error(400, "Proposta inv\xE1lida.");
+    const existing = await env.DB.prepare("SELECT status FROM proposals WHERE number = ?").bind(number).first();
+    if (!existing)
+      return error(404, "Proposta n\xE3o encontrada.");
+    const status = body.status === "published" || body.status === "draft" || body.status === "cancelled" ? body.status : existing.status;
+    await env.DB.prepare(
+      `UPDATE proposals
+       SET client = ?, service_title = ?, date = ?, status = ?, data = ?, updated_at = datetime('now')
+       WHERE number = ?`
+    ).bind(
+      proposal.client ?? null,
+      proposal.serviceTitle ?? null,
+      proposal.date ?? null,
+      status,
+      JSON.stringify(proposal),
+      number
+    ).run();
+    return json({ ok: true, number, status });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+var onRequestDelete9 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const number = String(params.number);
+    const res = await env.DB.prepare("DELETE FROM proposals WHERE number = ?").bind(number).run();
+    if (!res.meta.changes)
+      return error(404, "Proposta n\xE3o encontrada.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/files/[[path]].ts
+var PUBLIC_PREFIXES = ["uploads/", "briefing-refs/"];
+var onRequestGet22 = /* @__PURE__ */ __name(async ({ env, params }) => {
+  const parts = params.path;
+  const key = Array.isArray(parts) ? parts.join("/") : String(parts ?? "");
+  if (!key)
+    return error(400, "Caminho inv\xE1lido.");
+  if (!PUBLIC_PREFIXES.some((p) => key.startsWith(p)))
+    return error(404, "Arquivo n\xE3o encontrado.");
+  const obj = await env.R2.get(key);
+  if (!obj)
+    return error(404, "Arquivo n\xE3o encontrado.");
+  const headers = new Headers();
+  obj.writeHttpMetadata(headers);
+  headers.set("etag", obj.httpEtag);
+  if (!headers.has("Cache-Control")) {
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  }
+  return new Response(obj.body, { headers });
+}, "onRequestGet");
+
+// api/audit/index.ts
+var onRequestGet23 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const url = new URL(request.url);
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 200));
+    const { results } = await env.DB.prepare(
+      `SELECT id, at, user, action, method, path, status FROM audit_logs ORDER BY at DESC LIMIT ?`
+    ).bind(limit).all();
+    return json({ logs: results ?? [] });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/briefings/index.ts
+var onRequestGet24 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const { results } = await env.DB.prepare(
+      `SELECT b.number, b.proposal_number AS proposalNumber, b.title, b.status,
+              b.updated_at AS updatedAt,
+              (SELECT COUNT(*) FROM briefing_responses r WHERE r.briefing_number = b.number) AS responseCount,
+              (SELECT MAX(r.submitted_at) FROM briefing_responses r WHERE r.briefing_number = b.number) AS lastResponseAt
+       FROM briefings b ORDER BY b.updated_at DESC`
+    ).all();
+    return json({ briefings: results ?? [] });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost23 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const briefing = body.briefing;
+    if (!briefing || typeof briefing.number !== "string" || !briefing.number.trim()) {
+      return error(400, "Briefing inv\xE1lido: 'number' \xE9 obrigat\xF3rio.");
+    }
+    const status = body.status === "published" ? "published" : "draft";
+    const exists = await env.DB.prepare("SELECT number FROM briefings WHERE number = ?").bind(briefing.number).first();
+    if (exists)
+      return error(409, `J\xE1 existe um briefing com o n\xFAmero ${briefing.number}.`);
+    await env.DB.prepare(
+      `INSERT INTO briefings (number, proposal_number, title, status, data)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind(
+      briefing.number,
+      briefing.proposalNumber ?? null,
+      briefing.title ?? null,
+      status,
+      JSON.stringify(briefing)
+    ).run();
+    return json({ ok: true, number: briefing.number, status }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/calendar/index.ts
+var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+var onRequestGet25 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const url = new URL(request.url);
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    let query = "SELECT id, date, time, title, notes, kind, done FROM calendar_events";
+    const binds = [];
+    if (from && to && DATE_RE.test(from) && DATE_RE.test(to)) {
+      query += " WHERE date >= ? AND date <= ?";
+      binds.push(from, to);
+    }
+    query += " ORDER BY date ASC, time ASC, created_at ASC";
+    const { results } = await env.DB.prepare(query).bind(...binds).all();
+    const events = (results ?? []).map((r) => ({
+      id: r.id,
+      date: r.date,
+      time: r.time,
+      title: r.title,
+      notes: r.notes,
+      kind: r.kind === "compromisso" ? "compromisso" : "tarefa",
+      done: !!r.done
+    }));
+    return json({ events });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost24 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const date = (body.date ?? "").trim();
+    const title = (body.title ?? "").trim();
+    if (!DATE_RE.test(date))
+      return error(400, "Data inv\xE1lida (use YYYY-MM-DD).");
+    if (!title)
+      return error(400, "Informe um t\xEDtulo.");
+    const kind = body.kind === "compromisso" ? "compromisso" : "tarefa";
+    const time = body.time && /^\d{2}:\d{2}$/.test(body.time) ? body.time : null;
+    const notes = body.notes ? String(body.notes).slice(0, 2e3) : null;
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO calendar_events (id, date, time, title, notes, kind, done) VALUES (?, ?, ?, ?, ?, ?, 0)"
+    ).bind(id, date, time, title.slice(0, 200), notes, kind).run();
+    return json(
+      { ok: true, event: { id, date, time, title, notes, kind, done: false } },
+      { status: 201 }
+    );
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/clients/index.ts
+var COLS6 = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, created_at AS createdAt, updated_at AS updatedAt";
+function opt4(v) {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s ? s : null;
+}
+__name(opt4, "opt");
+var onRequestGet26 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const url = new URL(request.url);
+    const q = url.searchParams.get("q")?.trim();
+    let query = `SELECT ${COLS6} FROM clients WHERE deleted_at IS NULL`;
+    const binds = [];
+    if (q) {
+      query += " AND (name LIKE ? OR email LIKE ? OR cpf_cnpj LIKE ?)";
+      const like = `%${q}%`;
+      binds.push(like, like, like);
+    }
+    query += " ORDER BY name COLLATE NOCASE ASC";
+    const { results } = await env.DB.prepare(query).bind(...binds).all();
+    return json({ clients: results ?? [] });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost25 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const name = (body.name ?? "").trim();
+    if (!name)
+      return error(400, "Informe o nome do cliente.");
+    const cpf_cnpj = opt4(body.cpf_cnpj);
+    const email = opt4(body.email);
+    if (cpf_cnpj && !isValidCpfCnpj(cpf_cnpj))
+      return error(400, "CPF/CNPJ inv\xE1lido.");
+    if (email && !isValidEmail(email))
+      return error(400, "E-mail inv\xE1lido.");
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO clients (id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      id,
+      name,
+      cpf_cnpj,
+      email,
+      opt4(body.phone),
+      opt4(body.address),
+      opt4(body.city),
+      opt4(body.state),
+      opt4(body.role),
+      opt4(body.nacionalidade),
+      opt4(body.birth_date)
+    ).run();
+    return json({ ok: true, id }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/documents/index.ts
+var PREFIX2 = "docs/";
+var MAX_BYTES3 = 25 * 1024 * 1024;
+function safeFolder2(input) {
+  const s = (typeof input === "string" ? input : "").trim().toLowerCase();
+  const clean = s.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return clean || "geral";
+}
+__name(safeFolder2, "safeFolder");
+function extOf2(name) {
+  const m = /\.([a-z0-9]{1,8})$/i.exec(name || "");
+  return m ? m[1].toLowerCase() : "bin";
+}
+__name(extOf2, "extOf");
+var onRequestGet27 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const files = [];
+    const folderCounts = /* @__PURE__ */ new Map();
+    let cursor;
+    do {
+      const listOpts = { prefix: PREFIX2, cursor, limit: 1e3, include: ["customMetadata", "httpMetadata"] };
+      const page = await env.R2.list(listOpts);
+      for (const obj of page.objects) {
+        const rel = obj.key.slice(PREFIX2.length);
+        const folder = obj.customMetadata?.folder || (rel.includes("/") ? rel.split("/")[0] : "geral");
+        if (!folderCounts.has(folder))
+          folderCounts.set(folder, 0);
+        if (rel.endsWith("/.keep"))
+          continue;
+        folderCounts.set(folder, (folderCounts.get(folder) ?? 0) + 1);
+        files.push({
+          key: obj.key,
+          name: obj.customMetadata?.name || rel.split("/").pop() || obj.key,
+          folder,
+          size: obj.size,
+          uploaded: obj.uploaded instanceof Date ? obj.uploaded.toISOString() : String(obj.uploaded),
+          contentType: obj.httpMetadata?.contentType ?? null,
+          clientId: obj.customMetadata?.clientId || null,
+          clientName: obj.customMetadata?.clientName || null
+        });
+      }
+      cursor = page.truncated ? page.cursor : void 0;
+    } while (cursor);
+    files.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
+    const folders = [...folderCounts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
+    return json({ files, folders });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost26 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof File))
+      return error(400, "Envie um arquivo no campo 'file'.");
+    if (file.size === 0)
+      return error(400, "Arquivo vazio.");
+    if (file.size > MAX_BYTES3)
+      return error(413, "Arquivo muito grande (m\xE1x. 25 MB).");
+    const folder = safeFolder2(form.get("folder"));
+    const name = (file.name || "arquivo").slice(0, 160);
+    const key = `${PREFIX2}${folder}/${crypto.randomUUID()}.${extOf2(name)}`;
+    const clientId = typeof form.get("clientId") === "string" ? String(form.get("clientId")).trim() : "";
+    const meta = { name, folder };
+    if (clientId) {
+      const cl = await env.DB.prepare("SELECT name FROM clients WHERE id = ?").bind(clientId).first();
+      if (cl) {
+        meta.clientId = clientId;
+        meta.clientName = cl.name;
+      }
+    }
+    await env.R2.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type || "application/octet-stream" },
+      customMetadata: meta
+    });
+    return json({ ok: true, key, name, folder, clientId: meta.clientId ?? null }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+var onRequestDelete10 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const key = (body.key || "").trim();
+    if (!key || !key.startsWith(PREFIX2))
+      return error(400, "Chave inv\xE1lida.");
+    await env.R2.delete(key);
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestDelete");
+
+// api/health.ts
+var onRequestGet28 = /* @__PURE__ */ __name(async ({ env }) => {
+  try {
+    const row = await env.DB.prepare("SELECT 1 AS ok").first();
+    return json({ ok: true, db: row?.ok === 1 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erro ao acessar o banco";
+    return error(500, message);
+  }
+}, "onRequestGet");
+
+// api/installments/index.ts
+var STATUSES5 = ["pending", "confirmed", "received", "overdue", "deleted"];
+var COLS7 = `i.id, i.contract_id AS contractId, i.asaas_payment_id AS asaasPaymentId,
+  i.installment_number AS installmentNumber, i.due_date AS dueDate, i.amount, i.status,
+  i.payment_date AS paymentDate, i.payment_method AS paymentMethod, i.notes,
+  c.title AS contractTitle, cl.name AS clientName`;
+var HF_STATUS_TO_INST = { paid: "received", charged: "pending" };
+var onRequestGet29 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const url = new URL(request.url);
+    const status = url.searchParams.get("status");
+    const contract = url.searchParams.get("contract");
+    let query = `SELECT ${COLS7} FROM installments i
+      LEFT JOIN contracts c ON c.id = i.contract_id
+      LEFT JOIN clients cl ON cl.id = c.client_id`;
+    const where = [];
+    const binds = [];
+    if (status && STATUSES5.includes(status)) {
+      where.push("i.status = ?");
+      binds.push(status);
+    }
+    if (contract) {
+      where.push("i.contract_id = ?");
+      binds.push(contract);
+    }
+    if (where.length)
+      query += ` WHERE ${where.join(" AND ")}`;
+    query += " ORDER BY i.due_date ASC";
+    const { results } = await env.DB.prepare(query).bind(...binds).all();
+    const installments = results ?? [];
+    if (!contract) {
+      const { results: hf } = await env.DB.prepare(
+        `SELECT h.id, h.asaas_payment_id AS asaasPaymentId, h.date AS dueDate, h.amount,
+                h.status AS hfStatus, h.paid_at AS paymentDate, h.description AS description,
+                cl.name AS clientName
+         FROM client_history h LEFT JOIN clients cl ON cl.id = h.client_id
+         WHERE h.status IN ('charged','paid')`
+      ).all();
+      for (const h of hf ?? []) {
+        const mapped = HF_STATUS_TO_INST[h.hfStatus] ?? "pending";
+        if (status && STATUSES5.includes(status) && status !== mapped)
+          continue;
+        installments.push({
+          id: h.id,
+          contractId: null,
+          asaasPaymentId: h.asaasPaymentId,
+          installmentNumber: -1,
+          // marcador de "serviço adicional" (HF)
+          dueDate: h.dueDate,
+          amount: h.amount,
+          status: mapped,
+          paymentDate: h.paymentDate,
+          paymentMethod: h.asaasPaymentId ? "ASAAS" : null,
+          notes: h.description,
+          contractTitle: h.description,
+          clientName: h.clientName,
+          kind: "hf"
+        });
+      }
+      installments.sort((a, b) => String(a.dueDate ?? "").localeCompare(String(b.dueDate ?? "")));
+    }
+    return json({ installments });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/notifications/index.ts
+var onRequestGet30 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const { results } = await env.DB.prepare(
+      `SELECT id, type, title, body, link, read, created_at AS createdAt
+       FROM notifications ORDER BY created_at DESC LIMIT 30`
+    ).all();
+    const unrow = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM notifications WHERE read = 0"
+    ).first();
+    return json({ items: results ?? [], unread: unrow?.n ?? 0 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost27 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request).catch(() => ({}));
+    if (Array.isArray(body.ids) && body.ids.length > 0) {
+      const marks = body.ids.map(() => "?").join(",");
+      await env.DB.prepare(
+        `UPDATE notifications SET read = 1 WHERE id IN (${marks})`
+      ).bind(...body.ids).run();
+    } else {
+      await env.DB.prepare("UPDATE notifications SET read = 1 WHERE read = 0").run();
+    }
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/proposals/index.ts
+function parseBRL2(v) {
+  const cleaned = String(v).replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+__name(parseBRL2, "parseBRL");
+var onRequestGet31 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const { results } = await env.DB.prepare(
+      `SELECT number, client, service_title AS serviceTitle, date, status, outcome, data, updated_at AS updatedAt
+       FROM proposals ORDER BY updated_at DESC`
+    ).all();
+    const proposals = (results ?? []).map((r) => {
+      let value = 0;
+      try {
+        value = parseBRL2(String(JSON.parse(r.data).total ?? ""));
+      } catch {
+      }
+      const { data: _data, ...rest } = r;
+      return { ...rest, value };
+    });
+    return json({ proposals });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost28 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const proposal = body.proposal;
+    if (!proposal || typeof proposal.number !== "string" || !proposal.number.trim()) {
+      return error(400, "Proposta inv\xE1lida: 'number' \xE9 obrigat\xF3rio.");
+    }
+    const status = body.status === "published" ? "published" : "draft";
+    const exists = await env.DB.prepare("SELECT number FROM proposals WHERE number = ?").bind(proposal.number).first();
+    if (exists)
+      return error(409, `J\xE1 existe uma proposta com o n\xFAmero ${proposal.number}.`);
+    await env.DB.prepare(
+      `INSERT INTO proposals (number, client, service_title, date, status, data)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(
+      proposal.number,
+      proposal.client ?? null,
+      proposal.serviceTitle ?? null,
+      proposal.date ?? null,
+      status,
+      JSON.stringify(proposal)
+    ).run();
+    return json({ ok: true, number: proposal.number, status }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/reports/index.ts
+var onRequestGet32 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const [instRes, hfRes] = await Promise.all([
+      env.DB.prepare(
+        "SELECT substr(payment_date,1,7) AS ym, COALESCE(SUM(amount),0) AS amt FROM installments WHERE status IN ('received','confirmed') AND payment_date IS NOT NULL GROUP BY ym"
+      ).all(),
+      env.DB.prepare(
+        "SELECT substr(paid_at,1,7) AS ym, COALESCE(SUM(amount),0) AS amt FROM client_history WHERE status = 'paid' AND paid_at IS NOT NULL GROUP BY ym"
+      ).all()
+    ]);
+    const map = /* @__PURE__ */ new Map();
+    for (const r of instRes.results ?? []) {
+      if (!r.ym)
+        continue;
+      const cur = map.get(r.ym) ?? { installments: 0, hf: 0 };
+      cur.installments += r.amt;
+      map.set(r.ym, cur);
+    }
+    for (const r of hfRes.results ?? []) {
+      if (!r.ym)
+        continue;
+      const cur = map.get(r.ym) ?? { installments: 0, hf: 0 };
+      cur.hf += r.amt;
+      map.set(r.ym, cur);
+    }
+    const received = [...map.entries()].map(([ym, v]) => ({ ym, installments: v.installments, hf: v.hf, total: v.installments + v.hf })).sort((a, b) => a.ym.localeCompare(b.ym));
+    return json({ received });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+
+// api/settings/index.ts
+var onRequestGet33 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const { results } = await env.DB.prepare("SELECT key, value FROM app_settings").all();
+    const settings = {};
+    for (const r of results ?? [])
+      settings[r.key] = r.value;
+    return json({ settings });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPut10 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const body = await readJson(request);
+    const key = (body.key || "").trim();
+    if (!key)
+      return error(400, "Informe a chave da configura\xE7\xE3o.");
+    await env.DB.prepare(
+      `INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+    ).bind(key, body.value ?? null).run();
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPut");
+
+// api/trash/index.ts
+var onRequestGet34 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const [clients, contracts] = await Promise.all([
+      env.DB.prepare(
+        "SELECT id, name, cpf_cnpj AS cpfCnpj, email, deleted_at AS deletedAt FROM clients WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+      ).all(),
+      env.DB.prepare(
+        `SELECT c.id, c.title, c.status, cl.name AS clientName, c.deleted_at AS deletedAt
+         FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id
+         WHERE c.deleted_at IS NOT NULL ORDER BY c.deleted_at DESC`
+      ).all()
+    ]);
+    return json({ clients: clients.results ?? [], contracts: contracts.results ?? [] });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestGet");
+var onRequestPost29 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const { entity, id, action } = await readJson(request);
+    if (!id || entity !== "client" && entity !== "contract" || action !== "restore" && action !== "purge") {
+      return error(400, "Par\xE2metros inv\xE1lidos.");
+    }
+    if (action === "restore") {
+      const table = entity === "client" ? "clients" : "contracts";
+      await env.DB.prepare(`UPDATE ${table} SET deleted_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(id).run();
+      return json({ ok: true });
+    }
+    if (entity === "contract") {
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM installments WHERE contract_id = ?").bind(id),
+        env.DB.prepare("DELETE FROM contract_payments WHERE contract_id = ?").bind(id),
+        env.DB.prepare("UPDATE client_history SET contract_id = NULL WHERE contract_id = ?").bind(id),
+        env.DB.prepare("DELETE FROM contracts WHERE id = ?").bind(id)
+      ]);
+      return json({ ok: true });
+    }
+    const hasContracts = await env.DB.prepare("SELECT COUNT(*) AS n FROM contracts WHERE client_id = ?").bind(id).first();
+    if ((hasContracts?.n ?? 0) > 0) {
+      return error(409, "Este cliente ainda tem contratos. Apague os contratos definitivamente primeiro.");
+    }
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM client_history WHERE client_id = ?").bind(id),
+      env.DB.prepare("DELETE FROM clients WHERE id = ?").bind(id)
+    ]);
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/upload.ts
+var MAX_BYTES4 = 8 * 1024 * 1024;
+var ALLOWED2 = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+function extFromType(type) {
+  return {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/avif": "avif",
+    "image/gif": "gif"
+  }[type] ?? "bin";
+}
+__name(extFromType, "extFromType");
+var onRequestPost30 = /* @__PURE__ */ __name(async ({ request, env }) => {
+  try {
+    await requireAuth(request, env);
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof File))
+      return error(400, "Envie um arquivo no campo 'file'.");
+    if (!ALLOWED2.includes(file.type))
+      return error(415, "Formato n\xE3o suportado (use JPG, PNG, WEBP, AVIF ou GIF).");
+    if (file.size > MAX_BYTES4)
+      return error(413, "Imagem muito grande (m\xE1x. 8 MB).");
+    const key = `uploads/${Date.now()}-${crypto.randomUUID()}.${extFromType(file.type)}`;
+    await env.R2.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" }
+    });
+    return json({ ok: true, url: `/api/files/${key}`, key }, { status: 201 });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+}, "onRequestPost");
+
+// api/_middleware.ts
+var SKIP = [/^\/api\/webhooks\//, /^\/api\/client\//, /^\/api\/notifications$/];
+function describe(method, path) {
+  const rules = [
+    [/^\/api\/contracts\/[^/]+\/publish$/, "Publicou contrato"],
+    [/^\/api\/contracts\/[^/]+\/send-autentique$/, "Enviou contrato para assinatura"],
+    [/^\/api\/contracts\/[^/]+\/refresh-signature$/, "Atualizou status da assinatura"],
+    [/^\/api\/contracts\/[^/]+\/generate-asaas$/, "Gerou cobran\xE7as no ASAAS"],
+    [/^\/api\/contracts\/[^/]+\/sync-payments$/, "Sincronizou pagamentos com o ASAAS"],
+    [/^\/api\/contracts\/[^/]+\/payments$/, "Definiu plano de pagamento"],
+    [/^\/api\/contracts(\/[^/]+)?$/, method === "DELETE" ? "Excluiu contrato" : method === "POST" ? "Criou contrato" : "Editou contrato"],
+    [/^\/api\/clients\/[^/]+\/history/, "Lan\xE7amento no Hist\xF3rico Financeiro"],
+    [/^\/api\/clients\/[^/]+\/access$/, "Alterou acesso do cliente"],
+    [/^\/api\/clients(\/[^/]+)?$/, method === "DELETE" ? "Excluiu cliente" : method === "POST" ? "Criou cliente" : "Editou cliente"],
+    [/^\/api\/proposals(\/[^/]+)?$/, method === "DELETE" ? "Excluiu proposta" : method === "POST" ? "Criou proposta" : "Editou proposta"],
+    [/^\/api\/briefings(\/[^/]+)?$/, method === "DELETE" ? "Excluiu briefing" : "Editou briefing"],
+    [/^\/api\/documents$/, method === "DELETE" ? "Excluiu arquivo" : "Enviou arquivo"],
+    [/^\/api\/upload$/, "Enviou imagem"],
+    [/^\/api\/settings$/, "Alterou configura\xE7\xE3o"],
+    [/^\/api\/auth\/login$/, "Fez login"],
+    [/^\/api\/auth\/logout$/, "Fez logout"],
+    [/^\/api\/auth\/profile$/, "Alterou a pr\xF3pria conta"],
+    [/^\/api\/calendar/, "Alterou a agenda"]
+  ];
+  for (const [re, label] of rules)
+    if (re.test(path))
+      return label;
+  return `${method} ${path}`;
+}
+__name(describe, "describe");
+var onRequest = /* @__PURE__ */ __name(async (ctx) => {
+  const res = await ctx.next();
+  try {
+    const { request, env } = ctx;
+    const method = request.method.toUpperCase();
+    if (method === "POST" || method === "PUT" || method === "DELETE") {
+      const path = new URL(request.url).pathname;
+      if (!SKIP.some((re) => re.test(path))) {
+        const session = await getSession(request, env).catch(() => null);
+        const ip = request.headers.get("CF-Connecting-IP") ?? null;
+        ctx.waitUntil(
+          env.DB.prepare(
+            "INSERT INTO audit_logs (id, user, action, method, path, status, ip) VALUES (?, ?, ?, ?, ?, ?, ?)"
+          ).bind(crypto.randomUUID(), session?.sub ?? null, describe(method, path), method, path, res.status, ip).run().catch(() => {
+          })
+        );
+        if (session?.sub)
+          ctx.waitUntil(maybeAutoBackup(env));
+      }
+    }
+  } catch {
+  }
+  return res;
+}, "onRequest");
+
+// ../.wrangler/tmp/pages-k4cSk2/functionsRoutes-0.14640773481219993.mjs
+var routes = [
+  {
+    routePath: "/api/clients/:id/history/:hid/generate-asaas",
+    mountPath: "/api/clients/:id/history/:hid",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost]
+  },
+  {
+    routePath: "/api/clients/:id/history/:hid",
+    mountPath: "/api/clients/:id/history",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete]
+  },
+  {
+    routePath: "/api/clients/:id/history/:hid",
+    mountPath: "/api/clients/:id/history",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut]
+  },
+  {
+    routePath: "/api/contracts/public/:slug",
+    mountPath: "/api/contracts/public",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet]
+  },
+  {
+    routePath: "/api/briefings/:number/responses",
+    mountPath: "/api/briefings/:number",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet2]
+  },
+  {
+    routePath: "/api/briefings/:number/responses",
+    mountPath: "/api/briefings/:number",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost2]
+  },
+  {
+    routePath: "/api/briefings/:number/upload",
+    mountPath: "/api/briefings/:number",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost3]
+  },
+  {
+    routePath: "/api/clients/:id/access",
+    mountPath: "/api/clients/:id",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet3]
+  },
+  {
+    routePath: "/api/clients/:id/access",
+    mountPath: "/api/clients/:id",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut2]
+  },
+  {
+    routePath: "/api/clients/:id/history",
+    mountPath: "/api/clients/:id",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet4]
+  },
+  {
+    routePath: "/api/clients/:id/history",
+    mountPath: "/api/clients/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost4]
+  },
+  {
+    routePath: "/api/clients/:id/photo",
+    mountPath: "/api/clients/:id",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete2]
+  },
+  {
+    routePath: "/api/clients/:id/photo",
+    mountPath: "/api/clients/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost5]
+  },
+  {
+    routePath: "/api/contracts/:id/generate-asaas",
+    mountPath: "/api/contracts/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost6]
+  },
+  {
+    routePath: "/api/contracts/:id/payments",
+    mountPath: "/api/contracts/:id",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete3]
+  },
+  {
+    routePath: "/api/contracts/:id/payments",
+    mountPath: "/api/contracts/:id",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet5]
+  },
+  {
+    routePath: "/api/contracts/:id/payments",
+    mountPath: "/api/contracts/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost7]
+  },
+  {
+    routePath: "/api/contracts/:id/publish",
+    mountPath: "/api/contracts/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost8]
+  },
+  {
+    routePath: "/api/contracts/:id/refresh-signature",
+    mountPath: "/api/contracts/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost9]
+  },
+  {
+    routePath: "/api/contracts/:id/send-autentique",
+    mountPath: "/api/contracts/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost10]
+  },
+  {
+    routePath: "/api/contracts/:id/sync-payments",
+    mountPath: "/api/contracts/:id",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost11]
+  },
+  {
+    routePath: "/api/proposals/:number/outcome",
+    mountPath: "/api/proposals/:number",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost12]
+  },
+  {
+    routePath: "/api/auth/change-password",
+    mountPath: "/api/auth",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost13]
+  },
+  {
+    routePath: "/api/auth/login",
+    mountPath: "/api/auth",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost14]
+  },
+  {
+    routePath: "/api/auth/logout",
+    mountPath: "/api/auth",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost15]
+  },
+  {
+    routePath: "/api/auth/me",
+    mountPath: "/api/auth",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet6]
+  },
+  {
+    routePath: "/api/auth/profile",
+    mountPath: "/api/auth",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet7]
+  },
+  {
+    routePath: "/api/auth/profile",
+    mountPath: "/api/auth",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut3]
+  },
+  {
+    routePath: "/api/client/download",
+    mountPath: "/api/client",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet8]
+  },
+  {
+    routePath: "/api/client/logout",
+    mountPath: "/api/client",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost16]
+  },
+  {
+    routePath: "/api/client/magic",
+    mountPath: "/api/client",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet9]
+  },
+  {
+    routePath: "/api/client/overview",
+    mountPath: "/api/client",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet10]
+  },
+  {
+    routePath: "/api/client/verify",
+    mountPath: "/api/client",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost17]
+  },
+  {
+    routePath: "/api/dashboard/overview",
+    mountPath: "/api/dashboard",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet11]
+  },
+  {
+    routePath: "/api/documents/download",
+    mountPath: "/api/documents",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet12]
+  },
+  {
+    routePath: "/api/documents/folder",
+    mountPath: "/api/documents",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete4]
+  },
+  {
+    routePath: "/api/documents/folder",
+    mountPath: "/api/documents",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost18]
+  },
+  {
+    routePath: "/api/payments/manual",
+    mountPath: "/api/payments",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost19]
+  },
+  {
+    routePath: "/api/storage/backup",
+    mountPath: "/api/storage",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet13]
+  },
+  {
+    routePath: "/api/storage/backups",
+    mountPath: "/api/storage",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet14]
+  },
+  {
+    routePath: "/api/storage/usage",
+    mountPath: "/api/storage",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet15]
+  },
+  {
+    routePath: "/api/webhooks/asaas",
+    mountPath: "/api/webhooks",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost20]
+  },
+  {
+    routePath: "/api/webhooks/autentique",
+    mountPath: "/api/webhooks",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost21]
+  },
+  {
+    routePath: "/api/briefings/:number",
+    mountPath: "/api/briefings",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete5]
+  },
+  {
+    routePath: "/api/briefings/:number",
+    mountPath: "/api/briefings",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet16]
+  },
+  {
+    routePath: "/api/briefings/:number",
+    mountPath: "/api/briefings",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut4]
+  },
+  {
+    routePath: "/api/calendar/:id",
+    mountPath: "/api/calendar",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete6]
+  },
+  {
+    routePath: "/api/calendar/:id",
+    mountPath: "/api/calendar",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut5]
+  },
+  {
+    routePath: "/api/clients/:id",
+    mountPath: "/api/clients",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete7]
+  },
+  {
+    routePath: "/api/clients/:id",
+    mountPath: "/api/clients",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet17]
+  },
+  {
+    routePath: "/api/clients/:id",
+    mountPath: "/api/clients",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut6]
+  },
+  {
+    routePath: "/api/contracts/:id",
+    mountPath: "/api/contracts",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete8]
+  },
+  {
+    routePath: "/api/contracts/:id",
+    mountPath: "/api/contracts",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet19]
+  },
+  {
+    routePath: "/api/contracts/:id",
+    mountPath: "/api/contracts",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut7]
+  },
+  {
+    routePath: "/api/installments/:id",
+    mountPath: "/api/installments",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet20]
+  },
+  {
+    routePath: "/api/installments/:id",
+    mountPath: "/api/installments",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut8]
+  },
+  {
+    routePath: "/api/proposals/:number",
+    mountPath: "/api/proposals",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete9]
+  },
+  {
+    routePath: "/api/proposals/:number",
+    mountPath: "/api/proposals",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet21]
+  },
+  {
+    routePath: "/api/proposals/:number",
+    mountPath: "/api/proposals",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut9]
+  },
+  {
+    routePath: "/api/files/:path*",
+    mountPath: "/api/files",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet22]
+  },
+  {
+    routePath: "/api/audit",
+    mountPath: "/api/audit",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet23]
+  },
+  {
+    routePath: "/api/briefings",
+    mountPath: "/api/briefings",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet24]
+  },
+  {
+    routePath: "/api/briefings",
+    mountPath: "/api/briefings",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost23]
+  },
+  {
+    routePath: "/api/calendar",
+    mountPath: "/api/calendar",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet25]
+  },
+  {
+    routePath: "/api/calendar",
+    mountPath: "/api/calendar",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost24]
+  },
+  {
+    routePath: "/api/clients",
+    mountPath: "/api/clients",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet26]
+  },
+  {
+    routePath: "/api/clients",
+    mountPath: "/api/clients",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost25]
+  },
+  {
+    routePath: "/api/contracts",
+    mountPath: "/api/contracts",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet18]
+  },
+  {
+    routePath: "/api/contracts",
+    mountPath: "/api/contracts",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost22]
+  },
+  {
+    routePath: "/api/documents",
+    mountPath: "/api/documents",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete10]
+  },
+  {
+    routePath: "/api/documents",
+    mountPath: "/api/documents",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet27]
+  },
+  {
+    routePath: "/api/documents",
+    mountPath: "/api/documents",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost26]
+  },
+  {
+    routePath: "/api/health",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet28]
+  },
+  {
+    routePath: "/api/installments",
+    mountPath: "/api/installments",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet29]
+  },
+  {
+    routePath: "/api/notifications",
+    mountPath: "/api/notifications",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet30]
+  },
+  {
+    routePath: "/api/notifications",
+    mountPath: "/api/notifications",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost27]
+  },
+  {
+    routePath: "/api/proposals",
+    mountPath: "/api/proposals",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet31]
+  },
+  {
+    routePath: "/api/proposals",
+    mountPath: "/api/proposals",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost28]
+  },
+  {
+    routePath: "/api/reports",
+    mountPath: "/api/reports",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet32]
+  },
+  {
+    routePath: "/api/settings",
+    mountPath: "/api/settings",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet33]
+  },
+  {
+    routePath: "/api/settings",
+    mountPath: "/api/settings",
+    method: "PUT",
+    middlewares: [],
+    modules: [onRequestPut10]
+  },
+  {
+    routePath: "/api/trash",
+    mountPath: "/api/trash",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet34]
+  },
+  {
+    routePath: "/api/trash",
+    mountPath: "/api/trash",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost29]
+  },
+  {
+    routePath: "/api/upload",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost30]
+  },
+  {
+    routePath: "/api",
+    mountPath: "/api",
+    method: "",
+    middlewares: [onRequest],
+    modules: []
+  }
+];
+
+// ../node_modules/path-to-regexp/dist.es2015/index.js
+function lexer(str) {
+  var tokens = [];
+  var i = 0;
+  while (i < str.length) {
+    var char = str[i];
+    if (char === "*" || char === "+" || char === "?") {
+      tokens.push({ type: "MODIFIER", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === "\\") {
+      tokens.push({ type: "ESCAPED_CHAR", index: i++, value: str[i++] });
+      continue;
+    }
+    if (char === "{") {
+      tokens.push({ type: "OPEN", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === "}") {
+      tokens.push({ type: "CLOSE", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === ":") {
+      var name = "";
+      var j = i + 1;
+      while (j < str.length) {
+        var code = str.charCodeAt(j);
+        if (
+          // `0-9`
+          code >= 48 && code <= 57 || // `A-Z`
+          code >= 65 && code <= 90 || // `a-z`
+          code >= 97 && code <= 122 || // `_`
+          code === 95
+        ) {
+          name += str[j++];
+          continue;
+        }
+        break;
+      }
+      if (!name)
+        throw new TypeError("Missing parameter name at ".concat(i));
+      tokens.push({ type: "NAME", index: i, value: name });
+      i = j;
+      continue;
+    }
+    if (char === "(") {
+      var count = 1;
+      var pattern = "";
+      var j = i + 1;
+      if (str[j] === "?") {
+        throw new TypeError('Pattern cannot start with "?" at '.concat(j));
+      }
+      while (j < str.length) {
+        if (str[j] === "\\") {
+          pattern += str[j++] + str[j++];
+          continue;
+        }
+        if (str[j] === ")") {
+          count--;
+          if (count === 0) {
+            j++;
+            break;
+          }
+        } else if (str[j] === "(") {
+          count++;
+          if (str[j + 1] !== "?") {
+            throw new TypeError("Capturing groups are not allowed at ".concat(j));
+          }
+        }
+        pattern += str[j++];
+      }
+      if (count)
+        throw new TypeError("Unbalanced pattern at ".concat(i));
+      if (!pattern)
+        throw new TypeError("Missing pattern at ".concat(i));
+      tokens.push({ type: "PATTERN", index: i, value: pattern });
+      i = j;
+      continue;
+    }
+    tokens.push({ type: "CHAR", index: i, value: str[i++] });
+  }
+  tokens.push({ type: "END", index: i, value: "" });
+  return tokens;
+}
+__name(lexer, "lexer");
+function parse(str, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var tokens = lexer(str);
+  var _a = options.prefixes, prefixes = _a === void 0 ? "./" : _a, _b = options.delimiter, delimiter = _b === void 0 ? "/#?" : _b;
+  var result = [];
+  var key = 0;
+  var i = 0;
+  var path = "";
+  var tryConsume = /* @__PURE__ */ __name(function(type) {
+    if (i < tokens.length && tokens[i].type === type)
+      return tokens[i++].value;
+  }, "tryConsume");
+  var mustConsume = /* @__PURE__ */ __name(function(type) {
+    var value2 = tryConsume(type);
+    if (value2 !== void 0)
+      return value2;
+    var _a2 = tokens[i], nextType = _a2.type, index = _a2.index;
+    throw new TypeError("Unexpected ".concat(nextType, " at ").concat(index, ", expected ").concat(type));
+  }, "mustConsume");
+  var consumeText = /* @__PURE__ */ __name(function() {
+    var result2 = "";
+    var value2;
+    while (value2 = tryConsume("CHAR") || tryConsume("ESCAPED_CHAR")) {
+      result2 += value2;
+    }
+    return result2;
+  }, "consumeText");
+  var isSafe = /* @__PURE__ */ __name(function(value2) {
+    for (var _i = 0, delimiter_1 = delimiter; _i < delimiter_1.length; _i++) {
+      var char2 = delimiter_1[_i];
+      if (value2.indexOf(char2) > -1)
+        return true;
+    }
+    return false;
+  }, "isSafe");
+  var safePattern = /* @__PURE__ */ __name(function(prefix2) {
+    var prev = result[result.length - 1];
+    var prevText = prefix2 || (prev && typeof prev === "string" ? prev : "");
+    if (prev && !prevText) {
+      throw new TypeError('Must have text between two parameters, missing text after "'.concat(prev.name, '"'));
+    }
+    if (!prevText || isSafe(prevText))
+      return "[^".concat(escapeString(delimiter), "]+?");
+    return "(?:(?!".concat(escapeString(prevText), ")[^").concat(escapeString(delimiter), "])+?");
+  }, "safePattern");
+  while (i < tokens.length) {
+    var char = tryConsume("CHAR");
+    var name = tryConsume("NAME");
+    var pattern = tryConsume("PATTERN");
+    if (name || pattern) {
+      var prefix = char || "";
+      if (prefixes.indexOf(prefix) === -1) {
+        path += prefix;
+        prefix = "";
+      }
+      if (path) {
+        result.push(path);
+        path = "";
+      }
+      result.push({
+        name: name || key++,
+        prefix,
+        suffix: "",
+        pattern: pattern || safePattern(prefix),
+        modifier: tryConsume("MODIFIER") || ""
+      });
+      continue;
+    }
+    var value = char || tryConsume("ESCAPED_CHAR");
+    if (value) {
+      path += value;
+      continue;
+    }
+    if (path) {
+      result.push(path);
+      path = "";
+    }
+    var open = tryConsume("OPEN");
+    if (open) {
+      var prefix = consumeText();
+      var name_1 = tryConsume("NAME") || "";
+      var pattern_1 = tryConsume("PATTERN") || "";
+      var suffix = consumeText();
+      mustConsume("CLOSE");
+      result.push({
+        name: name_1 || (pattern_1 ? key++ : ""),
+        pattern: name_1 && !pattern_1 ? safePattern(prefix) : pattern_1,
+        prefix,
+        suffix,
+        modifier: tryConsume("MODIFIER") || ""
+      });
+      continue;
+    }
+    mustConsume("END");
+  }
+  return result;
+}
+__name(parse, "parse");
+function match(str, options) {
+  var keys = [];
+  var re = pathToRegexp(str, keys, options);
+  return regexpToFunction(re, keys, options);
+}
+__name(match, "match");
+function regexpToFunction(re, keys, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var _a = options.decode, decode = _a === void 0 ? function(x) {
+    return x;
+  } : _a;
+  return function(pathname) {
+    var m = re.exec(pathname);
+    if (!m)
+      return false;
+    var path = m[0], index = m.index;
+    var params = /* @__PURE__ */ Object.create(null);
+    var _loop_1 = /* @__PURE__ */ __name(function(i2) {
+      if (m[i2] === void 0)
+        return "continue";
+      var key = keys[i2 - 1];
+      if (key.modifier === "*" || key.modifier === "+") {
+        params[key.name] = m[i2].split(key.prefix + key.suffix).map(function(value) {
+          return decode(value, key);
+        });
+      } else {
+        params[key.name] = decode(m[i2], key);
+      }
+    }, "_loop_1");
+    for (var i = 1; i < m.length; i++) {
+      _loop_1(i);
+    }
+    return { path, index, params };
+  };
+}
+__name(regexpToFunction, "regexpToFunction");
+function escapeString(str) {
+  return str.replace(/([.+*?=^!:${}()[\]|/\\])/g, "\\$1");
+}
+__name(escapeString, "escapeString");
+function flags(options) {
+  return options && options.sensitive ? "" : "i";
+}
+__name(flags, "flags");
+function regexpToRegexp(path, keys) {
+  if (!keys)
+    return path;
+  var groupsRegex = /\((?:\?<(.*?)>)?(?!\?)/g;
+  var index = 0;
+  var execResult = groupsRegex.exec(path.source);
+  while (execResult) {
+    keys.push({
+      // Use parenthesized substring match if available, index otherwise
+      name: execResult[1] || index++,
+      prefix: "",
+      suffix: "",
+      modifier: "",
+      pattern: ""
+    });
+    execResult = groupsRegex.exec(path.source);
+  }
+  return path;
+}
+__name(regexpToRegexp, "regexpToRegexp");
+function arrayToRegexp(paths, keys, options) {
+  var parts = paths.map(function(path) {
+    return pathToRegexp(path, keys, options).source;
+  });
+  return new RegExp("(?:".concat(parts.join("|"), ")"), flags(options));
+}
+__name(arrayToRegexp, "arrayToRegexp");
+function stringToRegexp(path, keys, options) {
+  return tokensToRegexp(parse(path, options), keys, options);
+}
+__name(stringToRegexp, "stringToRegexp");
+function tokensToRegexp(tokens, keys, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var _a = options.strict, strict = _a === void 0 ? false : _a, _b = options.start, start = _b === void 0 ? true : _b, _c = options.end, end = _c === void 0 ? true : _c, _d = options.encode, encode = _d === void 0 ? function(x) {
+    return x;
+  } : _d, _e = options.delimiter, delimiter = _e === void 0 ? "/#?" : _e, _f = options.endsWith, endsWith = _f === void 0 ? "" : _f;
+  var endsWithRe = "[".concat(escapeString(endsWith), "]|$");
+  var delimiterRe = "[".concat(escapeString(delimiter), "]");
+  var route = start ? "^" : "";
+  for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+    var token = tokens_1[_i];
+    if (typeof token === "string") {
+      route += escapeString(encode(token));
+    } else {
+      var prefix = escapeString(encode(token.prefix));
+      var suffix = escapeString(encode(token.suffix));
+      if (token.pattern) {
+        if (keys)
+          keys.push(token);
+        if (prefix || suffix) {
+          if (token.modifier === "+" || token.modifier === "*") {
+            var mod = token.modifier === "*" ? "?" : "";
+            route += "(?:".concat(prefix, "((?:").concat(token.pattern, ")(?:").concat(suffix).concat(prefix, "(?:").concat(token.pattern, "))*)").concat(suffix, ")").concat(mod);
+          } else {
+            route += "(?:".concat(prefix, "(").concat(token.pattern, ")").concat(suffix, ")").concat(token.modifier);
+          }
+        } else {
+          if (token.modifier === "+" || token.modifier === "*") {
+            throw new TypeError('Can not repeat "'.concat(token.name, '" without a prefix and suffix'));
+          }
+          route += "(".concat(token.pattern, ")").concat(token.modifier);
+        }
+      } else {
+        route += "(?:".concat(prefix).concat(suffix, ")").concat(token.modifier);
+      }
+    }
+  }
+  if (end) {
+    if (!strict)
+      route += "".concat(delimiterRe, "?");
+    route += !options.endsWith ? "$" : "(?=".concat(endsWithRe, ")");
+  } else {
+    var endToken = tokens[tokens.length - 1];
+    var isEndDelimited = typeof endToken === "string" ? delimiterRe.indexOf(endToken[endToken.length - 1]) > -1 : endToken === void 0;
+    if (!strict) {
+      route += "(?:".concat(delimiterRe, "(?=").concat(endsWithRe, "))?");
+    }
+    if (!isEndDelimited) {
+      route += "(?=".concat(delimiterRe, "|").concat(endsWithRe, ")");
+    }
+  }
+  return new RegExp(route, flags(options));
+}
+__name(tokensToRegexp, "tokensToRegexp");
+function pathToRegexp(path, keys, options) {
+  if (path instanceof RegExp)
+    return regexpToRegexp(path, keys);
+  if (Array.isArray(path))
+    return arrayToRegexp(path, keys, options);
+  return stringToRegexp(path, keys, options);
+}
+__name(pathToRegexp, "pathToRegexp");
+
+// ../node_modules/wrangler/templates/pages-template-worker.ts
+var escapeRegex = /[.+?^${}()|[\]\\]/g;
+function* executeRequest(request) {
+  const requestPath = new URL(request.url).pathname;
+  for (const route of [...routes].reverse()) {
+    if (route.method && route.method !== request.method) {
+      continue;
+    }
+    const routeMatcher = match(route.routePath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const mountMatcher = match(route.mountPath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const matchResult = routeMatcher(requestPath);
+    const mountMatchResult = mountMatcher(requestPath);
+    if (matchResult && mountMatchResult) {
+      for (const handler of route.middlewares.flat()) {
+        yield {
+          handler,
+          params: matchResult.params,
+          path: mountMatchResult.path
+        };
+      }
+    }
+  }
+  for (const route of routes) {
+    if (route.method && route.method !== request.method) {
+      continue;
+    }
+    const routeMatcher = match(route.routePath.replace(escapeRegex, "\\$&"), {
+      end: true
+    });
+    const mountMatcher = match(route.mountPath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const matchResult = routeMatcher(requestPath);
+    const mountMatchResult = mountMatcher(requestPath);
+    if (matchResult && mountMatchResult && route.modules.length) {
+      for (const handler of route.modules.flat()) {
+        yield {
+          handler,
+          params: matchResult.params,
+          path: matchResult.path
+        };
+      }
+      break;
+    }
+  }
+}
+__name(executeRequest, "executeRequest");
+var pages_template_worker_default = {
+  async fetch(originalRequest, env, workerContext) {
+    let request = originalRequest;
+    const handlerIterator = executeRequest(request);
+    let data = {};
+    let isFailOpen = false;
+    const next = /* @__PURE__ */ __name(async (input, init) => {
+      if (input !== void 0) {
+        let url = input;
+        if (typeof input === "string") {
+          url = new URL(input, request.url).toString();
+        }
+        request = new Request(url, init);
+      }
+      const result = handlerIterator.next();
+      if (result.done === false) {
+        const { handler, params, path } = result.value;
+        const context = {
+          request: new Request(request.clone()),
+          functionPath: path,
+          next,
+          params,
+          get data() {
+            return data;
+          },
+          set data(value) {
+            if (typeof value !== "object" || value === null) {
+              throw new Error("context.data must be an object");
+            }
+            data = value;
+          },
+          env,
+          waitUntil: workerContext.waitUntil.bind(workerContext),
+          passThroughOnException: () => {
+            isFailOpen = true;
+          }
+        };
+        const response = await handler(context);
+        if (!(response instanceof Response)) {
+          throw new Error("Your Pages function should return a Response");
+        }
+        return cloneResponse(response);
+      } else if ("ASSETS") {
+        const response = await env["ASSETS"].fetch(request);
+        return cloneResponse(response);
+      } else {
+        const response = await fetch(request);
+        return cloneResponse(response);
+      }
+    }, "next");
+    try {
+      return await next();
+    } catch (error2) {
+      if (isFailOpen) {
+        const response = await env["ASSETS"].fetch(request);
+        return cloneResponse(response);
+      }
+      throw error2;
+    }
+  }
+};
+var cloneResponse = /* @__PURE__ */ __name((response) => (
+  // https://fetch.spec.whatwg.org/#null-body-status
+  new Response(
+    [101, 204, 205, 304].includes(response.status) ? null : response.body,
+    response
+  )
+), "cloneResponse");
+export {
+  pages_template_worker_default as default
+};
+
+------formdata-undici-090530180999--
