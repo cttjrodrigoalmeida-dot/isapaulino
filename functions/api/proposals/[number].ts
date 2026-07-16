@@ -51,7 +51,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
       .first<{ status: string }>();
     if (!existing) return error(404, "Proposta não encontrada.");
 
-    const status = body.status === "published" || body.status === "draft" ? body.status : existing.status;
+    const status = body.status === "published" || body.status === "draft" || body.status === "cancelled" ? body.status : existing.status;
 
     await env.DB.prepare(
       `UPDATE proposals

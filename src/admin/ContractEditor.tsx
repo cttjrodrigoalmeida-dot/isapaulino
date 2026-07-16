@@ -195,6 +195,36 @@ export default function ContractEditor({
         },
       };
     });
+
+    // Tenta preencher o nome do projeto a partir do briefing vinculado à proposta mais recente
+    if (latest?.number) {
+      (async () => {
+        try {
+          const { briefings } = await api.listBriefings();
+          const linkedBriefing = briefings.find((b) => b.proposalNumber === latest.number);
+          if (linkedBriefing) {
+            const { briefing } = await api.getBriefing(linkedBriefing.number);
+            // A primeira pergunta do briefing geralmente é "Qual é o nome do seu projeto?"
+            const projectNameQuestion = briefing.sections
+              .flatMap((s) => s.questions)
+              .find((q) => /nome do.*projeto/i.test(q.text) || /nome do projeto/i.test(q.text));
+            // Tentamos buscar a resposta mais recente para essa pergunta
+            if (projectNameQuestion) {
+              try {
+                const { responses } = await api.listBriefingResponses(linkedBriefing.number);
+                const latestResp = responses[responses.length - 1];
+                if (latestResp?.answers?.[projectNameQuestion.id]) {
+                  const projectName = latestResp.answers[projectNameQuestion.id].trim();
+                  if (projectName) {
+                    setDoc((prev) => prev ? { ...prev, projectName } : prev);
+                  }
+                }
+              } catch { /* sem resposta ainda, ok */ }
+            }
+          }
+        } catch { /* briefing não encontrado, ok */ }
+      })();
+    }
   };
 
   // Botão "Preencher do cliente" (reforço manual): reaplica os dados do cliente.
@@ -848,8 +878,8 @@ export default function ContractEditor({
             style={{ width: 180 }}
             disabled={saving}
           >
-            <option value="draft">Rascunho (oculto)</option>
-            <option value="published">Publicado (link ativo)</option>
+            <option value="draft">Rascunho</option>
+            <option value="published">Aguardando assinatura</option>
             <option value="signed">Assinado</option>
             <option value="cancelled">Cancelado</option>
           </select>

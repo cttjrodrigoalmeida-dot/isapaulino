@@ -22,9 +22,11 @@ export interface BriefingSummary {
   number: string;
   proposalNumber: string | null;
   title: string | null;
-  status: "draft" | "published";
+  status: "draft" | "published" | "cancelled";
   updatedAt: string;
   responseCount: number;
+  /** Data/hora da última resposta recebida (ISO). */
+  lastResponseAt: string | null;
 }
 
 export interface BriefingResponse {
@@ -112,6 +114,8 @@ export interface ContractSummary {
   slug: string | null;
   updatedAt: string;
   publishedAt: string | null;
+  /** Nº do contrato (extraído do JSON rich doc). */
+  contractNumber: string | null;
   /** Id do documento na Autentique (preenchido quando enviado para assinatura). */
   autentiqueDocumentId: string | null;
 }

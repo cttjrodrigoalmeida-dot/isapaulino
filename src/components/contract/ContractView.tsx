@@ -208,25 +208,32 @@ function SectionCard({
   tab,
   tabVariant = "dark",
   bare = false,
+  cardBorderVariant,
   children,
   className,
 }: {
   tab: string;
-  tabVariant?: "dark" | "pink";
+  tabVariant?: "dark" | "pink" | "green";
   /** Sem o card externo (borda/fundo) — só a aba + o conteúdo cru. */
   bare?: boolean;
+  /** Borda colorida no card: pink (vermelha), green (verde). */
+  cardBorderVariant?: "pink" | "green";
   children: ReactNode;
   className?: string;
 }) {
+  const cardClass = [
+    bare ? className : `${styles.card} ${className ?? ""} ${cardBorderVariant === "pink" ? styles.cardBorderPink : cardBorderVariant === "green" ? styles.cardBorderGreen : ""}`,
+  ].join(" ");
   return (
     <div className={styles.cardWrap}>
       <span className={`${styles.cardTab} ${
         tabVariant === "pink" ? styles.cardTabPink
+        : tabVariant === "green" ? styles.cardTabGreen
         : /CONTRATADA/i.test(tab) ? styles.cardTabContratada
         : /CONTRATANTE/i.test(tab) ? styles.cardTabContratante
         : ""
       }`}>{tab}</span>
-      <div className={bare ? className : `${styles.card} ${className ?? ""}`}>{children}</div>
+      <div className={cardClass}>{children}</div>
     </div>
   );
 }
@@ -616,24 +623,24 @@ function ArquivosCard({ clause, doc }: { clause: ContractClause; doc: ContractDo
   );
 }
 
-// ── Cláusula 17 (incapacidade) — 2 colunas ─────────────────────
+// ── Cláusula 17 (incapacidade) — 2 colunas, borda vermelha ─────
 const INCAPACIDADE_NOTES = [
   { icon: <IconWarning />, mod: styles.sideIconPink, title: "COMUNICAÇÃO", text: "A CONTRATADA informará imediatamente o CONTRATANTE sobre qualquer impedimento que afete a execução dos serviços." },
   { icon: <IconPeople />, mod: "", title: "", text: "As partes manterão o diálogo aberto para minimizar impactos e garantir a continuidade do projeto." },
 ];
 function IncapacidadeCard({ clause }: { clause: ContractClause }) {
   return (
-    <SectionCard tab={clause.eyebrow ?? clause.title}>
+    <SectionCard tab={clause.eyebrow ?? clause.title} cardBorderVariant="pink">
       <ClauseHead number={clause.number} title={clause.title} />
       <div className={styles.sideGrid}>
         <div className={styles.sideText}>
           {clause.blocks.map((b, i) => <Block key={i} block={b} />)}
         </div>
-        <div className={`${styles.sideBox} ${styles.sideBoxDark}`}>
+        <div className={`${styles.sideBox} ${styles.sideBoxCream}`}>
           {INCAPACIDADE_NOTES.map((n, i) => (
             <div key={i} className={styles.noteItem}>
               <div className={styles.noteHead}>
-                <span className={`${styles.sideIcon} ${n.mod}`}>{n.icon}</span>
+                <span className={`${styles.sideIcon} ${n.mod || ""}`}>{n.icon}</span>
                 {n.title && <span className={styles.noteTitle}>{n.title}</span>}
               </div>
               <p className={styles.noteText}>{n.text}</p>
@@ -645,15 +652,30 @@ function IncapacidadeCard({ clause }: { clause: ContractClause }) {
   );
 }
 
-// ── Cláusula 18 (validade) — 2 colunas ─────────────────────────
+// ── Cláusula 18 (validade) — 2 colunas, borda verde ─────────────
 function ValidadeCard({ clause }: { clause: ContractClause }) {
   const rows: SideRow[] = [
     { icon: <IconCalendar />, title: "3 meses", caption: "VIGÊNCIA", capTop: true, small: true },
-    { icon: <IconFlag />, title: "Data da disponibilidade", caption: "INÍCIO", capTop: true, small: true },
-    { icon: <IconCheck />, iconMod: styles.sideIconGreen, rowMod: styles.sideRowBoxedGreen, title: "Conclusão dos serviços ou quitação total", caption: "TÉRMINO", capTop: true, small: true },
+    {
+      icon: <IconFlag />,
+      iconMod: styles.sideIconGreen,
+      title: "Data da disponibilidade",
+      caption: "INÍCIO",
+      capTop: true,
+      small: true,
+    },
+    {
+      icon: <IconCheck />,
+      iconMod: styles.sideIconGreen,
+      rowMod: styles.sideRowBoxedGreen,
+      title: "Conclusão dos serviços ou quitação total",
+      caption: "TÉRMINO",
+      capTop: true,
+      small: true,
+    },
   ];
   return (
-    <SectionCard tab={clause.eyebrow ?? clause.title}>
+    <SectionCard tab={clause.eyebrow ?? clause.title} tabVariant="green" cardBorderVariant="green">
       <ClauseHead number={clause.number} title={clause.title} />
       <div className={styles.sideGrid}>
         <div className={styles.sideText}>
@@ -866,7 +888,11 @@ function ClauseCard({
     default: {
       const pink = clause.number === "12" || clause.number === "15";
       return (
-        <SectionCard tab={clause.eyebrow ?? clause.title} tabVariant={pink ? "pink" : "dark"}>
+        <SectionCard
+          tab={clause.eyebrow ?? clause.title}
+          tabVariant={pink ? "pink" : "dark"}
+          cardBorderVariant={pink ? "pink" : undefined}
+        >
           <ClauseHead number={clause.number} title={clause.title} />
           {clause.blocks.map((b, i) => <Block key={i} block={b} />)}
         </SectionCard>
@@ -933,6 +959,9 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
 
             <div className={styles.headerBody}>
               <span className={styles.docEyebrow}>CONTRATO DE {doc.serviceTitle} · Nº {doc.contractNumber}</span>
+              {doc.projectName && (
+                <h1 className={styles.docTitleProject}>{doc.projectName}</h1>
+              )}
               <h1 className={styles.docTitle}>{doc.documentTitle}</h1>
               {doc.tags && doc.tags.length > 0 && (
                 <div className={styles.tags}>

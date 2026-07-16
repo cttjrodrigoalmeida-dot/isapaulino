@@ -61,6 +61,38 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
       .bind(clientId, title, opt(body.content) ?? "", data, value, opt(body.deadline), opt(body.autentique_url), status, id)
       .run();
 
+    // Sincronização: se o contrato foi cancelado, cancela também o briefing e a proposta vinculados.
+    if (status === "cancelled" && existing.status !== "cancelled") {
+      // Busca o contractNumber do JSON para encontrar a proposta vinculada.
+      let proposalNumber: string | null = null;
+      if (data) {
+        try {
+          const doc = JSON.parse(data);
+          proposalNumber = doc?.proposalNumber || null;
+        } catch { /* ignora */ }
+      }
+      // Se não achou no data, tenta pelo título/legado.
+      if (!proposalNumber) {
+        const c = await env.DB.prepare("SELECT data FROM contracts WHERE id = ?").bind(id).first<{ data: string | null }>();
+        if (c?.data) {
+          try {
+            const doc = JSON.parse(c.data);
+            proposalNumber = doc?.proposalNumber || null;
+          } catch { /* ignora */ }
+        }
+      }
+      if (proposalNumber) {
+        // Cancela o briefing vinculado (mesmo proposalNumber).
+        await env.DB.prepare(
+          "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled'"
+        ).bind(proposalNumber).run();
+        // Cancela a proposta vinculada.
+        await env.DB.prepare(
+          "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
+        ).bind(proposalNumber).run();
+      }
+    }
+
     return json({ ok: true, id, status });
   } catch (e) {
     return toErrorResponse(e);

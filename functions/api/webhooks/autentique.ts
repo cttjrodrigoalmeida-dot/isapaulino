@@ -69,6 +69,54 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       await env.DB.prepare(
         "UPDATE contracts SET status = 'signed', signed_at = ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(signedAt, contract.id).run();
+
+      // ── Auto-fill financeiro: ao assinar, gera automaticamente as parcelas
+      //     a partir da Seção 06 do contrato (se houver dados de pagamento). ──
+      try {
+        const contractRow = await env.DB.prepare(
+          "SELECT data, value FROM contracts WHERE id = ?"
+        ).bind(contract.id).first<{ data: string | null; value: number | null }>();
+        if (contractRow?.data) {
+          const cdoc = JSON.parse(contractRow.data);
+          const pag = cdoc?.sixPagamento;
+          if (pag && pag.valorTotal && pag.parcelas && pag.parcelas.length > 0) {
+            // Verifica se já existe config de pagamento (não sobrescreve).
+            const existing = await env.DB.prepare(
+              "SELECT id FROM contract_payments WHERE contract_id = ?"
+            ).bind(contract.id).first();
+            if (!existing) {
+              const down = pag.entrada?.valor
+                ? (() => { const v = parseFloat(pag.entrada.valor.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", ".")); return isNaN(v) ? 0 : v; })()
+                : 0;
+              const total = (() => { const v = parseFloat(pag.valorTotal.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", ".")); return isNaN(v) ? 0 : v; })();
+              const count = pag.parcelas.length;
+
+              // Insere a config de pagamento.
+              await env.DB.prepare(
+                "INSERT INTO contract_payments (contract_id, total_value, down_payment, installments_count) VALUES (?, ?, ?, ?)"
+              ).bind(contract.id, total, down, count).run();
+
+              // Insere as parcelas individuais.
+              for (const p of [pag.entrada, ...pag.parcelas]) {
+                if (!p) continue;
+                const amount = (() => { const v = parseFloat(p.valor.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", ".")); return isNaN(v) ? 0 : v; })();
+                if (!amount) continue;
+                // Extrai a data final do vencimento (ex.: "01/08/2026 a 05/08/2026" → 05/08/2026).
+                const vencParts = p.vencimento.split(" a ");
+                const dateStr = vencParts[vencParts.length - 1]?.trim();
+                const m = dateStr?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : new Date().toISOString().slice(0, 10);
+                const num = "number" in p ? Number(p.number) : 0;
+                await env.DB.prepare(
+                  `INSERT INTO installments (contract_id, installment_number, due_date, amount, status)
+                   VALUES (?, ?, ?, ?, 'pending')`
+                ).bind(contract.id, num, iso, amount).run();
+              }
+            }
+          }
+        }
+      } catch { /* se falhar o auto-fill, segue sem travar a assinatura */ }
+
       await createNotification(env, {
         type: "signature",
         title: "Contrato assinado por todas as partes",

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ContractsList from "../ContractsList";
 import ContractEditor from "../ContractEditor";
 import ContractPayments from "../ContractPayments";
+import ContratosCharts from "./ContratosCharts";
 
 type View =
   | { name: "list" }
@@ -37,10 +38,14 @@ export default function Contratos({ requestNew }: { requestNew?: number | null }
   }
 
   return (
-    <ContractsList
-      onNew={() => setView({ name: "editor", id: null })}
-      onEdit={(id) => setView({ name: "editor", id })}
-      onPayments={(id, title) => setView({ name: "payments", id, title })}
-    />
+    <div>
+      {/* Gráficos do módulo de contratos */}
+      <ContratosCharts />
+      <ContractsList
+        onNew={() => setView({ name: "editor", id: null })}
+        onEdit={(id) => setView({ name: "editor", id })}
+        onPayments={(id, title) => setView({ name: "payments", id, title })}
+      />
+    </div>
   );
 }

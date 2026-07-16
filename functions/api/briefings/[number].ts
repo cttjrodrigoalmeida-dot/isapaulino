@@ -46,7 +46,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     if (!existing) return error(404, "Briefing não encontrado.");
 
     const status =
-      body.status === "published" || body.status === "draft" ? body.status : existing.status;
+      body.status === "published" || body.status === "draft" || body.status === "cancelled" ? body.status : existing.status;
 
     await env.DB.prepare(
       `UPDATE briefings
