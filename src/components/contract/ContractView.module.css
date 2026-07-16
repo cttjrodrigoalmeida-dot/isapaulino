@@ -263,6 +263,13 @@
 .sideValSm { font-size: 14px; font-weight: 600; }
 .sideCap { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-ink-3); }
 
+/* Linha destacada dentro do SideBox (borda + fundo suave) — Arquivos (11) e Validade (18). */
+.sideRowBoxedPink { border: 1px solid var(--c-melancia-line); background: var(--c-melancia-soft); border-radius: 14px 0 14px 0; padding: 12px 14px; }
+.sideRowBoxedGreen { border: 1px solid rgba(47, 158, 68, 0.42); background: var(--c-green-soft); border-radius: 14px 0 14px 0; padding: 12px 14px; }
+.sideRowCream { background: var(--c-cream); border-radius: 14px 0 14px 0; padding: 12px 14px; }
+/* Ícones levemente maiores nos cards de apoio que pedem destaque (Arquivos). */
+.sideBoxIconsLg .sideIcon svg { width: 24px; height: 24px; }
+
 /* caixa "Importante" — acento vermelho (melancia) completo */
 .importante {
   font-size: 12px;
@@ -290,10 +297,10 @@
   align-items: stretch;
   gap: 24px;
   flex-wrap: wrap;
-  border: 1px solid var(--c-line-2);
+  border: 1px solid var(--c-ink);   /* borda preta */
   border-radius: var(--border-radius-standard);
   padding: 26px;
-  background: var(--c-cream-soft);
+  background: var(--c-card);         /* fundo branco */
 }
 .payCardLeft { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 220px; }
 .payCardIcon { flex-shrink: 0; color: var(--c-beige); display: grid; place-items: center; }

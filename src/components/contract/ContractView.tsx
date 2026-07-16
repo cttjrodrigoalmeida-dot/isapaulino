@@ -52,9 +52,10 @@ const IconClock = () => (
     <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const IconHourglass = () => (
-  <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-    <path d="M7 4h10M7 20h10M8 4c0 3.5 8 4.5 8 8s-8 4.5-8 8M16 4c0 3.5-8 4.5-8 8" strokeLinecap="round" strokeLinejoin="round" />
+// Bandeira de "início" (substitui a ampulheta no card de validade).
+const IconFlag = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <path d="M6 21V4M6 4.5h11l-2.2 3.5L17 11.5H6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 const IconUser = () => (
@@ -323,17 +324,17 @@ function EscopoCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc 
 }
 
 // ── Caixa lateral genérica (prazo / arquivos / validade) ───────
-type SideRow = { icon: ReactNode; iconMod?: string; title: string; caption: string; capTop?: boolean; small?: boolean };
+type SideRow = { icon: ReactNode; iconMod?: string; rowMod?: string; title: string; caption: string; capTop?: boolean; small?: boolean };
 
-function SideBox({ label, rows }: { label?: string; rows: SideRow[] }) {
+function SideBox({ label, rows, iconsLg }: { label?: string; rows: SideRow[]; iconsLg?: boolean }) {
   return (
-    <div className={styles.sideBox}>
+    <div className={`${styles.sideBox} ${iconsLg ? styles.sideBoxIconsLg : ""}`}>
       {label && <span className={styles.sideBoxLabel}>{label}</span>}
       <div className={styles.sideList}>
         {rows.map((r, i) => {
           const valClass = `${styles.sideVal} ${r.small ? styles.sideValSm : ""}`;
           return (
-            <div key={i} className={styles.sideRow}>
+            <div key={i} className={`${styles.sideRow} ${r.rowMod ?? ""}`}>
               <span className={`${styles.sideIcon} ${r.iconMod ?? ""}`}>{r.icon}</span>
               <div className={styles.sideRowText}>
                 {r.capTop ? (
@@ -587,9 +588,12 @@ function PagamentoCard({ clause, doc }: { clause: ContractClause; doc: ContractD
 // ── Cláusula 11 (arquivos) — 2 colunas ─────────────────────────
 function ArquivosCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }) {
   const icons = [<IconCalendar key="c" />, <IconX key="x" />, <IconFolder key="f" />];
+  const last = doc.arquivosCards.length - 1;
   const rows: SideRow[] = doc.arquivosCards.map((c, i) => ({
     icon: icons[i] ?? <IconFolder key={`f${i}`} />,
     iconMod: i === 1 ? styles.sideIconPink : "",
+    // linha do meio destacada em vermelho; última linha em creme.
+    rowMod: i === 1 ? styles.sideRowBoxedPink : i === last ? styles.sideRowCream : "",
     title: c.label,
     caption: c.value,
   }));
@@ -601,7 +605,7 @@ function ArquivosCard({ clause, doc }: { clause: ContractClause; doc: ContractDo
           {clause.blocks.map((b, i) => <Block key={i} block={b} />)}
         </div>
         <div className={styles.sideCol}>
-          <SideBox label="ARQUIVOS DIGITAIS" rows={rows} />
+          <SideBox label="ARQUIVOS DIGITAIS" rows={rows} iconsLg />
           <p className={styles.importante}>
             <strong>Importante:</strong> o reenvio após esse prazo será mera liberalidade,
             não gerando obrigação de armazenamento permanente.
@@ -645,8 +649,8 @@ function IncapacidadeCard({ clause }: { clause: ContractClause }) {
 function ValidadeCard({ clause }: { clause: ContractClause }) {
   const rows: SideRow[] = [
     { icon: <IconCalendar />, title: "3 meses", caption: "VIGÊNCIA", capTop: true, small: true },
-    { icon: <IconHourglass />, title: "Data da disponibilidade", caption: "INÍCIO", capTop: true, small: true },
-    { icon: <IconCheck />, iconMod: styles.sideIconGreen, title: "Conclusão dos serviços ou quitação total", caption: "TÉRMINO", capTop: true, small: true },
+    { icon: <IconFlag />, title: "Data da disponibilidade", caption: "INÍCIO", capTop: true, small: true },
+    { icon: <IconCheck />, iconMod: styles.sideIconGreen, rowMod: styles.sideRowBoxedGreen, title: "Conclusão dos serviços ou quitação total", caption: "TÉRMINO", capTop: true, small: true },
   ];
   return (
     <SectionCard tab={clause.eyebrow ?? clause.title}>
