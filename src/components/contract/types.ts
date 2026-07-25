@@ -138,6 +138,9 @@ export interface ContractDoc {
   // ── Blocos visuais ──
   prazoCards: InfoCard[];       // cláusula 05
   arquivosCards: InfoCard[];    // cláusula 11
+  /** Cards do bloco de validade/vigência (cláusula 18): VIGÊNCIA / INÍCIO / TÉRMINO.
+   *  label = rótulo (ex.: "VIGÊNCIA"), value = destaque (ex.: "3 meses"). */
+  validadeCards?: InfoCard[];   // cláusula 18
   sixVariant: "pagamento" | "tabela-custos";
   sixPagamento?: SixPagamento;
   sixTabelaCustos?: SixTabelaCustos;

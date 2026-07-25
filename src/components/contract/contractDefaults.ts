@@ -57,6 +57,14 @@ export const DEFAULT_ARQUIVOS_CARDS: InfoCard[] = [
   { label: "SUA RESPONSABILIDADE", value: "FAÇA O DOWNLOAD E MANTENHA CÓPIAS DE SEGURANÇA." },
 ];
 
+// Cards do bloco de validade/vigência (cláusula 18). label = rótulo, value =
+// destaque. O ÚLTIMO card é o "TÉRMINO" (destaque verde).
+export const DEFAULT_VALIDADE_CARDS: InfoCard[] = [
+  { label: "VIGÊNCIA", value: "3 meses" },
+  { label: "INÍCIO", value: "Data da disponibilidade" },
+  { label: "TÉRMINO", value: "Conclusão dos serviços ou quitação total" },
+];
+
 export const DEFAULT_VALIDADE_LEGAL =
   "Conforme MP 2.200-2/2001 e Lei 14.063/2020. Este contrato será assinado eletronicamente pelas partes e terá validade jurídica conforme a legislação vigente.";
 

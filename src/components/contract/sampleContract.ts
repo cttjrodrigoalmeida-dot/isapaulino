@@ -8,6 +8,7 @@ import {
   DEFAULT_PIX,
   DEFAULT_PRAZO_CARDS,
   DEFAULT_ARQUIVOS_CARDS,
+  DEFAULT_VALIDADE_CARDS,
   DEFAULT_VALIDADE_LEGAL,
   DEFAULT_CLAUSES,
   DEFAULT_TABELA_CUSTOS,
@@ -64,6 +65,7 @@ export const SAMPLE_CONTRACT: ContractDoc = {
   clauses: DEFAULT_CLAUSES,
   prazoCards: DEFAULT_PRAZO_CARDS,
   arquivosCards: DEFAULT_ARQUIVOS_CARDS,
+  validadeCards: DEFAULT_VALIDADE_CARDS,
 
   sixVariant: "pagamento",
   sixPagamento: {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus } from "../components/contract/types";
 import { blankContractDoc } from "../components/contract/newContractDoc";
-import { DEFAULT_TABELA_CUSTOS } from "../components/contract/contractDefaults";
+import { DEFAULT_TABELA_CUSTOS, DEFAULT_VALIDADE_CARDS } from "../components/contract/contractDefaults";
 import ContractView from "../components/contract/ContractView";
 import ListEditor from "./ListEditor";
 import CurrencyInput from "./CurrencyInput";
@@ -649,6 +649,22 @@ export default function ContractEditor({
               onChange={(v) => patch({ arquivosCards: v })}
               valueLabel="Texto"
               labelLabel="Título"
+            />
+          </div>
+
+          {/* ── Validade / vigência (cláusula 18) ── */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Validade / vigência — cards (cláusula 18)</div>
+            <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
+              Cards do bloco <strong>VIGÊNCIA / INÍCIO / TÉRMINO</strong>. O <strong>rótulo</strong> é o texto pequeno
+              (ex.: "VIGÊNCIA") e o <strong>destaque</strong> é o texto grande (ex.: "3 meses"). O <strong>último</strong> card
+              é o "TÉRMINO" (destaque verde).
+            </div>
+            <InfoCardsEditor
+              cards={doc.validadeCards ?? DEFAULT_VALIDADE_CARDS}
+              onChange={(v) => patch({ validadeCards: v })}
+              valueLabel="Destaque"
+              labelLabel="Rótulo"
             />
           </div>
 

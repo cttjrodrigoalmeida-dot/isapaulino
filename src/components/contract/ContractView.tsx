@@ -9,6 +9,7 @@ import type {
   SignatureStatus,
 } from "./types";
 import CustomCursor from "../CustomCursor";
+import { DEFAULT_VALIDADE_CARDS } from "./contractDefaults";
 import { exportElementToPdf, waitForRenderReady } from "../../lib/pdfExport";
 import styles from "./ContractView.module.css";
 
@@ -653,27 +654,19 @@ function IncapacidadeCard({ clause }: { clause: ContractClause }) {
 }
 
 // ── Cláusula 18 (validade) — 2 colunas, borda verde ─────────────
-function ValidadeCard({ clause }: { clause: ContractClause }) {
-  const rows: SideRow[] = [
-    { icon: <IconCalendar />, title: "3 meses", caption: "VIGÊNCIA", capTop: true, small: true },
-    {
-      icon: <IconFlag />,
-      iconMod: styles.sideIconGreen,
-      title: "Data da disponibilidade",
-      caption: "INÍCIO",
-      capTop: true,
-      small: true,
-    },
-    {
-      icon: <IconCheck />,
-      iconMod: styles.sideIconGreen,
-      rowMod: styles.sideRowBoxedGreen,
-      title: "Conclusão dos serviços ou quitação total",
-      caption: "TÉRMINO",
-      capTop: true,
-      small: true,
-    },
-  ];
+function ValidadeCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }) {
+  // Editável pelo admin (cláusula 18); fallback p/ o padrão em contratos antigos.
+  const cards = doc.validadeCards?.length ? doc.validadeCards : DEFAULT_VALIDADE_CARDS;
+  const last = cards.length - 1;
+  const rows: SideRow[] = cards.map((c, i) => ({
+    icon: i === last ? <IconCheck /> : i === 0 ? <IconCalendar /> : <IconFlag />,
+    iconMod: i === 0 ? "" : styles.sideIconGreen,
+    rowMod: i === last ? styles.sideRowBoxedGreen : "",
+    title: c.value,
+    caption: c.label,
+    capTop: true,
+    small: true,
+  }));
   return (
     <SectionCard tab={clause.eyebrow ?? clause.title} tabVariant="green" cardBorderVariant="green">
       <ClauseHead number={clause.number} title={clause.title} />
@@ -883,7 +876,7 @@ function ClauseCard({
     case "07": return <PagamentoCard clause={clause} doc={doc} />;
     case "11": return <ArquivosCard clause={clause} doc={doc} />;
     case "17": return <IncapacidadeCard clause={clause} />;
-    case "18": return <ValidadeCard clause={clause} />;
+    case "18": return <ValidadeCard clause={clause} doc={doc} />;
     case "19": return <ForoAssinaturaCard clause={clause} doc={doc} onPrint={onPrint} waLink={waLink} />;
     default: {
       const pink = clause.number === "12" || clause.number === "15";
