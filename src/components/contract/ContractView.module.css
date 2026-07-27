@@ -266,7 +266,7 @@
 /* ════════ CAIXA LATERAL (prazo/arquivos/validade/incapacidade) ════════ */
 .sideGrid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 26px; align-items: start; }
 .sideText > .clauseP { margin-bottom: 13px; }
-.sideBox { border: 1px solid var(--c-line-2); border-radius: var(--border-radius-mirror); padding: 26px; background: var(--c-card-2); }
+.sideBox { border: 1px solid var(--c-line-2); border-radius: var(--border-radius-standard); padding: 26px; background: var(--c-card-2); }
 .sideBoxDark { background: var(--c-pill-bg); border-color: rgba(0, 0, 0, 0.18); }
 /* Creme — usado na cláusula de Incapacidade (17) */
 .sideBoxCream { background: var(--c-cream-soft); border-color: var(--c-line-2); }
@@ -278,8 +278,8 @@
 .sideIconPink { background: var(--c-melancia-soft); color: var(--c-melancia); }
 .sideIconGreen { background: var(--c-green-soft); color: var(--c-green); }
 /* Ícones "vazados" com borda colorida (alerta vermelho / conclusão verde). */
-.sideIconRedOutline { background: var(--c-melancia-soft); color: var(--c-melancia); border: 1.5px solid var(--c-melancia); }
-.sideIconGreenOutline { background: var(--c-green-soft); color: var(--c-green); border: 1.5px solid var(--c-green); }
+.sideIconRedOutline { background: #fff; color: var(--c-melancia); border: 1.5px solid var(--c-melancia); }
+.sideIconGreenOutline { background: #fff; color: var(--c-green); border: 1.5px solid var(--c-green); }
 .sideRowText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sideVal { font-size: 17px; font-weight: 700; color: var(--c-ink); line-height: 1.3; }
 .sideValSm { font-size: 14px; font-weight: 600; }

@@ -365,7 +365,7 @@ function PrazoCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }
     const isLast = i === doc.prazoCards.length - 1;
     return {
       icon: isLast ? <IconClock /> : <IconCalendar />,
-      iconMod: isLast ? styles.sideIconPink : undefined, // "disponível para iniciar" em vermelho
+      iconMod: isLast ? styles.sideIconRedOutline : undefined, // "disponível para iniciar": ícone vermelho de borda
       title: c.value,
       caption: c.label,
     };
@@ -635,7 +635,7 @@ function IncapacidadeCard({ clause }: { clause: ContractClause }) {
         <div className={styles.sideText}>
           {clause.blocks.map((b, i) => <Block key={i} block={b} />)}
         </div>
-        <div className={`${styles.sideBox} ${styles.sideBoxCream}`}>
+        <div className={styles.sideBox}>
           {INCAPACIDADE_NOTES.map((n, i) => (
             <div key={i} className={styles.noteItem}>
               <div className={styles.noteHead}>
