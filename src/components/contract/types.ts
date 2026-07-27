@@ -110,6 +110,9 @@ export interface SignatureBlock {
 }
 
 export interface ContractDoc {
+  /** Tipo do documento: contrato principal (padrão) ou termo aditivo. */
+  kind?: "principal" | "aditivo";
+
   // ── Identificação / cabeçalho ──
   contractNumber: string;       // "2622"
   proposalNumber?: string;      // "2624"

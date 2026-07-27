@@ -5,20 +5,21 @@ import ContractPayments from "../ContractPayments";
 
 type View =
   | { name: "list" }
-  | { name: "editor"; id: string | null }
+  | { name: "editor"; id: string | null; kind?: "principal" | "aditivo" }
   | { name: "payments"; id: string; title: string };
 
 export default function Contratos({ requestNew }: { requestNew?: number | null }) {
   const [view, setView] = useState<View>({ name: "list" });
 
   useEffect(() => {
-    if (requestNew) setView({ name: "editor", id: null });
+    if (requestNew) setView({ name: "editor", id: null, kind: "principal" });
   }, [requestNew]);
 
   if (view.name === "editor") {
     return (
       <ContractEditor
         id={view.id}
+        kind={view.kind}
         onBack={() => setView({ name: "list" })}
         onSaved={() => setView({ name: "list" })}
       />
@@ -37,7 +38,8 @@ export default function Contratos({ requestNew }: { requestNew?: number | null }
 
   return (
     <ContractsList
-      onNew={() => setView({ name: "editor", id: null })}
+      onNew={() => setView({ name: "editor", id: null, kind: "principal" })}
+      onNewAditivo={() => setView({ name: "editor", id: null, kind: "aditivo" })}
       onEdit={(id) => setView({ name: "editor", id })}
       onPayments={(id, title) => setView({ name: "payments", id, title })}
     />

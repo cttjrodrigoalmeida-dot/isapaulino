@@ -13,6 +13,8 @@ import {
   DEFAULT_VALIDADE_CARDS,
   DEFAULT_VALIDADE_LEGAL,
   DEFAULT_CLAUSES,
+  DEFAULT_CLAUSES_ADITIVO,
+  DEFAULT_ADITIVO_INTRO,
 } from "./contractDefaults";
 
 const EMPTY_CONTRATANTE: ContractParty = {
@@ -30,6 +32,7 @@ const EMPTY_CONTRATANTE: ContractParty = {
 /** Cria um ContractDoc novo (deep-clone dos defaults — não muta os originais). */
 export function blankContractDoc(): ContractDoc {
   return structuredClone({
+    kind: "principal",
     contractNumber: "",
     proposalNumber: "",
     date: "",
@@ -73,4 +76,21 @@ export function blankContractDoc(): ContractDoc {
     contact: DEFAULT_CONTACT,
     show: { countdown: true },
   });
+}
+
+/** Cria um TERMO ADITIVO novo — versão enxuta do contrato, com as cláusulas do
+ *  aditivo e o pagamento (que também alimenta o financeiro). Reaproveita a base. */
+export function blankAditivoDoc(): ContractDoc {
+  const base = blankContractDoc();
+  return {
+    ...base,
+    kind: "aditivo",
+    documentTitle: "TERMO ADITIVO AO CONTRATO DE\nPRESTAÇÃO DE SERVIÇOS DE ARQUITETURA",
+    objetoIntro: [DEFAULT_ADITIVO_INTRO],
+    escopoAmbientes: [],
+    escopoServicos: [],
+    clauses: structuredClone(DEFAULT_CLAUSES_ADITIVO),
+    sixVariant: "pagamento",
+    sixPagamento: { valorTotal: "", valorTotalExtenso: "", resumo: ["Sem juros"], parcelas: [] },
+  };
 }

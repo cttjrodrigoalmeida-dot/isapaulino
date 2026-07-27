@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus } from "../components/contract/types";
-import { blankContractDoc } from "../components/contract/newContractDoc";
+import { blankContractDoc, blankAditivoDoc } from "../components/contract/newContractDoc";
 import { DEFAULT_TABELA_CUSTOS, DEFAULT_VALIDADE_CARDS } from "../components/contract/contractDefaults";
 import ContractView from "../components/contract/ContractView";
 import ListEditor from "./ListEditor";
@@ -59,10 +59,13 @@ function SignIcon() {
 
 export default function ContractEditor({
   id,
+  kind = "principal",
   onBack,
   onSaved,
 }: {
   id: string | null;
+  /** Tipo do documento ao criar um NOVO (ignorado ao editar). */
+  kind?: "principal" | "aditivo";
   onBack: () => void;
   onSaved: () => void;
 }) {
@@ -134,7 +137,7 @@ export default function ContractEditor({
           }
           setDoc(parsed);
         } else {
-          const fresh = blankContractDoc();
+          const fresh = kind === "aditivo" ? blankAditivoDoc() : blankContractDoc();
           setDoc(fresh);
           setTitle(fresh.documentTitle.replace(/\n/g, " "));
           setStatus("draft");
@@ -148,7 +151,7 @@ export default function ContractEditor({
     return () => {
       alive = false;
     };
-  }, [id, isNew]);
+  }, [id, isNew, kind]);
 
   const patch = useCallback((partial: Partial<ContractDoc>) => {
     setDoc((prev) => (prev ? { ...prev, ...partial } : prev));
@@ -398,6 +401,7 @@ export default function ContractEditor({
 
   if (loading || !doc) return <div className={styles.loading}>Carregando contrato…</div>;
 
+  const isAditivo = doc.kind === "aditivo";
   const sp = doc.sixPagamento ?? { valorTotal: "", valorTotalExtenso: "", resumo: [], parcelas: [] };
   const setSp = (partial: Partial<typeof sp>) => patch({ sixPagamento: { ...sp, ...partial } });
   const tc = doc.sixTabelaCustos ?? { intro: "", tabelas: [], observacoes: [] };
@@ -445,8 +449,13 @@ export default function ContractEditor({
       <div ref={topRef} />
       <div className={styles.pageHead}>
         <div>
-          <div className={styles.pageTitle}>{isNew && !contractId ? "Novo contrato" : "Editar contrato"}</div>
+          <div className={styles.pageTitle}>
+            {isNew && !contractId
+              ? isAditivo ? "Novo termo aditivo" : "Novo contrato"
+              : isAditivo ? "Editar termo aditivo" : "Editar contrato"}
+          </div>
           <div className={styles.pageHint}>
+            {isAditivo ? "Termo aditivo — versão enxuta do contrato (altera/inclui itens no contrato principal). " : ""}
             Documento 100% editável. Use a aba <strong>JSON avançado</strong> para qualquer campo não listado.
           </div>
         </div>
@@ -611,21 +620,28 @@ export default function ContractEditor({
 
           {/* ── Objeto & escopo ── */}
           <div className={styles.card}>
-            <div className={styles.cardTitle}>Objeto & escopo</div>
+            <div className={styles.cardTitle}>{isAditivo ? "Introdução (card das partes)" : "Objeto & escopo"}</div>
             <div className={styles.field}>
               <label className={styles.label}>Parágrafos de introdução (objeto)</label>
               <ParagraphList items={doc.objetoIntro} onChange={(v) => patch({ objetoIntro: v })} rows={3} />
             </div>
-            <div className={styles.field}>
-              <label className={styles.label}>Ambientes do escopo</label>
-              <ListEditor items={doc.escopoAmbientes} onChange={(v) => patch({ escopoAmbientes: v })} placeholder="ex.: Sala de Jantar" />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label}>Serviços incluídos</label>
-              <ParagraphList items={doc.escopoServicos} onChange={(v) => patch({ escopoServicos: v })} rows={2} placeholder="ex.: Planta Layout" />
-            </div>
+            {!isAditivo && (
+              <>
+                <div className={styles.field}>
+                  <label className={styles.label}>Ambientes do escopo</label>
+                  <ListEditor items={doc.escopoAmbientes} onChange={(v) => patch({ escopoAmbientes: v })} placeholder="ex.: Sala de Jantar" />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Serviços incluídos</label>
+                  <ParagraphList items={doc.escopoServicos} onChange={(v) => patch({ escopoServicos: v })} rows={2} placeholder="ex.: Planta Layout" />
+                </div>
+              </>
+            )}
           </div>
 
+          {/* Prazo / Arquivos / Validade — só no contrato principal (não no aditivo). */}
+          {!isAditivo && (
+          <>
           {/* ── Prazo de entrega (cláusula 05) ── */}
           <div className={styles.card}>
             <div className={styles.cardTitle}>Prazo de entrega (serviços e prazos)</div>
@@ -667,22 +683,26 @@ export default function ContractEditor({
               labelLabel="Rótulo"
             />
           </div>
+          </>
+          )}
 
-          {/* ── Seção 06 ── */}
+          {/* ── Seção 06 (aditivo: sempre pagamento, cláusula 03) ── */}
           <div className={styles.card}>
-            <div className={styles.cardTitle}>Seção 06 — pagamento ⟷ tabela de custos</div>
-            <div className={styles.field}>
-              <label className={styles.label}>Variante exibida</label>
-              <select
-                className={styles.input}
-                value={doc.sixVariant}
-                onChange={(e) => changeVariant(e.target.value as ContractDoc["sixVariant"])}
-                style={{ width: 260 }}
-              >
-                <option value="pagamento">Preço / pagamento (parcelas)</option>
-                <option value="tabela-custos">Tabela de custos dos serviços</option>
-              </select>
-            </div>
+            <div className={styles.cardTitle}>{isAditivo ? "Valor e pagamento (cláusula 03)" : "Seção 06 — pagamento ⟷ tabela de custos"}</div>
+            {!isAditivo && (
+              <div className={styles.field}>
+                <label className={styles.label}>Variante exibida</label>
+                <select
+                  className={styles.input}
+                  value={doc.sixVariant}
+                  onChange={(e) => changeVariant(e.target.value as ContractDoc["sixVariant"])}
+                  style={{ width: 260 }}
+                >
+                  <option value="pagamento">Preço / pagamento (parcelas)</option>
+                  <option value="tabela-custos">Tabela de custos dos serviços</option>
+                </select>
+              </div>
+            )}
 
             {doc.sixVariant === "pagamento" ? (
               <>
@@ -743,7 +763,8 @@ export default function ContractEditor({
             )}
           </div>
 
-          {/* ── PIX (cláusula 07) ── */}
+          {/* ── PIX (cláusula 07) — só no contrato principal ── */}
+          {!isAditivo && (
           <div className={styles.card}>
             <div className={styles.cardTitle}>PIX</div>
             <div className={styles.row2}>
@@ -753,6 +774,7 @@ export default function ContractEditor({
             <Txt label="Titular" value={doc.pix.titular} onChange={(v) => patch({ pix: { ...doc.pix, titular: v } })} />
             <Area label="Lembrete (opcional)" value={doc.pix.lembrete ?? ""} onChange={(v) => patch({ pix: { ...doc.pix, lembrete: v || undefined } })} rows={2} />
           </div>
+          )}
 
           {/* ── Assinatura ── */}
           <div className={styles.card}>

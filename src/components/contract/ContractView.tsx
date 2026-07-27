@@ -769,6 +769,70 @@ function FooterActionCard({
   );
 }
 
+// ── Conteúdo do bloco de assinatura (reutilizado na cláusula 19 do contrato
+//    principal e na seção de assinatura do termo aditivo). ──────────
+function SignatureInner({ doc }: { doc: ContractDoc }) {
+  const legal = doc.signature.validadeLegal;
+  // Divide no primeiro "." seguido de espaço + maiúscula (fim de frase real) —
+  // evita cortar em pontos de números como "2.200-2/2001" ou "14.063/2020".
+  const legalMatch = legal.match(/^(.*?\.)\s+(?=[A-ZÀ-Ý])([\s\S]*)$/);
+  const miniNote = legalMatch ? legalMatch[1] : null;
+  const mainText = legalMatch ? legalMatch[2] : legal;
+  const pendingLabel = doc.signature.status === "aguardando" ? "AGUARDANDO ASSINATURA DO CLIENTE" : STATUS_LABEL[doc.signature.status];
+  const city = doc.contratada.endereco.split("-")[0]?.trim() || "Goiânia";
+  return (
+    <>
+      <p className={styles.clauseP}><strong className={styles.clauseNumInline}>Autorizo</strong> a execução dos serviços descritos acima:</p>
+
+      <div className={styles.digitalBox}>
+        <div className={styles.digitalBoxMain}>
+          <span className={styles.digitalBoxIcon}><IconLock /></span>
+          <div>
+            <span className={styles.digitalBoxLabel}>ASSINATURA DIGITAL</span>
+            <p className={styles.digitalBoxText}>{mainText}</p>
+          </div>
+        </div>
+        <div className={styles.digitalBoxSide}>
+          <span className={styles.digitalBadge}><IconCheck /> SEGURO E VÁLIDO</span>
+          {miniNote && <span className={styles.digitalMiniNote}><IconCheck /> {miniNote}</span>}
+        </div>
+      </div>
+
+      <span className={styles.blockLabel}>STATUS DA ASSINATURA</span>
+      <span className={`${styles.statusPill} ${doc.signature.status === "assinado" ? styles.statusSigned : ""}`}>
+        <span className={styles.statusDot} aria-hidden /> {pendingLabel}
+      </span>
+      <p className={styles.signDate}>{city}, <strong>{formatDateExtenso(doc.date)}</strong></p>
+
+      <div className={styles.sigParties}>
+        <SigPartyCard isContratante name={doc.signature.contratante.name} role={doc.signature.contratante.role} doc={doc} pendingLabel={pendingLabel} />
+        <SigPartyCard isContratante={false} name={doc.signature.contratada.name} role={doc.signature.contratada.role} doc={doc} pendingLabel={pendingLabel} />
+      </div>
+    </>
+  );
+}
+
+// Cards de ação do rodapé (baixar PDF / dúvidas) — some na impressão.
+function FooterActions({ onPrint, waLink }: { onPrint: () => void; waLink: string }) {
+  return (
+    <>
+      <FooterActionCard
+        mirror
+        icon={<IconDownload />}
+        title="BAIXAR CONTRATO EM PDF"
+        caption="Tenha uma cópia deste contrato em PDF."
+        action={<button className={styles.pdfBtn} onClick={onPrint}><IconDownload /> BAIXAR PDF</button>}
+      />
+      <FooterActionCard
+        icon={<IconQuestion />}
+        title="DÚVIDAS?"
+        caption="Fale conosco pelo WhatsApp e teremos prazer em ajudar."
+        action={<a className={styles.waBtn} href={waLink} target="_blank" rel="noopener noreferrer"><IconWhatsApp /> FALAR NO WHATSAPP</a>}
+      />
+    </>
+  );
+}
+
 // ── Cláusula 19 (foro) + bloco de assinatura completo ──────────
 function ForoAssinaturaCard({
   clause,
@@ -782,79 +846,26 @@ function ForoAssinaturaCard({
   waLink: string;
 }) {
   const printing = useContext(PrintContext);
-  const legal = doc.signature.validadeLegal;
-  // Divide no primeiro "." seguido de espaço + maiúscula (fim de frase real) —
-  // evita cortar em pontos de números como "2.200-2/2001" ou "14.063/2020".
-  const legalMatch = legal.match(/^(.*?\.)\s+(?=[A-ZÀ-Ý])([\s\S]*)$/);
-  const miniNote = legalMatch ? legalMatch[1] : null;
-  const mainText = legalMatch ? legalMatch[2] : legal;
-  const pendingLabel = doc.signature.status === "aguardando" ? "AGUARDANDO ASSINATURA DO CLIENTE" : STATUS_LABEL[doc.signature.status];
-  const city = doc.contratada.endereco.split("-")[0]?.trim() || "Goiânia";
-
   return (
     <>
       <SectionCard tab={clause.eyebrow ?? clause.title}>
         <ClauseHead number={clause.number} title={clause.title} />
         {clause.blocks.map((b, i) => <Block key={i} block={b} />)}
-
-        <p className={styles.clauseP}><strong className={styles.clauseNumInline}>Autorizo</strong> a execução dos serviços descritos acima:</p>
-
-        <div className={styles.digitalBox}>
-          <div className={styles.digitalBoxMain}>
-            <span className={styles.digitalBoxIcon}><IconLock /></span>
-            <div>
-              <span className={styles.digitalBoxLabel}>ASSINATURA DIGITAL</span>
-              <p className={styles.digitalBoxText}>{mainText}</p>
-            </div>
-          </div>
-          <div className={styles.digitalBoxSide}>
-            <span className={styles.digitalBadge}><IconCheck /> SEGURO E VÁLIDO</span>
-            {miniNote && <span className={styles.digitalMiniNote}><IconCheck /> {miniNote}</span>}
-          </div>
-        </div>
-
-        <span className={styles.blockLabel}>STATUS DA ASSINATURA</span>
-        <span className={`${styles.statusPill} ${doc.signature.status === "assinado" ? styles.statusSigned : ""}`}>
-          <span className={styles.statusDot} aria-hidden /> {pendingLabel}
-        </span>
-        <p className={styles.signDate}>{city}, <strong>{formatDateExtenso(doc.date)}</strong></p>
-
-        <div className={styles.sigParties}>
-          <SigPartyCard
-            isContratante
-            name={doc.signature.contratante.name}
-            role={doc.signature.contratante.role}
-            doc={doc}
-            pendingLabel={pendingLabel}
-          />
-          <SigPartyCard
-            isContratante={false}
-            name={doc.signature.contratada.name}
-            role={doc.signature.contratada.role}
-            doc={doc}
-            pendingLabel={pendingLabel}
-          />
-        </div>
+        <SignatureInner doc={doc} />
       </SectionCard>
-
-      {!printing && (
-        <>
-          <FooterActionCard
-            mirror
-            icon={<IconDownload />}
-            title="BAIXAR CONTRATO EM PDF"
-            caption="Tenha uma cópia deste contrato em PDF."
-            action={<button className={styles.pdfBtn} onClick={onPrint}><IconDownload /> BAIXAR PDF</button>}
-          />
-          <FooterActionCard
-            icon={<IconQuestion />}
-            title="DÚVIDAS?"
-            caption="Fale conosco pelo WhatsApp e teremos prazer em ajudar."
-            action={<a className={styles.waBtn} href={waLink} target="_blank" rel="noopener noreferrer"><IconWhatsApp /> FALAR NO WHATSAPP</a>}
-          />
-        </>
-      )}
+      {!printing && <FooterActions onPrint={onPrint} waLink={waLink} />}
     </>
+  );
+}
+
+// ── Cláusula do TERMO ADITIVO (texto simples; a cláusula 03 embute o pagamento). ──
+function AditivoClauseCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }) {
+  return (
+    <SectionCard tab={clause.eyebrow ?? clause.title}>
+      <ClauseHead number={clause.number} title={clause.title} />
+      {clause.blocks.map((b, i) => <Block key={i} block={b} />)}
+      {clause.number === "03" && doc.sixPagamento && <SixPagamento doc={doc} />}
+    </SectionCard>
   );
 }
 
@@ -951,7 +962,9 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
             </div>
 
             <div className={styles.headerBody}>
-              <span className={styles.docEyebrow}>CONTRATO DE {doc.serviceTitle} · Nº {doc.contractNumber}</span>
+              <span className={styles.docEyebrow}>
+                {doc.kind === "aditivo" ? "CONTRATO ADITIVO" : `CONTRATO DE ${doc.serviceTitle}`} · Nº {doc.contractNumber}
+              </span>
               {doc.projectName && (
                 <h1 className={styles.docTitleProject}>{doc.projectName}</h1>
               )}
@@ -995,19 +1008,36 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
             </section>
           </Reveal>
 
-          {/* ── Cláusulas (+ Seção 06 após a 05; assinatura embutida na 19) ── */}
-          {doc.clauses.map((clause) => (
-            <Fragment key={clause.number}>
-              <Reveal className={styles.section}>
-                <ClauseCard clause={clause} doc={doc} onPrint={exportPdf} waLink={waLink} />
-              </Reveal>
-              {clause.number === "05" && (
-                <Reveal className={styles.section}>
-                  <Section06 doc={doc} />
+          {doc.kind === "aditivo" ? (
+            /* ── TERMO ADITIVO: 6 cláusulas (pagamento na 03) + assinatura ── */
+            <>
+              {doc.clauses.map((clause) => (
+                <Reveal className={styles.section} key={clause.number}>
+                  <AditivoClauseCard clause={clause} doc={doc} />
                 </Reveal>
-              )}
-            </Fragment>
-          ))}
+              ))}
+              <Reveal className={styles.section}>
+                <SectionCard tab="ASSINATURA">
+                  <SignatureInner doc={doc} />
+                </SectionCard>
+              </Reveal>
+              {!printing && <FooterActions onPrint={exportPdf} waLink={waLink} />}
+            </>
+          ) : (
+            /* ── Contrato principal (+ Seção 06 após a 05; assinatura na 19) ── */
+            doc.clauses.map((clause) => (
+              <Fragment key={clause.number}>
+                <Reveal className={styles.section}>
+                  <ClauseCard clause={clause} doc={doc} onPrint={exportPdf} waLink={waLink} />
+                </Reveal>
+                {clause.number === "05" && (
+                  <Reveal className={styles.section}>
+                    <Section06 doc={doc} />
+                  </Reveal>
+                )}
+              </Fragment>
+            ))
+          )}
 
           <footer className={styles.footer}>ISABELA PAULINO STUDIO · TODOS OS DIREITOS RESERVADOS</footer>
         </div>

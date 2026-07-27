@@ -36,10 +36,12 @@ const IcClock = () => (
 );
 export default function ContractsList({
   onNew,
+  onNewAditivo,
   onEdit,
   onPayments,
 }: {
   onNew: () => void;
+  onNewAditivo: () => void;
   onEdit: (id: string) => void;
   onPayments: (id: string, title: string) => void;
 }) {
@@ -159,6 +161,7 @@ export default function ContractsList({
             </select>
           )}
           <button className={styles.btn} onClick={load} disabled={loading}>Atualizar</button>
+          <button className={styles.btn} onClick={onNewAditivo} title="Cria um Termo Aditivo (altera/inclui itens no contrato principal)">+ Termo aditivo</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onNew}>+ Novo contrato</button>
         </div>
       </div>

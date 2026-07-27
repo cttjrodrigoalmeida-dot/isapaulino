@@ -306,6 +306,73 @@ export const DEFAULT_CLAUSES: ContractClause[] = [
   },
 ];
 
+// ── TERMO ADITIVO ──────────────────────────────────────────────────
+// Intro (dentro do card das partes) e cláusulas padrão do termo aditivo.
+// Tudo editável por contrato — os textos entre parênteses são placeholders.
+export const DEFAULT_ADITIVO_INTRO =
+  "As partes resolvem celebrar o presente TERMO ADITIVO ao contrato de prestação de serviços de arquitetura firmado entre si, mediante as cláusulas e condições abaixo:";
+
+export const DEFAULT_CLAUSES_ADITIVO: ContractClause[] = [
+  {
+    number: "01",
+    eyebrow: "OBJETO",
+    title: "DO OBJETO DO ADITIVO",
+    blocks: [
+      { type: "p", text: "1.1. O presente Termo Aditivo tem por objeto a inclusão dos seguintes ambientes/serviços ao escopo originalmente contratado: (descreva aqui os itens incluídos)." },
+      { type: "p", text: "1.2. Os serviços serão desenvolvidos conforme as mesmas condições técnicas, critérios, limitações e responsabilidades previstas no contrato principal." },
+    ],
+  },
+  {
+    number: "02",
+    eyebrow: "ESCOPO",
+    title: "DO ESCOPO DOS SERVIÇOS",
+    blocks: [
+      { type: "p", text: "2.1. Os itens ora incluídos contemplam o desenvolvimento descrito na proposta comercial complementar apresentada pela CONTRATADA e aprovada pela CONTRATANTE." },
+    ],
+  },
+  {
+    number: "03",
+    eyebrow: "VALOR | PAGAMENTO",
+    title: "DO VALOR E DAS CONDIÇÕES DE PAGAMENTO",
+    blocks: [
+      { type: "p", text: "3.1. Em razão da ampliação do escopo contratual, fica acrescido ao contrato o valor abaixo, a ser pago nas condições e vencimentos indicados." },
+      { type: "p", text: "3.2. Permanecem aplicáveis as disposições relativas a atraso, multa e juros previstas no contrato principal." },
+    ],
+  },
+  {
+    number: "04",
+    eyebrow: "PRAZO",
+    title: "DO PRAZO",
+    blocks: [
+      { type: "p", text: "4.1. O prazo estimado para execução dos serviços adicionais será de até 15 (quinze) dias úteis, contados a partir do cumprimento cumulativo das seguintes condições:" },
+      {
+        type: "list",
+        items: [
+          "Da assinatura deste Termo Aditivo;",
+          "Da entrega de todos os materiais e informações necessários ao desenvolvimento dos serviços;",
+          "Da confirmação do pagamento da parcela correspondente ao vencimento acordado.",
+        ],
+      },
+    ],
+  },
+  {
+    number: "05",
+    eyebrow: "DEMAIS CLÁUSULAS",
+    title: "DAS DEMAIS CLÁUSULAS",
+    blocks: [
+      { type: "p", text: "5.1. Permanecem inalteradas e em pleno vigor todas as demais cláusulas e condições previstas no contrato principal de Prestação de Serviços de Arquitetura que não conflitarem com o presente Termo Aditivo." },
+    ],
+  },
+  {
+    number: "06",
+    eyebrow: "RATIFICAÇÃO",
+    title: "DA RATIFICAÇÃO",
+    blocks: [
+      { type: "p", text: "6.1. As partes ratificam integralmente o contrato principal, declarando que o presente Termo Aditivo passa a integrá-lo para todos os fins de direito." },
+    ],
+  },
+];
+
 // Tabela de custos padrão (modelo do contrato de referência). Serve de template
 // para novos contratos ao trocar a variante da Seção 06 p/ "tabela-custos": a
 // estrutura já vem pronta e é só ajustar os valores por projeto (add/remove livre).
