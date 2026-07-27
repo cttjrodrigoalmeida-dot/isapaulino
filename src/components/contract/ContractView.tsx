@@ -53,10 +53,10 @@ const IconClock = () => (
     <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-// Bandeira de "início" (substitui a ampulheta no card de validade).
-const IconFlag = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-    <path d="M6 21V4M6 4.5h11l-2.2 3.5L17 11.5H6" strokeLinecap="round" strokeLinejoin="round" />
+// Ampulheta — ícone de "início / data de disponibilidade" (cláusula 18).
+const IconHourglass = () => (
+  <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <path d="M7 4h10M7 20h10M8 4c0 3.5 8 4.5 8 8s-8 4.5-8 8M16 4c0 3.5-8 4.5-8 8" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 const IconUser = () => (
@@ -596,12 +596,10 @@ function PagamentoCard({ clause, doc }: { clause: ContractClause; doc: ContractD
 // ── Cláusula 11 (arquivos) — 2 colunas ─────────────────────────
 function ArquivosCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }) {
   const icons = [<IconCalendar key="c" />, <IconX key="x" />, <IconFolder key="f" />];
-  const last = doc.arquivosCards.length - 1;
   const rows: SideRow[] = doc.arquivosCards.map((c, i) => ({
     icon: icons[i] ?? <IconFolder key={`f${i}`} />,
-    iconMod: i === 1 ? styles.sideIconPink : "",
-    // linha do meio destacada em vermelho; última linha em creme.
-    rowMod: i === 1 ? styles.sideRowBoxedPink : i === last ? styles.sideRowCream : "",
+    // só o ícone do "APÓS ESSE PRAZO" ganha borda vermelha; os demais ficam escuros (iguais).
+    iconMod: i === 1 ? styles.sideIconRedOutline : "",
     title: c.label,
     caption: c.value,
   }));
@@ -626,7 +624,7 @@ function ArquivosCard({ clause, doc }: { clause: ContractClause; doc: ContractDo
 
 // ── Cláusula 17 (incapacidade) — 2 colunas, borda vermelha ─────
 const INCAPACIDADE_NOTES = [
-  { icon: <IconWarning />, mod: styles.sideIconPink, title: "COMUNICAÇÃO", text: "A CONTRATADA informará imediatamente o CONTRATANTE sobre qualquer impedimento que afete a execução dos serviços." },
+  { icon: <IconWarning />, mod: styles.sideIconRedOutline, title: "COMUNICAÇÃO", text: "A CONTRATADA informará imediatamente o CONTRATANTE sobre qualquer impedimento que afete a execução dos serviços." },
   { icon: <IconPeople />, mod: "", title: "", text: "As partes manterão o diálogo aberto para minimizar impactos e garantir a continuidade do projeto." },
 ];
 function IncapacidadeCard({ clause }: { clause: ContractClause }) {
@@ -659,9 +657,9 @@ function ValidadeCard({ clause, doc }: { clause: ContractClause; doc: ContractDo
   const cards = doc.validadeCards?.length ? doc.validadeCards : DEFAULT_VALIDADE_CARDS;
   const last = cards.length - 1;
   const rows: SideRow[] = cards.map((c, i) => ({
-    icon: i === last ? <IconCheck /> : i === 0 ? <IconCalendar /> : <IconFlag />,
-    iconMod: i === 0 ? "" : styles.sideIconGreen,
-    rowMod: i === last ? styles.sideRowBoxedGreen : "",
+    // VIGÊNCIA = calendário; INÍCIO = ampulheta; TÉRMINO (último) = check verde com borda.
+    icon: i === last ? <IconCheck /> : i === 0 ? <IconCalendar /> : <IconHourglass />,
+    iconMod: i === last ? styles.sideIconGreenOutline : "",
     title: c.value,
     caption: c.label,
     capTop: true,
