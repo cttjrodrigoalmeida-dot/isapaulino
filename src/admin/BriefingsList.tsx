@@ -182,7 +182,7 @@ export default function BriefingsList({
                   return (
                     <tr key={b.number}>
                       <td className={styles.rowNumber}>{b.number}</td>
-                      <td>{b.title || "—"}</td>
+                      <td>{b.proposalTitle || b.title || "—"}</td>
                       <td><span className={`${styles.badge} ${styles[meta.cls]}`}>{meta.label}</span></td>
                       <td style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                         {s === "responded" && b.lastResponseAt ? fmtDate(b.lastResponseAt) : "—"}

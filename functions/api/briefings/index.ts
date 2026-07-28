@@ -18,6 +18,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const { results } = await env.DB.prepare(
       `SELECT b.number, b.proposal_number AS proposalNumber, b.title, b.status,
               b.updated_at AS updatedAt,
+              (SELECT p.service_title FROM proposals p WHERE p.number = b.proposal_number) AS proposalTitle,
               (SELECT COUNT(*) FROM briefing_responses r WHERE r.briefing_number = b.number) AS responseCount,
               (SELECT MAX(r.submitted_at) FROM briefing_responses r WHERE r.briefing_number = b.number) AS lastResponseAt
        FROM briefings b ORDER BY b.updated_at DESC`

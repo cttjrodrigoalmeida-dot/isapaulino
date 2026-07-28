@@ -247,7 +247,7 @@ export default function ContractsList({
                   return (
                     <tr key={c.id}>
                       <td className={styles.rowNumber}>{c.contractNumber || "—"}</td>
-                      <td>{c.title}</td>
+                      <td>{c.proposalTitle || c.title}</td>
                       <td>{c.clientName || "—"}</td>
                       <td className={styles.mono}>{c.value != null ? formatBRL(c.value) : "—"}</td>
                       <td><span className={`${styles.badge} ${styles[meta.cls]}`}>{meta.label}</span></td>

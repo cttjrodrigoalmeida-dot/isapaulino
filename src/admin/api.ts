@@ -22,6 +22,8 @@ export interface BriefingSummary {
   number: string;
   proposalNumber: string | null;
   title: string | null;
+  /** Título puxado da proposta vinculada (por cliente/proposta), quando existir. */
+  proposalTitle: string | null;
   status: "draft" | "published" | "cancelled";
   updatedAt: string;
   responseCount: number;
@@ -114,6 +116,8 @@ export interface ContractSummary {
   slug: string | null;
   updatedAt: string;
   publishedAt: string | null;
+  /** Título puxado da proposta vinculada (por proposta/cliente), quando existir. */
+  proposalTitle: string | null;
   /** Data/hora da assinatura (para vigência/vencimento e gráficos). */
   signedAt: string | null;
   /** Vigência em meses após a assinatura (padrão 3 quando ausente). */

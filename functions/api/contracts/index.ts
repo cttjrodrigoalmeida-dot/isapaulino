@@ -25,7 +25,11 @@ const LIST_COLS = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title
   c.value, c.status, c.slug, c.updated_at AS updatedAt, c.published_at AS publishedAt,
   c.signed_at AS signedAt, json_extract(c.data, '$.vigenciaMeses') AS vigenciaMeses,
   c.autentique_document_id AS autentiqueDocumentId, c.data AS _data,
-  COALESCE(json_extract(c.data, '$.contractNumber'), '') AS contractNumber`;
+  COALESCE(json_extract(c.data, '$.contractNumber'), '') AS contractNumber,
+  COALESCE(
+    (SELECT p.service_title FROM proposals p WHERE p.number = json_extract(c.data, '$.proposalNumber')),
+    (SELECT p2.service_title FROM proposals p2 WHERE p2.client = cl.name ORDER BY p2.updated_at DESC LIMIT 1)
+  ) AS proposalTitle`;
 
 function opt(v: unknown): string | null {
   const s = typeof v === "string" ? v.trim() : "";
