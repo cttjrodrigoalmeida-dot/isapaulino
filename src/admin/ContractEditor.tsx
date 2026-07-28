@@ -8,6 +8,7 @@ import ListEditor from "./ListEditor";
 import CurrencyInput from "./CurrencyInput";
 import { formatBRL, valorPorExtenso, parseBRL as parseBRLNum } from "./proposalCalc";
 import { buildParcelas } from "./contractCalc";
+import { contractValue } from "./contractValue";
 import {
   Txt,
   Area,
@@ -31,15 +32,6 @@ const SIGN_STATUS: { value: SignatureStatus; label: string }[] = [
   { value: "assinado", label: "Assinado" },
   { value: "cancelado", label: "Cancelado" },
 ];
-
-// "R$ 2.000,00" → 2000. Usado para preencher a coluna `value` (listagem/financeiro).
-function parseBRL(s?: string): number | null {
-  if (!s) return null;
-  const cleaned = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
-  if (!cleaned) return null;
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : null;
-}
 
 // Data de hoje no formato "DD/MM/AAAA".
 function todayBR(): string {
@@ -291,7 +283,7 @@ export default function ContractEditor({
     title: title.trim() || doc?.documentTitle || "Contrato",
     content: legacyContent,
     data: doc ? JSON.stringify(doc) : null,
-    value: parseBRL(doc?.sixVariant === "pagamento" ? doc?.sixPagamento?.valorTotal : undefined),
+    value: contractValue(doc),
     deadline: null,
     autentique_url: doc?.autentiqueUrl?.trim() || null,
     status: overrideStatus ?? status,

@@ -4,6 +4,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse, HttpError } from "../_lib/http";
 import { requireAuth } from "../_lib/auth";
+import { contractValueFromData } from "../_lib/contractValue";
 
 export interface ContractInput {
   client_id?: string;
@@ -23,7 +24,7 @@ const STATUSES = ["draft", "published", "signed", "cancelled"];
 const LIST_COLS = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title,
   c.value, c.status, c.slug, c.updated_at AS updatedAt, c.published_at AS publishedAt,
   c.signed_at AS signedAt, json_extract(c.data, '$.vigenciaMeses') AS vigenciaMeses,
-  c.autentique_document_id AS autentiqueDocumentId,
+  c.autentique_document_id AS autentiqueDocumentId, c.data AS _data,
   COALESCE(json_extract(c.data, '$.contractNumber'), '') AS contractNumber`;
 
 function opt(v: unknown): string | null {
@@ -58,7 +59,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     query += " ORDER BY c.updated_at DESC";
 
     const { results } = await env.DB.prepare(query).bind(...binds).all();
-    return json({ contracts: results ?? [] });
+    // Valor autoritativo a partir da Cláusula 6 (tabela ou pagamento); mantém o
+    // c.value armazenado como fallback. Remove o `_data` (grande) da resposta.
+    const contracts = (results ?? []).map((r) => {
+      const row = r as Record<string, unknown>;
+      const cv = contractValueFromData(row._data as string | null);
+      if (cv != null) row.value = cv;
+      delete row._data;
+      return row;
+    });
+    return json({ contracts });
   } catch (e) {
     return toErrorResponse(e);
   }
