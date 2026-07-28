@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api, ApiError, type Installment, type InstallmentStatus } from "./api";
 import { formatBRL } from "./dashboard/format";
 import CurrencyInput from "./CurrencyInput";
@@ -30,6 +30,15 @@ function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   const [y, m, d] = iso.slice(0, 10).split("-");
   return d && m && y ? `${d}/${m}/${y}` : iso;
+}
+// Converte o vencimento da 1ª parcela do contrato ("01/08/2026 a 05/08/2026" ou
+// "05/08/2026") em ISO (YYYY-MM-DD) — usa a ÚLTIMA data (fim da janela, dia 05).
+function firstDueFromParcelas(parcelas?: { vencimento?: string }[]): string | null {
+  const v = parcelas?.[0]?.vencimento;
+  if (!v) return null;
+  const ms = [...v.matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)];
+  const m = ms[ms.length - 1];
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
 }
 
 interface PreviewRow {
@@ -81,17 +90,21 @@ export default function ContractPayments({
   const [payMethod, setPayMethod] = useState(PAYMENT_METHODS[0]);
   const [payNotes, setPayNotes] = useState("");
 
+  const didAutoGen = useRef(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { config, installments } = await api.getContractPayments(contractId);
-      setInstallments(installments);
-      // Busca o contrato p/ o cliente (WhatsApp) e o valor (sugestão do total).
+      let { config, installments } = await api.getContractPayments(contractId);
+
+      // Busca o contrato: cliente (WhatsApp) + o documento rico (valor/parcelas).
       let contractValue: number | null = null;
+      let doc: { sixVariant?: string; sixPagamento?: { valorTotal?: string; parcelas?: { vencimento?: string }[] } } | null = null;
       try {
         const { contract } = await api.getContract(contractId);
         contractValue = contract.value;
+        if (contract.data) { try { doc = JSON.parse(contract.data); } catch { /* data corrompido */ } }
         if (contract.clientId) {
           const { client } = await api.getClient(contract.clientId);
           setClient({ name: client.name, phone: client.phone });
@@ -99,13 +112,41 @@ export default function ContractPayments({
       } catch {
         /* opcional — sem cliente, o botão do WhatsApp só não aparece */
       }
+
+      // Sugestão vinda do contrato (só variante "pagamento"; tabela de custos é manual).
+      const sp = doc?.sixVariant === "pagamento" ? doc.sixPagamento : null;
+      const sugCount = sp?.parcelas?.length ?? 0;
+      const sugFirstDue = firstDueFromParcelas(sp?.parcelas);
+
+      // Ao abrir a 1ª vez sem parcelas: GERA automaticamente do contrato
+      // (valor total + nº de parcelas + vencimentos). Só a cobrança local —
+      // as cobranças no ASAAS continuam num botão à parte.
+      if (!config && installments.length === 0 && !didAutoGen.current && contractValue && contractValue > 0 && sugCount >= 1) {
+        didAutoGen.current = true;
+        await api.saveContractPayments(contractId, {
+          total_value: contractValue,
+          down_payment: 0,
+          installments_count: sugCount,
+          first_due_date: sugFirstDue ?? addMonths(todayISO(), 1),
+        });
+        const r = await api.getContractPayments(contractId);
+        config = r.config;
+        installments = r.installments;
+        setNotice("Parcelas geradas automaticamente a partir do contrato (valor e parcelas).");
+      }
+
+      setInstallments(installments);
       if (config) {
         setTotalValue(config.totalValue);
         setDownPayment(config.downPayment || null);
         setCountStr(String(config.installmentsCount));
-      } else if (contractValue != null && contractValue > 0) {
-        // Ainda não configurado: sugere o valor total do contrato (editável).
-        setTotalValue(contractValue);
+        const firstInst = installments.find((i) => i.installmentNumber === 1) ?? installments[0];
+        if (firstInst?.dueDate) setFirstDue(firstInst.dueDate.slice(0, 10));
+      } else {
+        // Ainda não configurado: pré-preenche do contrato (editável).
+        if (contractValue != null && contractValue > 0) setTotalValue(contractValue);
+        if (sugCount >= 1) setCountStr(String(sugCount));
+        if (sugFirstDue) setFirstDue(sugFirstDue);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -271,7 +312,8 @@ export default function ContractPayments({
         <div className={styles.cardTitle}>Configurar parcelas</div>
         {!locked && (
           <div className={styles.pageHint} style={{ marginBottom: 12 }}>
-            O <strong>valor total</strong> já vem sugerido do contrato — ajuste se precisar.
+            <strong>Valor, parcelas e vencimentos</strong> vêm automaticamente do contrato. Ajuste aqui e clique em
+            "Salvar parcelas" só se quiser mudar algo.
           </div>
         )}
         {locked && (
