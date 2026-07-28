@@ -98,6 +98,41 @@ export default function ContractsList({
   const cancelledValue = yearItems.filter((c) => c.status === "cancelled").reduce((s, c) => s + (c.value || 0), 0);
   const totalValue = signedValue + awaitingValue + cancelledValue;
 
+  // ── Vigência / vencimento (padrão 3 meses após a assinatura; global, todos os anos) ──
+  const vig = useMemo(() => {
+    const now = Date.now();
+    const DAY = 86_400_000;
+    let ativos = 0, vencendo = 0, vencidos = 0;
+    for (const c of items) {
+      if (c.status !== "signed" || !c.signedAt) continue;
+      const d = new Date(c.signedAt);
+      d.setMonth(d.getMonth() + (c.vigenciaMeses ?? 3));
+      const v = d.getTime();
+      if (v < now) vencidos++;
+      else { ativos++; if (v <= now + 30 * DAY) vencendo++; }
+    }
+    return { ativos, vencendo, vencidos };
+  }, [items]);
+  // Contratos assinados por mês (últimos 12 meses).
+  const assinadosPorMes = useMemo(() => {
+    const base = new Date();
+    const slots: { key: string; name: string }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(base.getFullYear(), base.getMonth() - i, 1);
+      slots.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, name: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") });
+    }
+    const counts = new Map(slots.map((s) => [s.key, 0]));
+    for (const c of items) {
+      if (c.status === "signed" && c.signedAt) {
+        const d = new Date(c.signedAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        if (counts.has(key)) counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+    return slots.map((s) => ({ name: s.name, value: counts.get(s.key) || 0 }));
+  }, [items]);
+  const anySigned = items.some((c) => c.status === "signed" && c.signedAt);
+
   const remove = async (c: ContractSummary) => {
     if (!confirm(`Excluir o contrato "${c.title}"? Esta ação não pode ser desfeita.`)) return;
     setBusy(c.id);
@@ -321,6 +356,49 @@ export default function ContractsList({
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Vigência dos contratos (3 meses padrão após a assinatura) ── */}
+          {anySigned && (
+            <div style={{ marginTop: 22 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)" }}>Vigência dos contratos</h3>
+                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Vencimento = assinatura + vigência (padrão 3 meses). Considera todos os anos.</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1.35fr) minmax(300px, 1fr)", gap: 16 }}>
+                {/* KPIs de vigência */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 16 }}>
+                  {[
+                    { label: "ATIVOS", value: vig.ativos, soft: "rgba(47, 158, 68, 0.10)", bd: "rgba(47, 158, 68, 0.35)", num: GREEN, sub: "dentro da vigência" },
+                    { label: "PRÓXIMOS DO VENCIMENTO", value: vig.vencendo, soft: "rgba(176, 122, 22, 0.10)", bd: "rgba(176, 122, 22, 0.35)", num: AMBER, sub: "vencem em até 30 dias" },
+                    { label: "VENCIDOS", value: vig.vencidos, soft: "rgba(221, 92, 78, 0.12)", bd: "rgba(221, 92, 78, 0.40)", num: RED, sub: "renovar ou encerrar" },
+                  ].map((k) => (
+                    <div key={k.label} style={{ ...cardStyle, background: k.soft, border: `1px solid ${k.bd}` }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-text-secondary)" }}>{k.label}</div>
+                      <div style={{ fontSize: 30, fontWeight: 700, color: k.num, marginTop: 10 }}>{k.value}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 4 }}>{k.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Assinados por mês */}
+                <div style={cardStyle}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>Assinados por mês</div>
+                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 2, marginBottom: 8 }}>Contratos assinados nos últimos 12 meses.</div>
+                  <div style={{ height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={assinadosPorMes} margin={{ top: 22, right: 8, bottom: 0, left: 6 }} barCategoryGap="24%">
+                        <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--color-text-secondary)" }} interval={0} />
+                        <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} width={26} />
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={40} fill={GREEN}>
+                          <LabelList dataKey="value" position="top" formatter={(v) => (Number(v) > 0 ? v : "")} style={{ fontSize: 11, fontWeight: 700, fill: "var(--color-text-primary)" }} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>

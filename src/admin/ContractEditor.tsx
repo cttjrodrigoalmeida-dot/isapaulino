@@ -579,13 +579,27 @@ export default function ContractEditor({
             </div>
             <div className={styles.row2}>
               <Txt label="Data" value={doc.date} onChange={(v) => patch({ date: v })} placeholder="24/06/2026" />
-              <Area
-                label="Título do documento (Enter quebra a linha)"
-                value={doc.documentTitle}
-                onChange={(v) => patch({ documentTitle: v })}
-                rows={2}
-              />
+              <div className={styles.field}>
+                <label className={styles.label}>Vigência (meses após a assinatura)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  className={`${styles.input} ${styles.mono}`}
+                  value={doc.vigenciaMeses ?? 3}
+                  onChange={(e) => patch({ vigenciaMeses: Math.max(1, Math.trunc(Number(e.target.value)) || 3) })}
+                />
+                <div className={styles.pageHint} style={{ marginTop: 6 }}>
+                  Padrão: <strong>3 meses</strong>. Usada nos gráficos (ativos / próximos do vencimento / vencidos).
+                </div>
+              </div>
             </div>
+            <Area
+              label="Título do documento (Enter quebra a linha)"
+              value={doc.documentTitle}
+              onChange={(v) => patch({ documentTitle: v })}
+              rows={2}
+            />
             <div className={styles.row2}>
               <Txt label="Subtítulo do serviço" value={doc.serviceTitle} onChange={(v) => patch({ serviceTitle: v })} />
               <Txt label="Projeto" value={doc.projectName} onChange={(v) => patch({ projectName: v })} />

@@ -112,6 +112,9 @@ export interface SignatureBlock {
 export interface ContractDoc {
   /** Tipo do documento: contrato principal (padrão) ou termo aditivo. */
   kind?: "principal" | "aditivo";
+  /** Vigência do contrato em meses após a assinatura (padrão 3). Usada nos
+   *  gráficos (ativos / próximos do vencimento / vencidos). */
+  vigenciaMeses?: number;
 
   // ── Identificação / cabeçalho ──
   contractNumber: string;       // "2622"

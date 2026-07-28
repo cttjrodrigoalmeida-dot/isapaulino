@@ -33,6 +33,7 @@ const EMPTY_CONTRATANTE: ContractParty = {
 export function blankContractDoc(): ContractDoc {
   return structuredClone({
     kind: "principal",
+    vigenciaMeses: 3,
     contractNumber: "",
     proposalNumber: "",
     date: "",

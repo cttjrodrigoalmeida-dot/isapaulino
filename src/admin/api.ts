@@ -114,6 +114,10 @@ export interface ContractSummary {
   slug: string | null;
   updatedAt: string;
   publishedAt: string | null;
+  /** Data/hora da assinatura (para vigência/vencimento e gráficos). */
+  signedAt: string | null;
+  /** Vigência em meses após a assinatura (padrão 3 quando ausente). */
+  vigenciaMeses: number | null;
   /** Nº do contrato (extraído do JSON rich doc). */
   contractNumber: string | null;
   /** Id do documento na Autentique (preenchido quando enviado para assinatura). */
