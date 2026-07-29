@@ -177,7 +177,7 @@
   background: var(--c-ink);
   border-radius: var(--border-radius-sm);
   padding: 8px 15px;
-  margin-left: 14px;
+  margin-left: 0;      /* alinhada à borda esquerda do card */
   margin-bottom: 12px;
 }
 .cardTabPink { background: var(--c-melancia-soft); color: var(--c-melancia-ink); border: 1px solid var(--c-melancia-line); }
@@ -278,11 +278,11 @@
 .sideIcon svg { width: 22px; height: 22px; }
 .sideIconPink { background: var(--c-melancia-soft); color: var(--c-melancia); }
 .sideIconGreen { background: var(--c-green-soft); color: var(--c-green); }
-/* Ícones "vazados" com borda colorida (alerta vermelho / conclusão verde). */
-.sideIconRedOutline { background: #fff; color: var(--c-melancia); border: 1.5px solid var(--c-melancia); }
+/* Ícones "vazados" com borda colorida: glifo PRETO, borda/fundo mantidos. */
+.sideIconRedOutline { background: #fff; color: var(--c-ink); border: 1.5px solid var(--c-melancia); }
 .sideIconGreenOutline { background: #fff; color: var(--c-green); border: 1.5px solid var(--c-green); }
-/* Ícone preenchido (rosa suave) COM borda — usado no prazo "disponível para iniciar". */
-.sideIconPinkBordered { background: var(--c-melancia-soft); color: var(--c-melancia); border: 1.5px solid var(--c-melancia-line); }
+/* Ícone preenchido (rosa suave) COM borda — prazo "disponível para iniciar": glifo preto. */
+.sideIconPinkBordered { background: var(--c-melancia-soft); color: var(--c-ink); border: 1.5px solid var(--c-melancia-line); }
 /* Cantos alternados (padrão espelhado da marca): o 1º ícone fica no padrão
    (canto sup-esq redondo) e cada ícone de baixo espelha o de cima. */
 .sideList .sideRow:nth-child(even) .sideIcon,
