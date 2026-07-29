@@ -280,7 +280,7 @@
 .sideIconGreen { background: var(--c-green-soft); color: var(--c-green); }
 /* Ícones "vazados" com borda colorida: glifo PRETO, borda/fundo mantidos. */
 .sideIconRedOutline { background: var(--c-melancia-soft); color: var(--c-ink); border: 1.5px solid var(--c-melancia); }
-.sideIconGreenOutline { background: #fff; color: var(--c-green); border: 1.5px solid var(--c-green); }
+.sideIconGreenOutline { background: var(--c-green-soft); color: var(--c-green); border: 1.5px solid var(--c-green); }
 /* Ícone preenchido (rosa suave) COM borda — prazo "disponível para iniciar": glifo preto. */
 .sideIconPinkBordered { background: var(--c-melancia-soft); color: var(--c-ink); border: 1.5px solid var(--c-melancia-line); }
 /* Cantos alternados (padrão espelhado da marca): o 1º ícone fica no padrão
