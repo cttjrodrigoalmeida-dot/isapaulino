@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ProposalSummary } from "./api";
+import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ContractSummary, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus, SixTabelaCustos } from "../components/contract/types";
 import { blankContractDoc, blankAditivoDoc } from "../components/contract/newContractDoc";
 import { DEFAULT_TABELA_CUSTOS, DEFAULT_VALIDADE_CARDS } from "../components/contract/contractDefaults";
@@ -65,6 +65,8 @@ export default function ContractEditor({
   const [contractId, setContractId] = useState<string | null>(id);
   const [clients, setClients] = useState<Client[]>([]);
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
+  // Contratos principais existentes — base para vincular um termo aditivo.
+  const [principals, setPrincipals] = useState<ContractSummary[]>([]);
 
   const [doc, setDoc] = useState<ContractDoc | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -97,14 +99,17 @@ export default function ContractEditor({
     let alive = true;
     (async () => {
       try {
-        const [{ clients }, { proposals }, loaded] = await Promise.all([
+        const [{ clients }, { proposals }, { contracts }, loaded] = await Promise.all([
           api.listClients(),
           api.listProposals(),
+          api.listContracts(),
           isNew ? Promise.resolve(null) : api.getContract(id!),
         ]);
         if (!alive) return;
         setClients(clients);
         setProposals(proposals);
+        // Só contratos principais (exclui aditivos e o próprio, se estiver editando).
+        setPrincipals(contracts.filter((c) => c.kind !== "aditivo" && c.id !== id));
         if (loaded) {
           const c = loaded.contract;
           setClientId(c.clientId);
@@ -260,6 +265,42 @@ export default function ContractEditor({
     applyClient(cid);
   };
 
+  // (Termo aditivo) Copia partes/cliente/projeto do CONTRATO PRINCIPAL vinculado.
+  // Usado ao selecionar o contrato principal e no botão "Atualizar do principal".
+  const applyParentContract = async (parentId: string, announce = false) => {
+    if (!parentId) return;
+    try {
+      const { contract } = await api.getContract(parentId);
+      let p: ContractDoc | null = null;
+      if (contract.data) {
+        try { p = JSON.parse(contract.data) as ContractDoc; } catch { /* data corrompido */ }
+      }
+      if (!p) { setError("O contrato principal selecionado não tem dados para copiar."); return; }
+      const src = p;
+      setClientId(contract.clientId);
+      setDoc((prev) => prev ? {
+        ...prev,
+        parentContractId: parentId,
+        parentContractNumber: src.contractNumber || "",
+        clientName: src.clientName,
+        projectName: src.projectName,
+        serviceTitle: src.serviceTitle,
+        tags: src.tags ?? prev.tags,
+        proposalNumber: src.proposalNumber ?? prev.proposalNumber,
+        contratante: { ...src.contratante },
+        contratada: { ...src.contratada },
+        signature: {
+          ...prev.signature,
+          contratante: { ...src.signature.contratante },
+          contratada: { ...src.signature.contratada },
+        },
+      } : prev);
+      if (announce) setNotice("Dados atualizados a partir do contrato principal.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao carregar o contrato principal.");
+    }
+  };
+
   const goJsonTab = () => {
     if (doc) setJsonText(JSON.stringify(doc, null, 2));
     setJsonError(null);
@@ -290,7 +331,7 @@ export default function ContractEditor({
   });
 
   const validate = (): string | null => {
-    if (!clientId) return "Selecione o cliente do contrato.";
+    if (!clientId) return doc?.kind === "aditivo" ? "Selecione o contrato principal (base do aditivo)." : "Selecione o cliente do contrato.";
     if (!title.trim() && !doc?.documentTitle) return "Informe o título do contrato.";
     return null;
   };
@@ -540,25 +581,49 @@ export default function ContractEditor({
           <div className={styles.card}>
             <div className={styles.cardTitle}>Vínculo & publicação</div>
             <div className={styles.row2}>
-              <div className={styles.field}>
-                <label className={styles.label}>Cliente *</label>
-                <select className={styles.input} value={clientId} onChange={(e) => selectClient(e.target.value)}>
-                  <option value="">Selecione…</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {clients.length === 0 && (
-                  <div className={styles.placeholderHint}>Nenhum cliente cadastrado. Crie um cliente primeiro.</div>
-                )}
-              </div>
+              {isAditivo ? (
+                <div className={styles.field}>
+                  <label className={styles.label}>Contrato principal (base do aditivo) *</label>
+                  <select
+                    className={styles.input}
+                    value={doc.parentContractId ?? ""}
+                    onChange={(e) => applyParentContract(e.target.value)}
+                  >
+                    <option value="">Selecione o contrato principal…</option>
+                    {principals.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.contractNumber ? `Nº ${c.contractNumber} · ` : ""}{c.clientName ?? "—"}{c.proposalTitle ? ` · ${c.proposalTitle}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {principals.length === 0 && (
+                    <div className={styles.placeholderHint}>Nenhum contrato principal encontrado. Crie o contrato principal primeiro.</div>
+                  )}
+                </div>
+              ) : (
+                <div className={styles.field}>
+                  <label className={styles.label}>Cliente *</label>
+                  <select className={styles.input} value={clientId} onChange={(e) => selectClient(e.target.value)}>
+                    <option value="">Selecione…</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {clients.length === 0 && (
+                    <div className={styles.placeholderHint}>Nenhum cliente cadastrado. Crie um cliente primeiro.</div>
+                  )}
+                </div>
+              )}
               <Txt label="Título interno (listagem)" value={title} onChange={setTitle} placeholder="Ex.: Contrato — Paulo Henrique" />
             </div>
             <div className={styles.placeholderHint}>
-              Ao selecionar o cliente, os dados da <strong>CONTRATANTE</strong>, Cliente, Projeto, Data e os nº do contrato/proposta
-              são preenchidos automaticamente (tudo editável).
+              {isAditivo ? (
+                <>Ao selecionar o contrato principal, as <strong>partes</strong>, Cliente e Projeto são copiados dele (não do cadastro do cliente). Se o principal mudar, clique em <strong>Atualizar do contrato principal</strong>.</>
+              ) : (
+                <>Ao selecionar o cliente, os dados da <strong>CONTRATANTE</strong>, Cliente, Projeto, Data e os nº do contrato/proposta são preenchidos automaticamente (tudo editável).</>
+              )}
             </div>
           </div>
 
@@ -607,15 +672,27 @@ export default function ContractEditor({
           <div className={styles.card}>
             <div className={styles.cardTitle}>
               CONTRATANTE
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnGhost}`}
-                style={{ marginLeft: 12, fontSize: 12 }}
-                onClick={fillFromClient}
-                disabled={!clientId}
-              >
-                Preencher do cliente
-              </button>
+              {isAditivo ? (
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ marginLeft: 12, fontSize: 12 }}
+                  onClick={() => doc.parentContractId && applyParentContract(doc.parentContractId, true)}
+                  disabled={!doc.parentContractId}
+                >
+                  Atualizar do contrato principal
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ marginLeft: 12, fontSize: 12 }}
+                  onClick={fillFromClient}
+                  disabled={!clientId}
+                >
+                  Preencher do cliente
+                </button>
+              )}
             </div>
             <PartyFields party={doc.contratante} onChange={(p) => patch({ contratante: p })} />
           </div>

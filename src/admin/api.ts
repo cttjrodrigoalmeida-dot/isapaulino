@@ -118,6 +118,8 @@ export interface ContractSummary {
   publishedAt: string | null;
   /** Título puxado da proposta vinculada (por proposta/cliente), quando existir. */
   proposalTitle: string | null;
+  /** Tipo do documento: "principal" | "aditivo" | null (legado = principal). */
+  kind: string | null;
   /** Data/hora da assinatura (para vigência/vencimento e gráficos). */
   signedAt: string | null;
   /** Vigência em meses após a assinatura (padrão 3 quando ausente). */
