@@ -31,9 +31,10 @@
   --c-pill-ink: #5c5a54;   /* cinza mais escuro da paleta (texto sobre --c-pill-bg) */
   --c-cream-soft: #f8f4ec; /* creme mais claro (payCard, assinatura) — menos opaco */
 
-  /* Cards menos arredondados que o padrão global (escopo só desta página). */
-  --border-radius-standard: 24px 0 24px 0;
-  --border-radius-mirror: 0 24px 0 24px;
+  /* Recorte da marca (40px) invertido em relação ao global: sup-esq reta,
+     sup-dir redonda, inf-esq redonda, inf-dir reta (escopo só desta página). */
+  --border-radius-standard: 0 40px 0 40px;
+  --border-radius-mirror: 40px 0 40px 0;
 
   position: relative;
   min-height: 100vh;
@@ -280,6 +281,8 @@
 /* Ícones "vazados" com borda colorida (alerta vermelho / conclusão verde). */
 .sideIconRedOutline { background: #fff; color: var(--c-melancia); border: 1.5px solid var(--c-melancia); }
 .sideIconGreenOutline { background: #fff; color: var(--c-green); border: 1.5px solid var(--c-green); }
+/* Ícone preenchido (rosa suave) COM borda — usado no prazo "disponível para iniciar". */
+.sideIconPinkBordered { background: var(--c-melancia-soft); color: var(--c-melancia); border: 1.5px solid var(--c-melancia-line); }
 /* Cantos alternados (padrão espelhado da marca): o 1º ícone fica no padrão
    (canto sup-esq redondo) e cada ícone de baixo espelha o de cima. */
 .sideList .sideRow:nth-child(even) .sideIcon,

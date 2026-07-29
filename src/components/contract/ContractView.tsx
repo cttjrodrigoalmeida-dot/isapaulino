@@ -365,7 +365,7 @@ function PrazoCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }
     const isLast = i === doc.prazoCards.length - 1;
     return {
       icon: isLast ? <IconClock /> : <IconCalendar />,
-      iconMod: isLast ? styles.sideIconRedOutline : undefined, // "disponível para iniciar": ícone vermelho de borda
+      iconMod: isLast ? styles.sideIconPinkBordered : undefined, // "disponível para iniciar": rosa suave preenchido + borda
       title: c.value,
       caption: c.label,
     };
