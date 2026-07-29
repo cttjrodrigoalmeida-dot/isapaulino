@@ -20,11 +20,9 @@ export function parseValorBR(s?: string | null): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-interface Linha { valor?: string }
-interface Tabela { linhas?: Linha[] }
 interface Doc {
   sixVariant?: string;
-  sixTabelaCustos?: { tabelas?: Tabela[] };
+  sixTabelaCustos?: { valorTotalManual?: string };
   sixPagamento?: { valorTotal?: string; parcelas?: { valor?: string }[]; entrada?: { valor?: string } };
 }
 
@@ -38,11 +36,9 @@ export function contractValueFromData(dataJson?: string | null): number | null {
     return null;
   }
   if (doc.sixVariant === "tabela-custos") {
-    const tabelas = doc.sixTabelaCustos?.tabelas;
-    if (!tabelas?.length) return null;
-    let sum = 0;
-    for (const t of tabelas) for (const l of t.linhas || []) sum += parseValorBR(l.valor);
-    return sum > 0 ? sum : null;
+    // Valor MANUAL (não soma as linhas da tabela).
+    const v = parseValorBR(doc.sixTabelaCustos?.valorTotalManual);
+    return v > 0 ? v : null;
   }
   const sp = doc.sixPagamento;
   if (!sp) return null;

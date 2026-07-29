@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ProposalSummary } from "./api";
-import type { ContractDoc, SignatureStatus } from "../components/contract/types";
+import type { ContractDoc, SignatureStatus, SixTabelaCustos } from "../components/contract/types";
 import { blankContractDoc, blankAditivoDoc } from "../components/contract/newContractDoc";
 import { DEFAULT_TABELA_CUSTOS, DEFAULT_VALIDADE_CARDS } from "../components/contract/contractDefaults";
 import ContractView from "../components/contract/ContractView";
@@ -396,8 +396,8 @@ export default function ContractEditor({
   const isAditivo = doc.kind === "aditivo";
   const sp = doc.sixPagamento ?? { valorTotal: "", valorTotalExtenso: "", resumo: [], parcelas: [] };
   const setSp = (partial: Partial<typeof sp>) => patch({ sixPagamento: { ...sp, ...partial } });
-  const tc = doc.sixTabelaCustos ?? { intro: "", tabelas: [], observacoes: [] };
-  const setTc = (partial: Partial<typeof tc>) => patch({ sixTabelaCustos: { ...tc, ...partial } });
+  const tc: SixTabelaCustos = doc.sixTabelaCustos ?? { intro: "", tabelas: [], observacoes: [] };
+  const setTc = (partial: Partial<SixTabelaCustos>) => patch({ sixTabelaCustos: { ...tc, ...partial } });
   // Valor total → extenso automático; se já há parcelas, recalcula os valores.
   const setValorTotal = (n: number | null) => {
     if (n == null) return setSp({ valorTotal: "", valorTotalExtenso: "" });
@@ -753,6 +753,17 @@ export default function ContractEditor({
               </>
             ) : (
               <>
+                <div className={styles.field}>
+                  <label className={styles.label}>Valor do contrato para a listagem (R$)</label>
+                  <CurrencyInput
+                    value={tc.valorTotalManual ? parseBRLNum(tc.valorTotalManual) : null}
+                    onChange={(n) => setTc({ valorTotalManual: n == null ? "" : formatBRL(n) })}
+                    className={`${styles.input} ${styles.mono}`}
+                  />
+                  <div className={styles.pageHint} style={{ marginTop: 6 }}>
+                    Informe <strong>manualmente</strong> o valor que aparece na aba Contratos. Nesta variante (tabela de custos) o valor <strong>não</strong> é somado das linhas.
+                  </div>
+                </div>
                 <Area label="Introdução da tabela (opcional)" value={tc.intro ?? ""} onChange={(v) => setTc({ intro: v })} rows={3} placeholder="Texto de abertura da tabela." />
                 <div className={styles.field}>
                   <label className={styles.label}>Tabelas de custos</label>

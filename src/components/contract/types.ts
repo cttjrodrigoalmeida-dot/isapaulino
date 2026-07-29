@@ -88,6 +88,9 @@ export interface SixTabelaCustos {
   intro?: string;
   tabelas: CostTable[];
   observacoes?: string[];
+  /** Valor do contrato para a listagem/gráficos — informado MANUALMENTE nesta
+   *  variante (não é somado das linhas da tabela). "R$ 2.000,00". */
+  valorTotalManual?: string;
 }
 
 /** Card PIX (cláusula 07). */

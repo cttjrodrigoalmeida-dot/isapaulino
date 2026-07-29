@@ -32,11 +32,9 @@ export function parseValorBR(s?: string | null): number {
 export function contractValue(doc?: ContractDoc | null): number | null {
   if (!doc) return null;
   if (doc.sixVariant === "tabela-custos") {
-    const tabelas = doc.sixTabelaCustos?.tabelas;
-    if (!tabelas?.length) return null;
-    let sum = 0;
-    for (const t of tabelas) for (const l of t.linhas || []) sum += parseValorBR(l.valor);
-    return sum > 0 ? sum : null;
+    // Valor MANUAL (não soma as linhas): só aparece na lista o que for digitado.
+    const v = parseValorBR(doc.sixTabelaCustos?.valorTotalManual);
+    return v > 0 ? v : null;
   }
   const sp = doc.sixPagamento;
   if (!sp) return null;
