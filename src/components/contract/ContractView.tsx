@@ -963,9 +963,7 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
               <span className={styles.docEyebrow}>
                 {doc.kind === "aditivo" ? "CONTRATO ADITIVO" : `CONTRATO DE ${doc.serviceTitle}`} · Nº {doc.contractNumber}
               </span>
-              {doc.projectName && (
-                <h1 className={styles.docTitleProject}>{doc.projectName}</h1>
-              )}
+              {/* Nome do projeto NÃO aparece no documento — é só p/ a aba Contratos. */}
               <h1 className={styles.docTitle}>{doc.documentTitle}</h1>
               {doc.tags && doc.tags.length > 0 && (
                 <div className={styles.tags}>
@@ -978,7 +976,6 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
 
             <div className={styles.headerMeta}>
               <div className={styles.metaItem}><span className={styles.metaLabel}>CLIENTE</span><span className={styles.metaValue}>{doc.clientName}</span></div>
-              <div className={styles.metaItem}><span className={styles.metaLabel}>PROJETO</span><span className={styles.metaValue}>{doc.projectName}</span></div>
               <div className={styles.metaItem}><span className={styles.metaLabel}>DATA</span><span className={styles.metaValue}>{doc.date}</span></div>
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>STATUS</span>
