@@ -317,15 +317,23 @@ function EscopoCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc 
     <SectionCard tab={clause.eyebrow ?? clause.title}>
       <ClauseHead number={clause.number} title={clause.title} />
       {first && <Block block={first} />}
-      <span className={styles.blockLabel}>AMBIENTES DO ESCOPO</span>
-      <div className={styles.chips}>
-        {doc.escopoAmbientes.map((a) => <span key={a} className={styles.chip}>{a}</span>)}
-      </div>
+      {doc.escopoAmbientes.length > 0 && (
+        <>
+          <span className={styles.blockLabel}>AMBIENTES DO ESCOPO</span>
+          <div className={styles.chips}>
+            {doc.escopoAmbientes.map((a) => <span key={a} className={styles.chip}>{a}</span>)}
+          </div>
+        </>
+      )}
       {escopoNote && <InfoBox>{escopoNote}</InfoBox>}
-      <span className={styles.blockLabel}>2.2. Os serviços incluem:</span>
-      <ul className={styles.clauseList}>
-        {doc.escopoServicos.map((s, i) => <li key={i}>{s}</li>)}
-      </ul>
+      {doc.escopoServicos.length > 0 && (
+        <>
+          <span className={styles.blockLabel}>2.2. Os serviços incluem:</span>
+          <ul className={styles.clauseList}>
+            {doc.escopoServicos.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+        </>
+      )}
       {rest.map((b, i) => <Block key={i} block={b} />)}
     </SectionCard>
   );
@@ -858,6 +866,8 @@ function ForoAssinaturaCard({
 
 // ── Cláusula do TERMO ADITIVO (texto simples; a cláusula 03 embute o pagamento). ──
 function AditivoClauseCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }) {
+  // Cláusula de escopo (02): reusa o EscopoCard do principal (ambientes/serviços).
+  if (clause.number === "02") return <EscopoCard clause={clause} doc={doc} />;
   return (
     <SectionCard tab={clause.eyebrow ?? clause.title}>
       <ClauseHead number={clause.number} title={clause.title} />

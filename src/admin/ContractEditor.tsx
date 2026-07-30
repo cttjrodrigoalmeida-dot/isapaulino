@@ -703,23 +703,20 @@ export default function ContractEditor({
 
           {/* ── Objeto & escopo ── */}
           <div className={styles.card}>
-            <div className={styles.cardTitle}>{isAditivo ? "Introdução (card das partes)" : "Objeto & escopo"}</div>
+            <div className={styles.cardTitle}>Objeto & escopo</div>
             <div className={styles.field}>
               <label className={styles.label}>Parágrafos de introdução (objeto)</label>
               <ParagraphList items={doc.objetoIntro} onChange={(v) => patch({ objetoIntro: v })} rows={3} />
             </div>
-            {!isAditivo && (
-              <>
-                <div className={styles.field}>
-                  <label className={styles.label}>Ambientes do escopo</label>
-                  <ListEditor items={doc.escopoAmbientes} onChange={(v) => patch({ escopoAmbientes: v })} placeholder="ex.: Sala de Jantar" />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Serviços incluídos</label>
-                  <ParagraphList items={doc.escopoServicos} onChange={(v) => patch({ escopoServicos: v })} rows={2} placeholder="ex.: Planta Layout" />
-                </div>
-              </>
-            )}
+            <div className={styles.field}>
+              <label className={styles.label}>Ambientes do escopo</label>
+              <ListEditor items={doc.escopoAmbientes} onChange={(v) => patch({ escopoAmbientes: v })} placeholder="ex.: Sala de Jantar" />
+              {isAditivo && <div className={styles.placeholderHint}>No aditivo, aparecem na cláusula de escopo só se você preencher.</div>}
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>Serviços incluídos</label>
+              <ParagraphList items={doc.escopoServicos} onChange={(v) => patch({ escopoServicos: v })} rows={2} placeholder="ex.: Planta Layout" />
+            </div>
           </div>
 
           {/* Prazo / Arquivos / Validade — só no contrato principal (não no aditivo). */}
@@ -772,6 +769,11 @@ export default function ContractEditor({
           {/* ── Seção 06 (aditivo: sempre pagamento, cláusula 03) ── */}
           <div className={styles.card}>
             <div className={styles.cardTitle}>{isAditivo ? "Valor e pagamento (cláusula 03)" : "Seção 06 — pagamento ⟷ tabela de custos"}</div>
+            {isAditivo && (
+              <div className={styles.placeholderHint} style={{ marginBottom: 8 }}>
+                É <strong>aqui</strong> que você define o <strong>valor total</strong> e as <strong>parcelas</strong> do aditivo (mesmo formato do contrato principal) — não no texto da cláusula 03.
+              </div>
+            )}
             {!isAditivo && (
               <div className={styles.field}>
                 <label className={styles.label}>Variante exibida</label>
