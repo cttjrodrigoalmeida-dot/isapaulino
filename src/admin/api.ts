@@ -115,6 +115,7 @@ export interface ContractSummary {
   status: ContractStatus;
   slug: string | null;
   updatedAt: string;
+  createdAt: string;
   publishedAt: string | null;
   /** Título puxado da proposta vinculada (por proposta/cliente), quando existir. */
   proposalTitle: string | null;

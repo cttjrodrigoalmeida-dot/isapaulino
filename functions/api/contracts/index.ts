@@ -22,7 +22,7 @@ const STATUSES = ["draft", "published", "signed", "cancelled"];
 
 // Colunas de listagem + nome do cliente + nº do contrato (extraído do JSON).
 const LIST_COLS = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title,
-  c.value, c.status, c.slug, c.updated_at AS updatedAt, c.published_at AS publishedAt,
+  c.value, c.status, c.slug, c.updated_at AS updatedAt, c.created_at AS createdAt, c.published_at AS publishedAt,
   c.signed_at AS signedAt, json_extract(c.data, '$.vigenciaMeses') AS vigenciaMeses,
   json_extract(c.data, '$.kind') AS kind,
   c.autentique_document_id AS autentiqueDocumentId, c.data AS _data,
