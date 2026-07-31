@@ -179,11 +179,11 @@ export default function ContractsList({
               <thead>
                 <tr>
                   <th>Nº</th>
-                  <th>Título</th>
                   <th>Cliente</th>
-                  <th>Valor</th>
+                  <th>Título</th>
                   <th>Assinado em</th>
                   <th>Vence em</th>
+                  <th>Valor</th>
                   <th>Status</th>
                   <th style={{ textAlign: "right" }}>Ações</th>
                 </tr>
@@ -195,11 +195,11 @@ export default function ContractsList({
                   return (
                     <tr key={c.id}>
                       <td className={styles.rowNumber}>{c.contractNumber || "—"}</td>
-                      <td>{c.projectName || c.proposalTitle || c.title}</td>
                       <td>{c.clientName || "—"}</td>
-                      <td className={styles.mono}>{c.value != null ? formatBRL(c.value) : "—"}</td>
+                      <td>{c.projectName || c.proposalTitle || c.title}</td>
                       <td className={styles.mono}>{c.signedAt ? formatDate(c.signedAt) : "—"}</td>
                       <td className={styles.mono}>{(() => { const d = vencimentoDate(c); return d ? d.toLocaleDateString("pt-BR") : "—"; })()}</td>
+                      <td className={styles.mono}>{c.value != null ? formatBRL(c.value) : "—"}</td>
                       <td><span className={`${styles.badge} ${styles[meta.cls]}`}>{meta.label}</span></td>
                       <td>
                         <div className={styles.rowActions}>

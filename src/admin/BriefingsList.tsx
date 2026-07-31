@@ -148,8 +148,8 @@ export default function BriefingsList({
                 <tr>
                   <th>Nº</th>
                   <th>Título</th>
+                  <th>Respondido em</th>
                   <th>Status</th>
-                  <th>Última resposta</th>
                   <th style={{ textAlign: "right" }}>Ações</th>
                 </tr>
               </thead>
@@ -161,10 +161,10 @@ export default function BriefingsList({
                     <tr key={b.number}>
                       <td className={styles.rowNumber}>{b.number}</td>
                       <td>{b.proposalTitle || b.title || "—"}</td>
-                      <td><span className={`${styles.badge} ${styles[meta.cls]}`}>{meta.label}</span></td>
                       <td style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                         {s === "responded" && b.lastResponseAt ? fmtDate(b.lastResponseAt) : "—"}
                       </td>
+                      <td><span className={`${styles.badge} ${styles[meta.cls]}`}>{meta.label}</span></td>
                       <td>
                         <div className={styles.rowActions}>
                           {b.status === "published" && (
