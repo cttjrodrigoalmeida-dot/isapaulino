@@ -177,36 +177,58 @@ export default function ProposalsList({
                   <tr key={p.number}>
                     <td className={styles.rowNumber}>
                       {p.number}
-                      {p.status !== "published" && (
+                      {p.status === "cancelled" ? (
+                        <div style={{ fontSize: 10, color: "#dd5c4e", fontFamily: "var(--font-mono)" }}>cancelada</div>
+                      ) : p.status !== "published" ? (
                         <div style={{ fontSize: 10, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>rascunho</div>
-                      )}
+                      ) : null}
                     </td>
                     <td>{p.client || "—"}</td>
                     <td>{p.serviceTitle || "—"}</td>
                     <td>{p.date || "—"}</td>
                     <td className={styles.mono}>{p.value ? formatBRL(p.value) : "—"}</td>
                     <td>
-                      <button
-                        onClick={() => toggleOutcome(p)}
-                        disabled={busy === p.number}
-                        title="Clique para alternar entre Aprovada e Não aprovada"
-                        style={{
-                          cursor: "pointer",
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: "0.06em",
-                          textTransform: "uppercase",
-                          padding: "6px 12px",
-                          borderRadius: 999,
-                          border: "1px solid",
-                          ...(p.outcome === "aprovada"
-                            ? { color: "#4d7c0f", background: "rgba(132,204,22,0.16)", borderColor: "rgba(132,204,22,0.45)" }
-                            : { color: "#c92d4f", background: "rgba(240,80,110,0.16)", borderColor: "rgba(240,80,110,0.5)" }),
-                        }}
-                      >
-                        {p.outcome === "aprovada" ? "Aprovada" : "Não aprovada"}
-                      </button>
+                      {p.status === "cancelled" ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            padding: "6px 12px",
+                            borderRadius: 999,
+                            border: "1px solid rgba(240,80,110,0.5)",
+                            color: "#c92d4f",
+                            background: "rgba(240,80,110,0.16)",
+                          }}
+                        >
+                          Cancelada
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => toggleOutcome(p)}
+                          disabled={busy === p.number}
+                          title="Clique para alternar entre Aprovada e Não aprovada"
+                          style={{
+                            cursor: "pointer",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            padding: "6px 12px",
+                            borderRadius: 999,
+                            border: "1px solid",
+                            ...(p.outcome === "aprovada"
+                              ? { color: "#4d7c0f", background: "rgba(132,204,22,0.16)", borderColor: "rgba(132,204,22,0.45)" }
+                              : { color: "#c92d4f", background: "rgba(240,80,110,0.16)", borderColor: "rgba(240,80,110,0.5)" }),
+                          }}
+                        >
+                          {p.outcome === "aprovada" ? "Aprovada" : "Não aprovada"}
+                        </button>
+                      )}
                     </td>
                     <td>
                       <div className={styles.rowActions} style={{ flexWrap: "nowrap" }}>

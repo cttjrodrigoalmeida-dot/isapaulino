@@ -10,7 +10,7 @@ export interface ProposalSummary {
   client: string | null;
   serviceTitle: string | null;
   date: string | null;
-  status: "draft" | "published";
+  status: "draft" | "published" | "cancelled";
   /** Resultado comercial (manual). Só 'aprovada' entra no faturamento. */
   outcome: ProposalOutcome;
   /** Valor da proposta (R$) parseado do JSON — para os gráficos por valor. */
