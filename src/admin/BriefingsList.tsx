@@ -11,8 +11,8 @@ type StatusFilter = "todas" | "responded" | "awaiting" | "cancelled";
 const PAGE_SIZE = 8;
 
 const STATUS_META: Record<"responded" | "awaiting" | "cancelled", { label: string; cls: string }> = {
-  responded: { label: "Respondido", cls: "badgeResponded" },
-  awaiting: { label: "Aguardando respostas", cls: "badgeDraft" },
+  responded: { label: "Respondido", cls: "badgeGreen" },
+  awaiting: { label: "Aguardando respostas", cls: "badgeAmber" },
   cancelled: { label: "Cancelado", cls: "badgeCancelled" },
 };
 

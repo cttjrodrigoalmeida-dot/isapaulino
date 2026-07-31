@@ -13,9 +13,9 @@ function vencimentoDate(c: ContractSummary): Date | null {
 }
 
 const STATUS_META: Record<ContractStatus, { label: string; cls: string }> = {
-  draft: { label: "Rascunho", cls: "badgeDraft" },
-  published: { label: "Aguardando assinatura", cls: "badgePublished" },
-  signed: { label: "Assinado", cls: "badgeSigned" },
+  draft: { label: "Rascunho", cls: "badgeSlate" },
+  published: { label: "Aguardando assinatura", cls: "badgeAmber" },
+  signed: { label: "Assinado", cls: "badgeGreen" },
   cancelled: { label: "Cancelado", cls: "badgeCancelled" },
 };
 
