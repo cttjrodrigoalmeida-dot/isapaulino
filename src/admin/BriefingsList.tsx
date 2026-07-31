@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Cell, LabelList } from "recharts";
 import { api, ApiError, type BriefingSummary } from "./api";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
+import BriefingsAnalytics from "./BriefingsAnalytics";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -10,14 +10,9 @@ const yearOf = (number: string) => (/^\d{2}/.test(number) ? `20${number.slice(0,
 type StatusFilter = "todas" | "responded" | "awaiting" | "cancelled";
 const PAGE_SIZE = 8;
 
-const GREEN = "#2f9e44";
-const CREAM = "#d4b065";
-const RED = "#dd5c4e";
-
-const STATUS_META: Record<string, { label: string; cls: string }> = {
-  draft: { label: "Aguardando respostas", cls: "badgeDraft" },
-  published: { label: "Aguardando respostas", cls: "badgeDraft" },
-  responded: { label: "Respondido", cls: "badgeSigned" },
+const STATUS_META: Record<"responded" | "awaiting" | "cancelled", { label: string; cls: string }> = {
+  responded: { label: "Respondido", cls: "badgeResponded" },
+  awaiting: { label: "Aguardando respostas", cls: "badgeDraft" },
   cancelled: { label: "Cancelado", cls: "badgeCancelled" },
 };
 
@@ -32,17 +27,6 @@ function fmtDate(iso: string | null): string {
   try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso.slice(0, 10); }
 }
 
-const IcCheck = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1a2e05" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M5 12.5l4.5 4.5L19 7" />
-  </svg>
-);
-const IcClock = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4a3610" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="M12 7.5V12l3 2" />
-  </svg>
-);
 export default function BriefingsList({
   onNew, onEdit, onResponses,
 }: {
@@ -93,12 +77,6 @@ export default function BriefingsList({
     }
     return { todas: yearItems.length, responded, awaiting, cancelled };
   }, [yearItems]);
-
-  const barData = [
-    { name: "Respondidos", value: counts.responded, color: GREEN },
-    { name: "Aguardando", value: counts.awaiting, color: CREAM },
-    { name: "Cancelados", value: counts.cancelled, color: RED },
-  ].filter((d) => d.value > 0);
 
   const remove = async (number: string) => {
     if (!confirm(`Excluir o briefing Nº ${number}?`)) return;
@@ -228,92 +206,10 @@ export default function BriefingsList({
             </div>
           )}
 
-          {/* ── Resumo (rodapé) ── */}
-          {yearItems.length > 0 && (
-            <div style={{ marginTop: 26 }}>
-              <div style={{ display: "grid", gap: 16 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(300px, 1.6fr) minmax(280px, 1.1fr)", gap: 16 }}>
-                  {/* Total */}
-                  <div style={cardStyle}>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>
-                      TOTAL DE BRIEFINGS
-                    </div>
-                    <div style={{ fontSize: 30, fontWeight: 700, color: "var(--color-text-primary)", marginTop: 14 }}>{counts.todas}</div>
-                    <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 6 }}>briefings em {year}</div>
-                  </div>
-
-                  {/* Gráfico */}
-                  <div style={cardStyle}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>Resumo dos briefings</div>
-                    <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 2, marginBottom: 8 }}>Comparativo por status.</div>
-                    {barData.length > 0 ? (
-                      <div style={{ height: 200 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={barData} margin={{ top: 22, right: 8, bottom: 0, left: 6 }} barCategoryGap="30%">
-                            <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--color-text-secondary)" }} />
-                            <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} width={32} allowDecimals={false} />
-                            <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={90}>
-                              {barData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                              <LabelList dataKey="value" position="top" style={{ fontSize: 12, fontWeight: 700, fill: "var(--color-text-primary)" }} />
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    ) : (
-                      <div style={{ height: 200, display: "grid", placeItems: "center", color: "var(--color-text-muted)", fontSize: 13 }}>Nenhum briefing no período.</div>
-                    )}
-                    <div style={{ display: "flex", gap: 18, justifyContent: "center", marginTop: 4 }}>
-                      <Legend color={GREEN} label="Respondidos" />
-                      <Legend color={CREAM} label="Aguardando" />
-                      <Legend color={RED} label="Cancelados" />
-                    </div>
-                  </div>
-
-                  {/* Cards de status */}
-                  <div style={{ display: "grid", gap: 16 }}>
-                    <div style={{ ...cardStyle, background: "rgba(47, 158, 68, 0.10)", border: "1px solid rgba(47, 158, 68, 0.35)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={iconBox(GREEN)}><IcCheck /></span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-text-secondary)" }}>RESPONDIDOS</div>
-                          <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", marginTop: 3 }}>{counts.responded}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 3 }}>briefing{counts.responded === 1 ? "" : "s"} respondido{counts.responded === 1 ? "" : "s"}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ ...cardStyle, background: "rgba(212, 176, 101, 0.12)", border: "1px solid rgba(212, 176, 101, 0.35)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={iconBox(CREAM)}><IcClock /></span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-text-secondary)" }}>AGUARDANDO RESPOSTAS</div>
-                          <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", marginTop: 3 }}>{counts.awaiting}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 3 }}>briefing{counts.awaiting === 1 ? "" : "s"} aguardando</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* ── Dashboard analítico do ano selecionado ── */}
+          <BriefingsAnalytics items={yearItems} year={year} onSeeDetails={() => { setTab("awaiting"); setPage(1); }} />
         </>
       )}
     </div>
   );
 }
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-text-secondary)" }}>
-      <span style={{ width: 9, height: 9, borderRadius: "50%", background: color }} />
-      {label}
-    </span>
-  );
-}
-
-const cardStyle: React.CSSProperties = {
-  background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 14, padding: 18,
-};
-const iconBox = (bg: string): React.CSSProperties => ({
-  width: 44, height: 44, borderRadius: 12, background: bg, display: "grid", placeItems: "center", flexShrink: 0,
-});

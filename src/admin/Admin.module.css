@@ -360,6 +360,11 @@
   background: rgba(59, 130, 246, 0.14);
   color: #60a5fa;
 }
+/* Verde alinhado ao gráfico (#2f9e44) — briefing "Respondido". */
+.badgeResponded {
+  background: rgba(47, 158, 68, 0.16);
+  color: #40c261;
+}
 .badgeCancelled {
   background: rgba(240, 80, 110, 0.12);
   color: #f0506e;

@@ -26,6 +26,7 @@ export interface BriefingSummary {
   proposalTitle: string | null;
   status: "draft" | "published" | "cancelled";
   updatedAt: string;
+  createdAt: string;
   responseCount: number;
   /** Data/hora da última resposta recebida (ISO). */
   lastResponseAt: string | null;
