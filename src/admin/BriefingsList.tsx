@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type BriefingSummary } from "./api";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import BriefingsAnalytics from "./BriefingsAnalytics";
+import ActionMenu, { type MenuAction } from "./ActionMenu";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -98,6 +99,21 @@ export default function BriefingsList({
     finally { setBusy(null); }
   };
 
+  const cancelB = async (b: BriefingSummary) => {
+    if (getStatus(b) === "cancelled") return;
+    if (!confirm(`Cancelar o briefing Nº ${b.number}?`)) return;
+    setBusy(b.number);
+    try {
+      await api.cancelBriefing(b.number);
+      setItems((prev) => prev.map((x) => (x.number === b.number ? { ...x, status: "cancelled" } : x)));
+    } catch (err) { alert(err instanceof ApiError ? err.message : "Erro ao cancelar."); }
+    finally { setBusy(null); }
+  };
+  const copyLink = async (url: string) => {
+    try { await navigator.clipboard.writeText(url); alert("Link copiado!"); }
+    catch { window.prompt("Copie o link:", url); }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.pageHead}>
@@ -165,18 +181,22 @@ export default function BriefingsList({
                         {s === "responded" && b.lastResponseAt ? fmtDate(b.lastResponseAt) : "—"}
                       </td>
                       <td><span className={`${styles.badge} ${styles[meta.cls]}`}>{meta.label}</span></td>
-                      <td>
-                        <div className={styles.rowActions}>
-                          {b.status === "published" && (
-                            <a className={`${styles.btn} ${styles.btnGhost}`} href={`/briefing/${b.number}`} target="_blank" rel="noopener noreferrer">Ver</a>
-                          )}
-                          <button className={styles.btn} onClick={() => onEdit(b.number)}>Editar</button>
-                          <button className={styles.btn} onClick={() => onResponses(b.number)}>
-                            {b.responseCount || 0} resposta{b.responseCount === 1 ? "" : "s"}
-                          </button>
-                          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => duplicate(b.number)} disabled={busy === b.number}>Duplicar</button>
-                          <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => remove(b.number)} disabled={busy === b.number}>Excluir</button>
-                        </div>
+                      <td style={{ textAlign: "right" }}>
+                        {(() => {
+                          const pub = b.status === "published";
+                          const publicUrl = `${location.origin}/briefing/${b.number}`;
+                          const acts: MenuAction[] = [
+                            { label: "Ver", href: pub ? `/briefing/${b.number}` : undefined, hidden: !pub },
+                            { label: "Editar", onSelect: () => onEdit(b.number) },
+                            { label: `Respostas (${b.responseCount || 0})`, onSelect: () => onResponses(b.number) },
+                            { label: "Duplicar", onSelect: () => duplicate(b.number), disabled: busy === b.number },
+                            { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
+                            { label: "Baixar PDF", href: pub ? `/briefing/${b.number}` : undefined, hidden: !pub },
+                            { label: "Cancelar", onSelect: () => cancelB(b), disabled: busy === b.number, hidden: s === "cancelled" },
+                            { label: "Excluir", onSelect: () => remove(b.number), danger: true, disabled: busy === b.number },
+                          ];
+                          return <ActionMenu actions={acts} />;
+                        })()}
                       </td>
                     </tr>
                   );

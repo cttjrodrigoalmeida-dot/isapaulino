@@ -378,6 +378,25 @@
   background: rgba(240, 80, 110, 0.12);
   color: #f0506e;
 }
+
+/* Item do menu de ações (dropdown ⋯) */
+.menuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.menuItem:hover:not(:disabled) { background: var(--color-surface-3); }
+.menuItem:disabled { opacity: 0.45; cursor: not-allowed; }
+.menuItemDanger { color: #f0506e; }
 .empty {
   text-align: center;
   padding: 64px 20px;

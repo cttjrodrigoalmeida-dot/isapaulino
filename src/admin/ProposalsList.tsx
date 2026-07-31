@@ -3,6 +3,7 @@ import { api, ApiError, type ProposalSummary, type ProposalOutcome } from "./api
 import { formatBRL } from "./dashboard/format";
 import ProposalsSummary from "./ProposalsSummary";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
+import ActionMenu, { type MenuAction } from "./ActionMenu";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -81,6 +82,22 @@ export default function ProposalsList({
     } finally {
       setBusy(null);
     }
+  };
+
+  const cancelP = async (p: ProposalSummary) => {
+    if (p.status === "cancelled") return;
+    if (!confirm(`Cancelar a proposta Nº ${p.number}?`)) return;
+    setBusy(p.number);
+    try {
+      await api.cancelProposal(p.number);
+      setItems((prev) => prev.map((x) => (x.number === p.number ? { ...x, status: "cancelled" } : x)));
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Erro ao cancelar.");
+    } finally { setBusy(null); }
+  };
+  const copyLink = async (url: string) => {
+    try { await navigator.clipboard.writeText(url); alert("Link copiado!"); }
+    catch { window.prompt("Copie o link:", url); }
   };
 
   const toggleOutcome = async (p: ProposalSummary) => {
@@ -230,15 +247,21 @@ export default function ProposalsList({
                         </button>
                       )}
                     </td>
-                    <td>
-                      <div className={styles.rowActions} style={{ flexWrap: "nowrap" }}>
-                        {p.status === "published" && (
-                          <a className={`${styles.btn} ${styles.btnGhost}`} href={`/proposta/${p.number}`} target="_blank" rel="noopener noreferrer">Ver</a>
-                        )}
-                        <button className={styles.btn} onClick={() => onEdit(p.number)}>Editar</button>
-                        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => duplicate(p.number)} disabled={busy === p.number}>Duplicar</button>
-                        <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => remove(p.number)} disabled={busy === p.number}>Excluir</button>
-                      </div>
+                    <td style={{ textAlign: "right" }}>
+                      {(() => {
+                        const pub = p.status === "published";
+                        const publicUrl = `${location.origin}/proposta/${p.number}`;
+                        const acts: MenuAction[] = [
+                          { label: "Ver", href: pub ? `/proposta/${p.number}` : undefined, hidden: !pub },
+                          { label: "Editar", onSelect: () => onEdit(p.number) },
+                          { label: "Duplicar", onSelect: () => duplicate(p.number) },
+                          { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
+                          { label: "Baixar PDF", href: pub ? `/proposta/${p.number}` : undefined, hidden: !pub },
+                          { label: "Cancelar", onSelect: () => cancelP(p), hidden: p.status === "cancelled" },
+                          { label: "Excluir", onSelect: () => remove(p.number), danger: true },
+                        ];
+                        return <ActionMenu actions={acts} />;
+                      })()}
                     </td>
                   </tr>
                 ))}

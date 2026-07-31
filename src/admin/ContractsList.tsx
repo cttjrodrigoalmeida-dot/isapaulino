@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type ContractSummary, type ContractStatus } from "./api";
 import { formatBRL, formatDate } from "./dashboard/format";
 import ContractsAnalytics from "./ContractsAnalytics";
+import ActionMenu, { type MenuAction } from "./ActionMenu";
 import styles from "./Admin.module.css";
 
 // Vencimento = assinatura + vigência (padrão 3 meses); null se não assinado.
@@ -128,6 +129,22 @@ export default function ContractsList({
     } finally { setBusy(null); }
   };
 
+  const cancelC = async (c: ContractSummary) => {
+    if (c.status === "cancelled") return;
+    if (!confirm(`Cancelar o contrato Nº ${c.contractNumber || "—"}? O briefing e a proposta vinculados também serão cancelados.`)) return;
+    setBusy(c.id);
+    try {
+      await api.cancelContract(c.id);
+      setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "cancelled" } : x)));
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Erro ao cancelar.");
+    } finally { setBusy(null); }
+  };
+  const copyLink = async (url: string) => {
+    try { await navigator.clipboard.writeText(url); alert("Link copiado!"); }
+    catch { window.prompt("Copie o link:", url); }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.pageHead}>
@@ -201,19 +218,23 @@ export default function ContractsList({
                       <td className={styles.mono}>{(() => { const d = vencimentoDate(c); return d ? d.toLocaleDateString("pt-BR") : "—"; })()}</td>
                       <td className={styles.mono}>{c.value != null ? formatBRL(c.value) : "—"}</td>
                       <td><span className={`${styles.badge} ${styles[meta.cls]}`}>{meta.label}</span></td>
-                      <td>
-                        <div className={styles.rowActions}>
-                          {isPublic && (
-                            <a className={`${styles.btn} ${styles.btnGhost}`} href={`/contrato/${c.slug}`} target="_blank" rel="noopener noreferrer">Ver</a>
-                          )}
-                          <button className={styles.btn} onClick={() => onEdit(c.id)}>Editar</button>
-                          <button className={styles.btn} onClick={() => onPayments(c.id, c.title)}>Pagamentos</button>
-                          {c.autentiqueDocumentId && c.status !== "signed" && c.status !== "cancelled" && (
-                            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => checkSignature(c)} disabled={busy === c.id}>Verificar assinatura</button>
-                          )}
-                          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => duplicate(c)} disabled={busy === c.id}>Duplicar</button>
-                          <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => remove(c)} disabled={busy === c.id}>Excluir</button>
-                        </div>
+                      <td style={{ textAlign: "right" }}>
+                        {(() => {
+                          const publicUrl = c.slug ? `${location.origin}/contrato/${c.slug}` : "";
+                          const acts: MenuAction[] = [
+                            { label: "Ver", href: isPublic ? `/contrato/${c.slug}` : undefined, hidden: !isPublic },
+                            { label: "Editar", onSelect: () => onEdit(c.id) },
+                            { label: "Pagamentos", onSelect: () => onPayments(c.id, c.title) },
+                            { label: "Verificar assinatura", onSelect: () => checkSignature(c), disabled: busy === c.id, hidden: !(c.autentiqueDocumentId && c.status !== "signed" && c.status !== "cancelled") },
+                            { label: "Duplicar", onSelect: () => duplicate(c), disabled: busy === c.id },
+                            { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !isPublic },
+                            { label: "Baixar PDF", href: isPublic ? `/contrato/${c.slug}` : undefined, hidden: !isPublic },
+                            { label: "Gerar contrato aditivo", onSelect: () => onNewAditivo(), hidden: c.kind === "aditivo" },
+                            { label: "Cancelar", onSelect: () => cancelC(c), disabled: busy === c.id, hidden: c.status === "cancelled" },
+                            { label: "Excluir", onSelect: () => remove(c), danger: true, disabled: busy === c.id },
+                          ];
+                          return <ActionMenu actions={acts} />;
+                        })()}
                       </td>
                     </tr>
                   );

@@ -420,6 +420,8 @@ export const api = {
     req<{ ok: true }>(`/api/proposals/${encodeURIComponent(number)}`, {
       method: "DELETE",
     }),
+  cancelProposal: (number: string) =>
+    req<{ ok: true }>(`/api/proposals/${encodeURIComponent(number)}/cancel`, { method: "POST" }),
 
   // ── briefings ──
   listBriefings: () => req<{ briefings: BriefingSummary[] }>("/api/briefings"),
@@ -441,6 +443,8 @@ export const api = {
     req<{ ok: true }>(`/api/briefings/${encodeURIComponent(number)}`, {
       method: "DELETE",
     }),
+  cancelBriefing: (number: string) =>
+    req<{ ok: true }>(`/api/briefings/${encodeURIComponent(number)}/cancel`, { method: "POST" }),
   listBriefingResponses: (number: string) =>
     req<{ responses: BriefingResponse[] }>(
       `/api/briefings/${encodeURIComponent(number)}/responses`
@@ -542,6 +546,8 @@ export const api = {
     }),
   deleteContract: (id: string) =>
     req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  cancelContract: (id: string) =>
+    req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
   publishContract: (id: string) =>
     req<{ ok: true; slug: string; status: ContractStatus }>(
       `/api/contracts/${encodeURIComponent(id)}/publish`,
