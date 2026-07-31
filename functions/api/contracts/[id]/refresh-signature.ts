@@ -8,6 +8,7 @@ import { json, error, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
 import { autentiqueConfigured, getDocument, isFullySigned, createSignatureLink, actionableSignatures } from "../../_lib/autentique";
 import { createNotification } from "../../_lib/notifications";
+import { approveProposalForSignedContract } from "../../_lib/contractSync";
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
@@ -71,6 +72,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       await env.DB.prepare(
         "UPDATE contracts SET status = 'signed', signed_at = ?, autentique_url = COALESCE(NULLIF(?, ''), autentique_url), updated_at = datetime('now') WHERE id = ?"
       ).bind(signedAt, pendingLink, contractId).run();
+      // Contrato assinado → proposta vinculada vira APROVADA.
+      await approveProposalForSignedContract(env, contractId);
       await createNotification(env, {
         type: "signature",
         title: "Contrato assinado por todas as partes",

@@ -5,6 +5,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth } from "../_lib/auth";
+import { approveProposalForSignedContract } from "../_lib/contractSync";
 import { type ContractInput, optContractData } from "./index";
 
 const COLS = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title, c.content, c.data,
@@ -61,35 +62,35 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
       .bind(clientId, title, opt(body.content) ?? "", data, value, opt(body.deadline), opt(body.autentique_url), status, id)
       .run();
 
-    // Sincronização: se o contrato foi cancelado, cancela também o briefing e a proposta vinculados.
-    if (status === "cancelled" && existing.status !== "cancelled") {
-      // Busca o contractNumber do JSON para encontrar a proposta vinculada.
+    // Sincronização de status pelo nº da proposta vinculada:
+    //  • contrato CANCELADO → cancela o briefing e a proposta vinculados;
+    //  • contrato ASSINADO  → marca a proposta vinculada como APROVADA (outcome).
+    const becameCancelled = status === "cancelled" && existing.status !== "cancelled";
+    const becameSigned = status === "signed" && existing.status !== "signed";
+    if (becameCancelled || becameSigned) {
+      // nº da proposta vinculada (do JSON enviado ou do que está salvo).
       let proposalNumber: string | null = null;
-      if (data) {
-        try {
-          const doc = JSON.parse(data);
-          proposalNumber = doc?.proposalNumber || null;
-        } catch { /* ignora */ }
-      }
-      // Se não achou no data, tenta pelo título/legado.
-      if (!proposalNumber) {
+      let src = data;
+      if (!src) {
         const c = await env.DB.prepare("SELECT data FROM contracts WHERE id = ?").bind(id).first<{ data: string | null }>();
-        if (c?.data) {
-          try {
-            const doc = JSON.parse(c.data);
-            proposalNumber = doc?.proposalNumber || null;
-          } catch { /* ignora */ }
-        }
+        src = c?.data ?? null;
+      }
+      if (src) {
+        try { proposalNumber = JSON.parse(src)?.proposalNumber || null; } catch { /* ignora */ }
       }
       if (proposalNumber) {
-        // Cancela o briefing vinculado (mesmo proposalNumber).
-        await env.DB.prepare(
-          "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled'"
-        ).bind(proposalNumber).run();
-        // Cancela a proposta vinculada.
-        await env.DB.prepare(
-          "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
-        ).bind(proposalNumber).run();
+        if (becameCancelled) {
+          // Cancela o briefing e a proposta vinculados.
+          await env.DB.prepare(
+            "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled'"
+          ).bind(proposalNumber).run();
+          await env.DB.prepare(
+            "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
+          ).bind(proposalNumber).run();
+        } else if (becameSigned) {
+          // Contrato assinado → proposta aprovada.
+          await approveProposalForSignedContract(env, id);
+        }
       }
     }
 

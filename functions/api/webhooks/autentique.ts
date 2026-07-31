@@ -7,6 +7,7 @@ import type { Env } from "../_lib/types";
 import { json, error, toErrorResponse } from "../_lib/http";
 import { autentiqueConfigured, getDocument, isFullySigned } from "../_lib/autentique";
 import { createNotification } from "../_lib/notifications";
+import { approveProposalForSignedContract } from "../_lib/contractSync";
 
 // Procura recursivamente por um id de documento no payload (JSON aninhado ou
 // chaves "document[id]" de formulário achatado).
@@ -69,6 +70,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       await env.DB.prepare(
         "UPDATE contracts SET status = 'signed', signed_at = ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(signedAt, contract.id).run();
+
+      // Contrato assinado → proposta vinculada vira APROVADA.
+      await approveProposalForSignedContract(env, contract.id);
 
       // ── Auto-fill financeiro: ao assinar, gera automaticamente as parcelas
       //     a partir da Seção 06 do contrato (se houver dados de pagamento). ──
