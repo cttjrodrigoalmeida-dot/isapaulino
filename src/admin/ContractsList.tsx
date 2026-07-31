@@ -195,7 +195,7 @@ export default function ContractsList({
                   return (
                     <tr key={c.id}>
                       <td className={styles.rowNumber}>{c.contractNumber || "—"}</td>
-                      <td>{c.proposalTitle || c.title}</td>
+                      <td>{c.projectName || c.proposalTitle || c.title}</td>
                       <td>{c.clientName || "—"}</td>
                       <td className={styles.mono}>{c.value != null ? formatBRL(c.value) : "—"}</td>
                       <td className={styles.mono}>{c.signedAt ? formatDate(c.signedAt) : "—"}</td>

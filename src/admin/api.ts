@@ -117,7 +117,9 @@ export interface ContractSummary {
   updatedAt: string;
   createdAt: string;
   publishedAt: string | null;
-  /** Título puxado da proposta vinculada (por proposta/cliente), quando existir. */
+  /** Nome do projeto (campo PROJETO do doc) — usado como título na lista. */
+  projectName: string | null;
+  /** Título puxado da proposta vinculada (por proposta/cliente) — fallback do título. */
   proposalTitle: string | null;
   /** Tipo do documento: "principal" | "aditivo" | null (legado = principal). */
   kind: string | null;
