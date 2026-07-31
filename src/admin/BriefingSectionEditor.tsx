@@ -24,6 +24,10 @@ function QuestionEditor({
   onRemove,
   onMove,
   onDuplicate,
+  onDndStart,
+  onDndOver,
+  onDndDrop,
+  showDropLine,
   isFirst,
   isLast,
 }: {
@@ -34,14 +38,39 @@ function QuestionEditor({
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
   onDuplicate: () => void;
+  onDndStart: () => void;
+  onDndOver: () => void;
+  onDndDrop: () => void;
+  showDropLine: boolean;
   isFirst: boolean;
   isLast: boolean;
 }) {
   const type = q.type ?? "longtext";
+  const cardRef = useRef<HTMLDivElement>(null);
   return (
-    <div className={styles.blockCard}>
+    <div
+      ref={cardRef}
+      className={styles.blockCard}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDndOver(); }}
+      onDrop={(e) => { e.preventDefault(); onDndDrop(); }}
+      style={showDropLine ? { boxShadow: "inset 0 3px 0 0 var(--color-accent)" } : undefined}
+    >
       <div className={styles.blockHead}>
-        <span className={styles.blockTag}>Pergunta {String(index + 1).padStart(2, "0")}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              if (cardRef.current) e.dataTransfer.setDragImage(cardRef.current, 24, 24);
+              onDndStart();
+            }}
+            title="Arraste para mover a pergunta (inclusive para outro bloco)"
+            style={{ cursor: "grab", userSelect: "none", fontSize: 16, lineHeight: 1, color: "var(--color-text-muted)" }}
+          >
+            ⠿
+          </span>
+          <span className={styles.blockTag}>Pergunta {String(index + 1).padStart(2, "0")}</span>
+        </span>
         <div style={{ display: "flex", gap: 6 }}>
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
@@ -122,6 +151,8 @@ export default function BriefingSectionEditor({
   onRemove,
   onMove,
   onDuplicate,
+  onQuestionDragStart,
+  onQuestionDrop,
   isFirst,
   isLast,
 }: {
@@ -132,6 +163,10 @@ export default function BriefingSectionEditor({
   onMove: (dir: -1 | 1) => void;
   /** duplica a seção inteira (imagem + perguntas) logo abaixo */
   onDuplicate: () => void;
+  /** DnD: registra a pergunta arrastada (índice) desta seção */
+  onQuestionDragStart: (qi: number) => void;
+  /** DnD: solta a pergunta arrastada nesta seção, na posição toQ */
+  onQuestionDrop: (toQ: number) => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -140,6 +175,8 @@ export default function BriefingSectionEditor({
 
   const [activePin, setActivePin] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  // Índice da pergunta sob o cursor durante o arraste (mostra a linha de destino).
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -322,12 +359,28 @@ export default function BriefingSectionEditor({
           onRemove={() => removeQuestion(qi)}
           onMove={(dir) => moveQuestion(qi, dir)}
           onDuplicate={() => duplicateQuestion(qi)}
+          onDndStart={() => onQuestionDragStart(qi)}
+          onDndOver={() => setDropIdx(qi)}
+          onDndDrop={() => { onQuestionDrop(qi); setDropIdx(null); }}
+          showDropLine={dropIdx === qi}
           isFirst={qi === 0}
           isLast={qi === section.questions.length - 1}
         />
       ))}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {/* Zona de drop no fim: soltar aqui move a pergunta para o final deste bloco
+          (funciona também quando o bloco está vazio). */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDropIdx(section.questions.length); }}
+        onDrop={(e) => { e.preventDefault(); onQuestionDrop(section.questions.length); setDropIdx(null); }}
+        onDragLeave={() => setDropIdx((d) => (d === section.questions.length ? null : d))}
+        style={{
+          display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center",
+          minHeight: 40, padding: "8px 10px", borderRadius: 10,
+          border: dropIdx === section.questions.length ? "2px dashed var(--color-accent)" : "2px dashed transparent",
+        }}
+      >
         <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
+        <span className={styles.pageHint} style={{ margin: 0 }}>ou arraste uma pergunta (de qualquer bloco) para cá</span>
       </div>
     </div>
   );

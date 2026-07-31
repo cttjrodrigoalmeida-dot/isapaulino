@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Briefing, BriefingSection } from "../components/briefing/types";
 import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
 import { api, ApiError, type ProposalSummary } from "./api";
@@ -154,6 +154,24 @@ export default function BriefingEditor({
       return { ...prev, sections: list };
     });
 
+  // ── Drag-and-drop de perguntas (inclusive entre blocos) ──
+  const dragSource = useRef<{ s: number; q: number } | null>(null);
+  const moveQuestionTo = (toS: number, toQ: number) =>
+    setBriefing((prev) => {
+      const src = dragSource.current;
+      dragSource.current = null;
+      if (!prev || !src) return prev;
+      if (src.s < 0 || src.s >= prev.sections.length) return prev;
+      const sections = prev.sections.map((s) => ({ ...s, questions: s.questions.slice() }));
+      const [moved] = sections[src.s].questions.splice(src.q, 1);
+      if (!moved) return prev;
+      let insertAt = toQ;
+      if (src.s === toS && src.q < toQ) insertAt -= 1; // ajuste ao remover antes do destino
+      insertAt = Math.max(0, Math.min(insertAt, sections[toS].questions.length));
+      sections[toS].questions.splice(insertAt, 0, moved);
+      return { ...prev, sections };
+    });
+
   const goJsonTab = () => {
     if (briefing) setJsonText(JSON.stringify(briefing, null, 2));
     setJsonError(null);
@@ -304,6 +322,8 @@ export default function BriefingEditor({
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
               onDuplicate={() => duplicateSection(i)}
+              onQuestionDragStart={(qi) => { dragSource.current = { s: i, q: qi }; }}
+              onQuestionDrop={(toQ) => moveQuestionTo(i, toQ)}
               isFirst={i === 0}
               isLast={i === briefing.sections.length - 1}
             />
