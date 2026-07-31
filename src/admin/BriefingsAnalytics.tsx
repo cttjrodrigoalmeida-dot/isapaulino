@@ -106,7 +106,13 @@ export default function BriefingsAnalytics({ items, year, onSeeDetails }: {
                 </defs>
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--color-text-secondary)" }} interval={0} />
                 <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: "var(--color-text-muted)" }} width={24} />
-                <Tooltip formatter={(v) => [`${v} briefing(s)`, "Criados"]} labelStyle={{ color: "#111" }} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Tooltip
+                  formatter={(v) => [`${v} briefing(s)`, "Criados"]}
+                  cursor={{ stroke: "var(--color-border)", strokeWidth: 1 }}
+                  contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12, boxShadow: "0 6px 20px rgba(0, 0, 0, 0.25)" }}
+                  labelStyle={{ color: "var(--color-text-primary)", fontWeight: 600, marginBottom: 2 }}
+                  itemStyle={{ color: "var(--color-text-secondary)" }}
+                />
                 <Area type="monotone" dataKey="value" stroke={C.slate} strokeWidth={2.5} fill="url(#bm-area)" dot={{ r: 2.5, fill: C.slate }} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>

@@ -176,7 +176,13 @@ export default function ContractsAnalytics({ items, year }: { items: ContractSum
               <LineChart data={evoData} margin={{ top: 8, right: 12, bottom: 0, left: 6 }}>
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--color-text-secondary)" }} interval={0} />
                 <YAxis tickFormatter={(v) => formatBRLShort(Number(v))} tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: "var(--color-text-muted)" }} width={54} />
-                <Tooltip formatter={(v) => formatBRL(Number(v))} labelStyle={{ color: "#111" }} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Tooltip
+                  formatter={(v) => [formatBRL(Number(v)), "Valor"]}
+                  cursor={{ stroke: "var(--color-border)", strokeWidth: 1 }}
+                  contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12, boxShadow: "0 6px 20px rgba(0, 0, 0, 0.25)" }}
+                  labelStyle={{ color: "var(--color-text-primary)", fontWeight: 600, marginBottom: 2 }}
+                  itemStyle={{ color: "var(--color-text-secondary)" }}
+                />
                 <Line type="monotone" dataKey="value" stroke={C.green} strokeWidth={2.5} dot={{ r: 2.5, fill: C.green }} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
