@@ -22,6 +22,8 @@ export interface BriefingSummary {
   number: string;
   proposalNumber: string | null;
   title: string | null;
+  /** Nome do projeto = resposta da 1ª pergunta do briefing (null se não respondido). */
+  projectName: string | null;
   /** Título puxado da proposta vinculada (por cliente/proposta), quando existir. */
   proposalTitle: string | null;
   status: "draft" | "published" | "cancelled";
