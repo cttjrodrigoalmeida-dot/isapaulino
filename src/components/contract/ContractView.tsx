@@ -930,6 +930,13 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
     }
   }, [pdfMode]);
 
+  useEffect(() => {
+    // Página pública (não a prévia do editor): scrollbar padrão/visível no tema branco.
+    if (preview) return;
+    document.documentElement.classList.add("contract-scrollbar");
+    return () => document.documentElement.classList.remove("contract-scrollbar");
+  }, [preview]);
+
   // "Baixar PDF" do cliente: gera no navegador (1 clique baixa), sem diálogo.
   const exportPdf = async () => {
     if (exporting || pdfMode) return;

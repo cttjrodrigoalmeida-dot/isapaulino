@@ -336,5 +336,12 @@ ul, ol { list-style: none; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
 ::-webkit-scrollbar-thumb { background: var(--color-surface-3); border-radius: 2px; }
 
+/* Página pública do contrato (tema branco): scrollbar padrão/visível. */
+html.contract-scrollbar { scrollbar-width: auto; scrollbar-color: #b6b6b6 #ececec; }
+html.contract-scrollbar::-webkit-scrollbar { width: 14px; }
+html.contract-scrollbar::-webkit-scrollbar-track { background: #ececec; }
+html.contract-scrollbar::-webkit-scrollbar-thumb { background: #b6b6b6; border-radius: 8px; border: 3px solid #ececec; }
+html.contract-scrollbar::-webkit-scrollbar-thumb:hover { background: #9a9a9a; }
+
 /* ── Selection ── */
 ::selection { background: rgba(255,255,255,0.15); color: var(--color-white); }
