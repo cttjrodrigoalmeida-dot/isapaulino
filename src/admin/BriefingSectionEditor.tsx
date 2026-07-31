@@ -23,6 +23,7 @@ function QuestionEditor({
   onChange,
   onRemove,
   onMove,
+  onDuplicate,
   isFirst,
   isLast,
 }: {
@@ -32,6 +33,7 @@ function QuestionEditor({
   onChange: (patch: Partial<BriefingQuestion>) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
+  onDuplicate: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -43,6 +45,7 @@ function QuestionEditor({
         <div style={{ display: "flex", gap: 6 }}>
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
+          <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta pergunta logo abaixo.">⧉ Duplicar</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover</button>
         </div>
       </div>
@@ -187,6 +190,13 @@ export default function BriefingSectionEditor({
       ],
     });
   const removeQuestion = (qi: number) => set({ questions: section.questions.filter((_, i) => i !== qi) });
+  // Duplica a pergunta logo abaixo (cópia completa: tipo, opções, pino…), com novo id.
+  const duplicateQuestion = (qi: number) => {
+    const copy = { ...structuredClone(section.questions[qi]), id: `q-${Date.now()}` };
+    const list = section.questions.slice();
+    list.splice(qi + 1, 0, copy);
+    set({ questions: list });
+  };
   const moveQuestion = (qi: number, dir: -1 | 1) => {
     const j = qi + dir;
     if (j < 0 || j >= section.questions.length) return;
@@ -204,7 +214,7 @@ export default function BriefingSectionEditor({
         <div style={{ display: "flex", gap: 6 }}>
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
-          <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo (imagem + perguntas) — é só trocar a imagem.">⧉ Duplicar</button>
+          <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo (imagem + perguntas) — é só trocar a imagem.">⧉ Duplicar seção</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover seção</button>
         </div>
       </div>
@@ -311,6 +321,7 @@ export default function BriefingSectionEditor({
           onChange={(patch) => setQuestion(qi, patch)}
           onRemove={() => removeQuestion(qi)}
           onMove={(dir) => moveQuestion(qi, dir)}
+          onDuplicate={() => duplicateQuestion(qi)}
           isFirst={qi === 0}
           isLast={qi === section.questions.length - 1}
         />
