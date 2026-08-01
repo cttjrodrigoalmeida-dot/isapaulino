@@ -3,6 +3,7 @@ import { api, ApiError, type BriefingSummary } from "./api";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import BriefingsAnalytics from "./BriefingsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
+import { confirmDialog } from "./confirmDialog";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -80,7 +81,7 @@ export default function BriefingsList({
   }, [yearItems]);
 
   const remove = async (number: string) => {
-    if (!confirm(`Excluir o briefing Nº ${number}?`)) return;
+    if (!(await confirmDialog({ message: `Excluir o briefing Nº ${number}? Esta ação não pode ser desfeita.`, confirmLabel: "Excluir" }))) return;
     setBusy(number);
     try { await api.deleteBriefing(number); setItems((prev) => prev.filter((b) => b.number !== number)); }
     catch (err) { alert(err instanceof ApiError ? err.message : "Erro ao excluir."); }
@@ -101,7 +102,7 @@ export default function BriefingsList({
 
   const cancelB = async (b: BriefingSummary) => {
     if (getStatus(b) === "cancelled") return;
-    if (!confirm(`Cancelar o briefing Nº ${b.number}?`)) return;
+    if (!(await confirmDialog({ title: "Cancelar briefing", message: `Cancelar o briefing Nº ${b.number}?`, confirmLabel: "Cancelar briefing", cancelLabel: "Voltar" }))) return;
     setBusy(b.number);
     try {
       await api.cancelBriefing(b.number);

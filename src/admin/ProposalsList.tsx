@@ -4,6 +4,7 @@ import { formatBRL } from "./dashboard/format";
 import ProposalsSummary from "./ProposalsSummary";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
+import { confirmDialog } from "./confirmDialog";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -57,7 +58,7 @@ export default function ProposalsList({
   }, [tab, year]);
 
   const remove = async (number: string) => {
-    if (!confirm(`Excluir a proposta Nº ${number}? Esta ação não pode ser desfeita.`)) return;
+    if (!(await confirmDialog({ message: `Excluir a proposta Nº ${number}? Esta ação não pode ser desfeita.`, confirmLabel: "Excluir" }))) return;
     setBusy(number);
     try {
       await api.deleteProposal(number);
@@ -86,7 +87,7 @@ export default function ProposalsList({
 
   const cancelP = async (p: ProposalSummary) => {
     if (p.status === "cancelled") return;
-    if (!confirm(`Cancelar a proposta Nº ${p.number}?`)) return;
+    if (!(await confirmDialog({ title: "Cancelar proposta", message: `Cancelar a proposta Nº ${p.number}?`, confirmLabel: "Cancelar proposta", cancelLabel: "Voltar" }))) return;
     setBusy(p.number);
     try {
       await api.cancelProposal(p.number);

@@ -3,6 +3,7 @@ import { api, ApiError, type ContractSummary, type ContractStatus } from "./api"
 import { formatBRL, formatDate } from "./dashboard/format";
 import ContractsAnalytics from "./ContractsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
+import { confirmDialog } from "./confirmDialog";
 import styles from "./Admin.module.css";
 
 // Vencimento = assinatura + vigência (padrão 3 meses); null se não assinado.
@@ -88,7 +89,7 @@ export default function ContractsList({
   }, [yearItems]);
 
   const remove = async (c: ContractSummary) => {
-    if (!confirm(`Excluir o contrato "${c.title}"? Esta ação não pode ser desfeita.`)) return;
+    if (!(await confirmDialog({ message: `Excluir o contrato "${c.title}"? Esta ação não pode ser desfeita.`, confirmLabel: "Excluir" }))) return;
     setBusy(c.id);
     try {
       await api.deleteContract(c.id);
@@ -131,7 +132,7 @@ export default function ContractsList({
 
   const cancelC = async (c: ContractSummary) => {
     if (c.status === "cancelled") return;
-    if (!confirm(`Cancelar o contrato Nº ${c.contractNumber || "—"}? O briefing e a proposta vinculados também serão cancelados.`)) return;
+    if (!(await confirmDialog({ title: "Cancelar contrato", message: `Cancelar o contrato Nº ${c.contractNumber || "—"}? O briefing e a proposta vinculados também serão cancelados.`, confirmLabel: "Cancelar contrato", cancelLabel: "Voltar" }))) return;
     setBusy(c.id);
     try {
       await api.cancelContract(c.id);
