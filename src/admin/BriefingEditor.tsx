@@ -156,11 +156,16 @@ export default function BriefingEditor({
 
   // ── Drag-and-drop de perguntas (inclusive entre blocos) ──
   const dragSource = useRef<{ s: number; q: number } | null>(null);
-  const moveQuestionTo = (toS: number, toQ: number) =>
+  // id da pergunta recém-movida → dispara o destaque animado no card de destino.
+  const [justMovedId, setJustMovedId] = useState<string | null>(null);
+  const moveTimer = useRef<number | undefined>(undefined);
+  const moveQuestionTo = (toS: number, toQ: number) => {
+    const src = dragSource.current;
+    dragSource.current = null;
+    if (!src) return;
+    const movedId = briefing?.sections[src.s]?.questions[src.q]?.id ?? null;
     setBriefing((prev) => {
-      const src = dragSource.current;
-      dragSource.current = null;
-      if (!prev || !src) return prev;
+      if (!prev) return prev;
       if (src.s < 0 || src.s >= prev.sections.length) return prev;
       const sections = prev.sections.map((s) => ({ ...s, questions: s.questions.slice() }));
       const [moved] = sections[src.s].questions.splice(src.q, 1);
@@ -171,6 +176,13 @@ export default function BriefingEditor({
       sections[toS].questions.splice(insertAt, 0, moved);
       return { ...prev, sections };
     });
+    if (movedId) {
+      setJustMovedId(null); // reseta p/ reiniciar a animação em movimentos seguidos
+      window.clearTimeout(moveTimer.current);
+      requestAnimationFrame(() => setJustMovedId(movedId));
+      moveTimer.current = window.setTimeout(() => setJustMovedId(null), 1300);
+    }
+  };
 
   const goJsonTab = () => {
     if (briefing) setJsonText(JSON.stringify(briefing, null, 2));
@@ -324,6 +336,7 @@ export default function BriefingEditor({
               onDuplicate={() => duplicateSection(i)}
               onQuestionDragStart={(qi) => { dragSource.current = { s: i, q: qi }; }}
               onQuestionDrop={(toQ) => moveQuestionTo(i, toQ)}
+              justMovedId={justMovedId}
               isFirst={i === 0}
               isLast={i === briefing.sections.length - 1}
             />

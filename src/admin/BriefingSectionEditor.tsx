@@ -28,6 +28,7 @@ function QuestionEditor({
   onDndOver,
   onDndDrop,
   showDropLine,
+  moved,
   isFirst,
   isLast,
 }: {
@@ -42,6 +43,7 @@ function QuestionEditor({
   onDndOver: () => void;
   onDndDrop: () => void;
   showDropLine: boolean;
+  moved: boolean;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -50,7 +52,7 @@ function QuestionEditor({
   return (
     <div
       ref={cardRef}
-      className={styles.blockCard}
+      className={`${styles.blockCard} ${moved ? styles.questionMoved : ""}`}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDndOver(); }}
       onDrop={(e) => { e.preventDefault(); onDndDrop(); }}
       style={showDropLine ? { boxShadow: "inset 0 3px 0 0 var(--color-accent)" } : undefined}
@@ -153,6 +155,7 @@ export default function BriefingSectionEditor({
   onDuplicate,
   onQuestionDragStart,
   onQuestionDrop,
+  justMovedId,
   isFirst,
   isLast,
 }: {
@@ -167,6 +170,8 @@ export default function BriefingSectionEditor({
   onQuestionDragStart: (qi: number) => void;
   /** DnD: solta a pergunta arrastada nesta seção, na posição toQ */
   onQuestionDrop: (toQ: number) => void;
+  /** id da pergunta recém-movida (para animar o destaque) */
+  justMovedId: string | null;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -363,6 +368,7 @@ export default function BriefingSectionEditor({
           onDndOver={() => setDropIdx(qi)}
           onDndDrop={() => { onQuestionDrop(qi); setDropIdx(null); }}
           showDropLine={dropIdx === qi}
+          moved={!!justMovedId && q.id === justMovedId}
           isFirst={qi === 0}
           isLast={qi === section.questions.length - 1}
         />
