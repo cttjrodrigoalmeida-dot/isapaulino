@@ -638,6 +638,26 @@ export default function BriefingView({ briefing: b, preview = false }: Props) {
     }
   }, [answers, storageKey]);
 
+  // Cliente logado (veio da Área do Cliente): pré-preenche com as respostas já
+  // enviadas ao servidor, para permitir EDITAR de qualquer dispositivo.
+  const [editingSubmitted, setEditingSubmitted] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/client/briefings", { credentials: "include" });
+        if (!res.ok) return; // visitante público / sem sessão — fluxo normal
+        const { briefings } = (await res.json()) as { briefings?: { number: string; responded: boolean; answers: Answers }[] };
+        const mine = (briefings ?? []).find((x) => String(x.number) === String(b.number));
+        if (alive && mine?.responded && mine.answers && Object.keys(mine.answers).length > 0) {
+          setAnswers(mine.answers);
+          setEditingSubmitted(true);
+        }
+      } catch { /* segue o fluxo público */ }
+    })();
+    return () => { alive = false; };
+  }, [b.number]);
+
   // ── Envio — contabilizado localmente (sem backend ainda, ver guia) ──
   const submittedKey = `${storageKey}:submitted`;
   const [submittedAt, setSubmittedAt] = useState<string | null>(() => {
@@ -1153,6 +1173,11 @@ export default function BriefingView({ briefing: b, preview = false }: Props) {
                 {missingCount === 1
                   ? "1 pergunta obrigatória está pendente — ela foi destacada em vermelho acima."
                   : `${missingCount} perguntas obrigatórias estão pendentes — destacadas em vermelho acima.`}
+              </p>
+            )}
+            {editingSubmitted && (
+              <p className={styles.ctaSent}>
+                <IconCheck /> Você já respondeu este briefing — edite o que quiser e reenvie; suas respostas serão atualizadas.
               </p>
             )}
             {submittedAt && (

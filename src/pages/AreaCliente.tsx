@@ -53,6 +53,7 @@ export default function AreaCliente() {
   const [cpf, setCpf] = useState("");
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [briefings, setBriefings] = useState<{ number: string; title: string | null; responded: boolean }[]>([]);
 
   const load = async () => {
     try {
@@ -60,6 +61,10 @@ export default function AreaCliente() {
       if (res.ok) {
         setData(await res.json());
         setState("ok");
+        try {
+          const br = await fetch("/api/client/briefings", { credentials: "include" });
+          if (br.ok) setBriefings((await br.json()).briefings ?? []);
+        } catch { /* opcional */ }
       } else if (res.status === 428) {
         setState("verify"); // sessão válida, mas falta confirmar o CPF
       } else setState("noauth");
@@ -265,6 +270,25 @@ export default function AreaCliente() {
                   </div>
                   <span className={styles.rowAction}>
                     <a className={`${styles.btn} ${styles.btnPrimary}`} href={`/api/client/download?key=${encodeURIComponent(f.key)}`} target="_blank" rel="noopener noreferrer">Baixar</a>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {briefings.length > 0 && (
+          <section className={styles.section}>
+            <h2 className={styles.h2}>Briefings</h2>
+            <div className={styles.card}>
+              {briefings.map((b) => (
+                <div key={b.number} className={styles.row}>
+                  <div className={styles.rowMain}>
+                    <span className={styles.rowLabel}>{b.title || `Briefing Nº ${b.number}`}</span>
+                    <span className={styles.rowSub}>{b.responded ? "Respondido — você pode editar quando quiser" : "Aguardando suas respostas"}</span>
+                  </div>
+                  <span className={styles.rowAction}>
+                    <a className={`${styles.btn} ${styles.btnPrimary}`} href={`/briefing/${b.number}`}>{b.responded ? "Editar respostas" : "Responder"}</a>
                   </span>
                 </div>
               ))}
