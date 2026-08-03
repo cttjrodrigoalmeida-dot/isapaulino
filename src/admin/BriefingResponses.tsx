@@ -20,6 +20,24 @@ export default function BriefingResponses({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  // Edição das respostas pelo admin (sobrescreve).
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (r: BriefingResponse) => { setEditingId(r.id); setDraft({ ...r.answers }); setNotice(null); setError(null); };
+  const cancelEdit = () => { setEditingId(null); setDraft({}); };
+  const saveEdit = async (r: BriefingResponse) => {
+    setSaving(true); setError(null);
+    try {
+      await api.updateBriefingResponse(number, r.id, draft);
+      setResponses((prev) => prev.map((x) => (x.id === r.id ? { ...x, answers: { ...draft } } : x)));
+      setEditingId(null); setDraft({});
+      setNotice("Respostas atualizadas.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
+    } finally { setSaving(false); }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -264,6 +282,18 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                  {editingId === r.id ? (
+                    <>
+                      <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => saveEdit(r)} disabled={saving}>
+                        {saving ? "Salvando…" : "Salvar respostas"}
+                      </button>
+                      <button className={`${styles.btn} ${styles.btnGhost}`} onClick={cancelEdit} disabled={saving}>Cancelar</button>
+                    </>
+                  ) : (
+                    <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => startEdit(r)} disabled={editingId !== null}>
+                      ✏ Editar respostas
+                    </button>
+                  )}
                   <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => exportCsv(r)}>
                     ⬇ Exportar CSV
                   </button>
@@ -293,6 +323,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
                       )}
 
                       {section.questions.map((q, i) => {
+                        const editing = editingId === r.id;
                         const val = (r.answers[q.id] ?? "").trim();
                         const att = r.refImages[q.id];
                         return (
@@ -300,7 +331,15 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
                             <label className={styles.label}>
                               {numBadge(i)} {q.text}
                             </label>
-                            {val ? (
+                            {editing ? (
+                              <textarea
+                                className={styles.textarea}
+                                rows={2}
+                                value={draft[q.id] ?? ""}
+                                placeholder="— sem resposta"
+                                onChange={(e) => setDraft((d) => ({ ...d, [q.id]: e.target.value }))}
+                              />
+                            ) : val ? (
                               <div className={styles.answerView}>{val}</div>
                             ) : (
                               <div

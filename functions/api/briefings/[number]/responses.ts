@@ -133,3 +133,26 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     return toErrorResponse(e);
   }
 };
+
+// PUT → admin edita as answers de uma resposta específica (por id). Sobrescreve.
+export const onRequestPut: PagesFunction<Env> = async ({ request, env, params }) => {
+  try {
+    await requireAuth(request, env);
+    const number = String(params.number);
+    const body = await readJson<{ id?: number; answers?: Record<string, string> }>(request);
+    const id = Number(body.id);
+    if (!Number.isFinite(id)) return error(400, "Id da resposta inválido.");
+    if (!body.answers || typeof body.answers !== "object" || Array.isArray(body.answers)) {
+      return error(400, "Respostas inválidas.");
+    }
+    const answersStr = JSON.stringify(body.answers);
+    if (answersStr.length > MAX_ANSWERS_BYTES) return error(413, "Respostas muito grandes.");
+    const res = await env.DB.prepare(
+      "UPDATE briefing_responses SET answers = ? WHERE id = ? AND briefing_number = ?"
+    ).bind(answersStr, id, number).run();
+    if (!res.meta.changes) return error(404, "Resposta não encontrada.");
+    return json({ ok: true });
+  } catch (e) {
+    return toErrorResponse(e);
+  }
+};

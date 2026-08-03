@@ -449,6 +449,11 @@ export const api = {
     req<{ responses: BriefingResponse[] }>(
       `/api/briefings/${encodeURIComponent(number)}/responses`
     ),
+  updateBriefingResponse: (number: string, id: number, answers: Record<string, string>) =>
+    req<{ ok: true }>(`/api/briefings/${encodeURIComponent(number)}/responses`, {
+      method: "PUT",
+      body: JSON.stringify({ id, answers }),
+    }),
 
   // ── clientes ──
   listClients: (q?: string) =>
