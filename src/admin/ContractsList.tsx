@@ -265,8 +265,8 @@ export default function ContractsList({
             </div>
           )}
 
-          {/* ── Dashboard analítico do ano selecionado ── */}
-          <ContractsAnalytics items={yearItems} year={year} />
+          {/* ── Dashboard analítico do ano selecionado (com comparação entre anos) ── */}
+          <ContractsAnalytics items={yearItems} year={year} allItems={items} years={years} />
         </>
       )}
     </div>
