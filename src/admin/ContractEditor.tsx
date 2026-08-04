@@ -8,6 +8,7 @@ import ListEditor from "./ListEditor";
 import CurrencyInput from "./CurrencyInput";
 import { formatBRL, valorPorExtenso, parseBRL as parseBRLNum } from "./proposalCalc";
 import { buildParcelas, buildResumo } from "./contractCalc";
+import RelatedDocs from "./RelatedDocs";
 import { contractValue } from "./contractValue";
 import {
   Txt,
@@ -505,6 +506,8 @@ export default function ContractEditor({
           </button>
         </div>
       </div>
+
+      <RelatedDocs proposalNumber={doc.proposalNumber} current="contract" />
 
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}

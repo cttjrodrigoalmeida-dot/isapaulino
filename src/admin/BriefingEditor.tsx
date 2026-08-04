@@ -4,6 +4,7 @@ import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
 import { api, ApiError, type ProposalSummary } from "./api";
 import BriefingSectionEditor from "./BriefingSectionEditor";
 import BriefingView from "../components/briefing/BriefingView";
+import RelatedDocs from "./RelatedDocs";
 import styles from "./Admin.module.css";
 
 type Status = "draft" | "published";
@@ -259,6 +260,8 @@ export default function BriefingEditor({
           <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>← Voltar</button>
         </div>
       </div>
+
+      <RelatedDocs proposalNumber={briefing?.proposalNumber} current="briefing" />
 
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}

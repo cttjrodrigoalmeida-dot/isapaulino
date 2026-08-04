@@ -18,6 +18,16 @@ export interface ProposalSummary {
   updatedAt: string;
 }
 
+/** Documentos vinculados a um número de proposta (atalhos "Relacionados"). */
+export interface DocumentLinks {
+  proposalNumber: string;
+  client: string | null;
+  projectTitle: string | null;
+  proposal: { number: string; status: string | null; outcome: string | null } | null;
+  contract: { slug: string | null; number: string | null; status: string } | null;
+  briefing: { number: string; status: string } | null;
+}
+
 export interface BriefingSummary {
   number: string;
   proposalNumber: string | null;
@@ -424,6 +434,10 @@ export const api = {
     }),
   cancelProposal: (number: string) =>
     req<{ ok: true }>(`/api/proposals/${encodeURIComponent(number)}/cancel`, { method: "POST" }),
+
+  // ── documentos vinculados (proposta ↔ contrato ↔ briefing) ──
+  documentLinks: (proposal: string) =>
+    req<DocumentLinks>(`/api/documents/links?proposal=${encodeURIComponent(proposal)}`),
 
   // ── briefings ──
   listBriefings: () => req<{ briefings: BriefingSummary[] }>("/api/briefings"),

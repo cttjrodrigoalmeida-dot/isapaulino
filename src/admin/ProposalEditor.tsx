@@ -5,6 +5,7 @@ import ProposalView from "../components/proposal/ProposalView";
 import { api, ApiError } from "./api";
 // Numeração com prefixo de ano (AANN): os 2 primeiros dígitos são sempre o ano.
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
+import RelatedDocs from "./RelatedDocs";
 import {
   recomputeInvestment,
   recomputePayment,
@@ -266,6 +267,8 @@ export default function ProposalEditor({
           </button>
         </div>
       </div>
+
+      <RelatedDocs proposalNumber={number} current="proposal" />
 
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}
