@@ -7,7 +7,7 @@ import ContractView from "../components/contract/ContractView";
 import ListEditor from "./ListEditor";
 import CurrencyInput from "./CurrencyInput";
 import { formatBRL, valorPorExtenso, parseBRL as parseBRLNum } from "./proposalCalc";
-import { buildParcelas } from "./contractCalc";
+import { buildParcelas, buildResumo } from "./contractCalc";
 import { contractValue } from "./contractValue";
 import {
   Txt,
@@ -447,8 +447,12 @@ export default function ContractEditor({
     if (sp.parcelas.length > 0) partial.parcelas = buildParcelas(valorTotal, sp.parcelas.length, doc.date);
     setSp(partial);
   };
-  // Nº de parcelas → gera parcelas (valor, extenso e vencimento 01–05 automáticos).
-  const setNumParcelas = (n: number) => setSp({ parcelas: buildParcelas(sp.valorTotal, n, doc.date) });
+  // Nº de parcelas → gera parcelas (valor, extenso e vencimento 01–05 automáticos)
+  // e (re)monta o resumo do pagamento a partir delas.
+  const setNumParcelas = (n: number) => {
+    const parcelas = buildParcelas(sp.valorTotal, n, doc.date);
+    setSp({ parcelas, resumo: buildResumo(parcelas, sp.entrada) });
+  };
   // Troca a variante da Seção 06; ao ir p/ "tabela-custos" e ainda não haver
   // tabela, materializa o modelo padrão (só ajustar valores por projeto).
   const changeVariant = (v: ContractDoc["sixVariant"]) => {
@@ -819,7 +823,19 @@ export default function ContractEditor({
                   onChange={(v) => setSp({ valorTotalExtenso: v })}
                 />
                 <div className={styles.field}>
-                  <label className={styles.label}>Resumo do pagamento</label>
+                  <label className={styles.label}>Resumo do pagamento (automático — editável)</label>
+                  <div className={styles.placeholderHint} style={{ marginBottom: 8 }}>
+                    Montado a partir das parcelas (nº de parcelas · vencimento · sem juros). Ajuste as parcelas e clique em gerar, ou edite o texto abaixo.
+                  </div>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    style={{ marginBottom: 8 }}
+                    onClick={() => setSp({ resumo: buildResumo(sp.parcelas, sp.entrada) })}
+                    disabled={sp.parcelas.length === 0}
+                  >
+                    ↻ Gerar a partir das parcelas
+                  </button>
                   <ListEditor items={sp.resumo} onChange={(v) => setSp({ resumo: v })} placeholder="ex.: 4 parcelas mensais" />
                 </div>
                 <div className={styles.field}>

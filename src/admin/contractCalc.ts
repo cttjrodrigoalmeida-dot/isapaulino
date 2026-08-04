@@ -48,3 +48,33 @@ export function buildParcelas(valorTotal: string, n: number, baseDate?: string):
   }
   return rows;
 }
+
+// Dia de vencimento a partir de uma janela "01/MM/AAAA a 05/MM/AAAA" (usa o fim
+// da janela, dia 05) ou de uma data simples "DD/MM/AAAA".
+function diaVencimento(v?: string): string | null {
+  if (!v) return null;
+  const janela = v.match(/a\s+(\d{1,2})\//);   // "… a 05/MM/AAAA"
+  if (janela) return janela[1].padStart(2, "0");
+  const simples = v.match(/(\d{1,2})\//);        // "DD/MM/AAAA"
+  return simples ? simples[1].padStart(2, "0") : null;
+}
+
+/**
+ * Monta o "Resumo do pagamento" a partir dos dados já preenchidos: nº de parcelas
+ * (+ entrada, se houver), dia de vencimento e "Sem juros". Editável depois — só
+ * é (re)gerado ao mudar o nº de parcelas ou pelo botão de gerar no editor.
+ */
+export function buildResumo(
+  parcelas: ContractInstallmentRow[],
+  entrada?: { vencimento?: string } | null,
+): string[] {
+  const res: string[] = [];
+  const n = parcelas.length;
+  const parcelasTxt = n === 1 ? "1 parcela mensal" : `${n} parcelas mensais`;
+  if (entrada) res.push(n > 0 ? `Entrada + ${parcelasTxt}` : "Entrada única");
+  else if (n > 0) res.push(parcelasTxt);
+  const dia = diaVencimento(parcelas[0]?.vencimento ?? entrada?.vencimento);
+  if (dia) res.push(`Vencimento todo dia ${dia}`);
+  res.push("Sem juros");
+  return res;
+}
