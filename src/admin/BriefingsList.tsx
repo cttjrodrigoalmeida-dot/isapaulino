@@ -164,6 +164,7 @@ export default function BriefingsList({
               <thead>
                 <tr>
                   <th>Nº</th>
+                  <th>Cliente</th>
                   <th>Título</th>
                   <th>Respondido em</th>
                   <th>Status</th>
@@ -177,6 +178,7 @@ export default function BriefingsList({
                   return (
                     <tr key={b.number}>
                       <td className={styles.rowNumber}>{b.number}</td>
+                      <td>{b.clientName || "—"}</td>
                       <td>{b.projectName || "—"}</td>
                       <td style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                         {s === "responded" && b.lastResponseAt ? fmtDate(b.lastResponseAt) : "—"}
@@ -203,7 +205,7 @@ export default function BriefingsList({
                   );
                 })}
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>Nenhum briefing neste filtro.</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>Nenhum briefing neste filtro.</td></tr>
                 )}
               </tbody>
             </table>
