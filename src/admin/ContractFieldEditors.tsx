@@ -10,6 +10,8 @@ import type {
   InfoCard,
   ContractInstallmentRow,
   CostTable,
+  CostRow,
+  CostFaixa,
 } from "../components/contract/types";
 import ListEditor from "./ListEditor";
 import CurrencyInput from "./CurrencyInput";
@@ -445,6 +447,26 @@ export function TabelaCustosEditor({
     [next[i], next[j]] = [next[j], next[i]];
     onChange(next);
   };
+  // Faixas de quantidade × valor. Materializa o valor único (legado) numa faixa.
+  const rowFaixas = (r: CostRow) =>
+    r.faixas && r.faixas.length
+      ? r.faixas
+      : r.valor
+        ? [{ quantidade: "", valor: r.valor, valorExtenso: r.valorExtenso }]
+        : [{ quantidade: "", valor: "", valorExtenso: "" }];
+  const setFaixa = (ti: number, ri: number, fi: number, patch: Partial<CostFaixa>) => {
+    const cur = rowFaixas(tabelas[ti].linhas[ri]).slice();
+    cur[fi] = { ...cur[fi], ...patch };
+    setRow(ti, ri, { faixas: cur, valor: undefined, valorExtenso: undefined });
+  };
+  const addFaixa = (ti: number, ri: number) => {
+    const cur = [...rowFaixas(tabelas[ti].linhas[ri]), { quantidade: "", valor: "", valorExtenso: "" }];
+    setRow(ti, ri, { faixas: cur, valor: undefined, valorExtenso: undefined });
+  };
+  const removeFaixa = (ti: number, ri: number, fi: number) => {
+    const cur = rowFaixas(tabelas[ti].linhas[ri]).filter((_, i) => i !== fi);
+    setRow(ti, ri, { faixas: cur, valor: undefined, valorExtenso: undefined });
+  };
 
   return (
     <div className={styles.lineList}>
@@ -461,31 +483,46 @@ export function TabelaCustosEditor({
           <Txt label="Título do bloco" value={t.titulo} onChange={(v) => setTable(ti, { titulo: v })} placeholder="ex.: • PLANTAS EXECUTIVAS" />
           <Txt label="Nota do bloco (opcional)" value={t.nota ?? ""} onChange={(v) => setTable(ti, { nota: v || undefined })} placeholder="ex.: valor mínimo de R$ 510,00…" />
 
-          <label className={styles.label} style={{ marginTop: 4 }}>Linhas (serviço · descrição · valor)</label>
+          <label className={styles.label} style={{ marginTop: 4 }}>Serviços (cada um com descrição e faixas de quantidade × valor)</label>
           {t.linhas.map((r, ri) => (
             <div key={ri} className={styles.blockCard} style={{ marginTop: 8 }}>
               <div className={styles.blockHead}>
                 <span className={styles.blockTag}>Linha {ri + 1}</span>
                 <button type="button" className={styles.iconBtn} onClick={() => setTable(ti, { linhas: t.linhas.filter((_, i) => i !== ri) })} aria-label="Remover linha">×</button>
               </div>
-              <Txt label="Serviço" value={r.servico} onChange={(v) => setRow(ti, ri, { servico: v })} placeholder="ex.: Planta Layout" />
-              <Area label="Descrição" value={r.descricao ?? ""} onChange={(v) => setRow(ti, ri, { descricao: v || undefined })} rows={2} placeholder="ex.: Representação técnica da disposição dos ambientes." />
-              <Txt label="Valor" value={r.valor} onChange={(v) => setRow(ti, ri, { valor: v })} mono placeholder="ex.: R$ 140,00" />
+              <Txt label="Serviço" value={r.servico} onChange={(v) => setRow(ti, ri, { servico: v })} placeholder="ex.: Renderização Imagem interna" />
+              <Txt label="Legenda (opcional)" value={r.subtitulo ?? ""} onChange={(v) => setRow(ti, ri, { subtitulo: v || undefined })} placeholder="ex.: (ambientes internos)" />
+              <Area label="Descrição" value={r.descricao ?? ""} onChange={(v) => setRow(ti, ri, { descricao: v || undefined })} rows={2} placeholder="ex.: Renderização realista a partir do modelo 3D." />
+              <label className={styles.label} style={{ marginTop: 4 }}>Faixas (quantidade × valor)</label>
+              {rowFaixas(r).map((f, fi) => (
+                <div key={fi} className={styles.blockCard} style={{ marginTop: 6 }}>
+                  <div className={styles.blockHead}>
+                    <span className={styles.blockTag}>Faixa {fi + 1}</span>
+                    <button type="button" className={styles.iconBtn} onClick={() => removeFaixa(ti, ri, fi)} aria-label="Remover faixa">×</button>
+                  </div>
+                  <div className={styles.row2}>
+                    <Txt label="Quantidade" value={f.quantidade} onChange={(v) => setFaixa(ti, ri, fi, { quantidade: v })} placeholder="ex.: 1ª a 5ª imagem" />
+                    <Txt label="Valor" value={f.valor} onChange={(v) => setFaixa(ti, ri, fi, { valor: v })} mono placeholder="ex.: R$ 140,00" />
+                  </div>
+                  <Txt label="Valor por extenso (opcional)" value={f.valorExtenso ?? ""} onChange={(v) => setFaixa(ti, ri, fi, { valorExtenso: v || undefined })} placeholder="ex.: (cento e quarenta reais)" />
+                </div>
+              ))}
+              <button type="button" className={`${styles.btn} ${styles.btnGhost}`} style={{ marginTop: 6 }} onClick={() => addFaixa(ti, ri)}>+ adicionar faixa</button>
             </div>
           ))}
           <button
             type="button"
             className={`${styles.btn} ${styles.btnGhost}`}
-            onClick={() => setTable(ti, { linhas: [...t.linhas, { servico: "", descricao: "", valor: "" }] })}
+            onClick={() => setTable(ti, { linhas: [...t.linhas, { servico: "", descricao: "", faixas: [{ quantidade: "", valor: "", valorExtenso: "" }] }] })}
           >
-            + adicionar linha
+            + adicionar serviço
           </button>
         </div>
       ))}
       <button
         type="button"
         className={`${styles.btn} ${styles.btnGhost}`}
-        onClick={() => onChange([...tabelas, { titulo: "", linhas: [{ servico: "", descricao: "", valor: "" }] }])}
+        onClick={() => onChange([...tabelas, { titulo: "", linhas: [{ servico: "", descricao: "", faixas: [{ quantidade: "", valor: "", valorExtenso: "" }] }] }])}
       >
         + adicionar bloco / tabela
       </button>

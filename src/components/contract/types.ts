@@ -72,10 +72,22 @@ export interface SixPagamento {
 }
 
 // ── Seção 06 — variante "tabela-custos" ──
+/** Faixa de quantidade × valor de um serviço (ex.: "1ª a 5ª imagem" → "R$ 140,00"). */
+export interface CostFaixa {
+  quantidade: string;      // "1ª a 5ª imagem" / "A partir de 6ª imagem"
+  valor: string;           // "R$ 140,00" ou "A PARTIR DE R$ 210,00"
+  valorExtenso?: string;   // "(cento e quarenta reais)"
+}
 export interface CostRow {
   servico: string;
+  /** Legenda menor sob o nome do serviço, ex.: "(ambientes internos)". */
+  subtitulo?: string;
   descricao?: string;
-  valor: string;           // pode ter várias linhas (usar \n)
+  /** Faixas de quantidade × valor (novo layout com a coluna QUANTIDADE). */
+  faixas?: CostFaixa[];
+  /** Valor único (linha sem faixas de quantidade) — também usado por dados legados. */
+  valor?: string;
+  valorExtenso?: string;
 }
 export interface CostTable {
   titulo: string;          // "• PLANTAS EXECUTIVAS"

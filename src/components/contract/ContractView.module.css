@@ -389,12 +389,20 @@
 .costTable { margin: 22px 0; }
 .costTableTitle { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-ink); margin-bottom: 9px; padding-bottom: 8px; border-bottom: 2px solid var(--c-ink); }
 .costNote { font-size: 12px; line-height: 1.65; color: var(--c-ink-3); margin: 0 0 12px; text-align: justify; }
-.costGrid { width: 100%; border-collapse: collapse; }
-.costGrid th { text-align: left; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-ink-2); background: var(--c-beige-soft); padding: 10px 12px; border-bottom: 1px solid var(--c-line-2); }
-.costGrid td { font-size: 12px; color: var(--c-ink-2); padding: 12px; border-bottom: 1px solid var(--c-line); vertical-align: top; }
+.costScroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.costGrid { width: 100%; min-width: 520px; border-collapse: collapse; border: 1px solid var(--c-line-2); }
+.costGrid th { text-align: left; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-ink-2); background: var(--c-beige-soft); padding: 10px 12px; border-bottom: 1.5px solid var(--c-line-2); border-right: 1px solid var(--c-line); }
+.costGrid td { font-size: 12px; color: var(--c-ink-2); padding: 11px 12px; border-bottom: 1px solid var(--c-line); border-right: 1px solid var(--c-line); vertical-align: top; }
+.costGrid th:last-child, .costGrid td:last-child { border-right: none; }
+/* Fim de um serviço (última faixa) e as células que fazem rowspan: linha mais forte. */
+.costRowEnd td { border-bottom: 1.5px solid var(--c-line-2); }
 .costGrid tr:last-child td { border-bottom: none; }
-.costServico { color: var(--c-ink) !important; font-weight: 500; }
-.costValor { color: var(--c-taupe) !important; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+.costServico { color: var(--c-ink) !important; font-weight: 600; border-bottom: 1.5px solid var(--c-line-2); }
+.costDesc { border-bottom: 1.5px solid var(--c-line-2); }
+.costSub { display: block; font-size: 10.5px; color: var(--c-ink-3); font-weight: 400; margin-top: 2px; }
+.costQtd { color: var(--c-ink-2); font-size: 11.5px; white-space: nowrap; }
+.costValor { color: var(--c-taupe) !important; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+.costExtenso { color: var(--c-ink-3); font-family: var(--font-body); font-size: 10px; font-weight: 400; margin-top: 1px; white-space: normal; }
 .costObs { margin-top: 16px; padding: 18px 20px; border: 1px dashed var(--c-line-2); border-radius: 14px 0 14px 0; background: var(--c-card-2); }
 .costObsTitle { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-taupe); margin-bottom: 12px; }
 

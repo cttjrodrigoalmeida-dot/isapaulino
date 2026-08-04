@@ -405,16 +405,48 @@ export const DEFAULT_TABELA_CUSTOS: SixTabelaCustos = {
     {
       titulo: "• RENDERIZAÇÃO (CONTRATANTE FORNECE O MODELO)",
       linhas: [
-        { servico: "Renderização Imagem interna (ambientes internos)", descricao: "Renderização de imagem realista a partir do modelo 3D fornecido pelo CONTRATANTE. 1ª à 5ª imagem / A partir da 6ª imagem", valor: "R$ 140,00\nR$ 115,00" },
-        { servico: "Renderização Imagem Externa (Fachadas e Áreas Externas)", descricao: "Renderização de fachadas ou áreas externas a partir do modelo 3D fornecido pelo CONTRATANTE. 1ª à 5ª imagem / A partir da 6ª imagem", valor: "A PARTIR DE R$ 210,00\nA PARTIR DE R$ 170,00" },
+        {
+          servico: "Renderização Imagem interna",
+          subtitulo: "(ambientes internos)",
+          descricao: "Renderização de imagem realista a partir do modelo 3D fornecido pelo CONTRATANTE.",
+          faixas: [
+            { quantidade: "1ª à 5ª imagem", valor: "R$ 140,00" },
+            { quantidade: "A partir da 6ª imagem", valor: "R$ 115,00" },
+          ],
+        },
+        {
+          servico: "Renderização Imagem Externa",
+          subtitulo: "(Fachadas e Áreas Externas)",
+          descricao: "Renderização de fachadas ou áreas externas a partir do modelo 3D fornecido pelo CONTRATANTE.",
+          faixas: [
+            { quantidade: "1ª à 5ª imagem", valor: "A PARTIR DE R$ 210,00" },
+            { quantidade: "A partir da 6ª imagem", valor: "A PARTIR DE R$ 170,00" },
+          ],
+        },
         { servico: "Com inserção de figuras humanas", descricao: "(ou tratativas de imagens especializadas)", valor: "+30% ACRÉSCIMO\nsobre o valor da imagem correspondente" },
       ],
     },
     {
       titulo: "• MODELAGEM 3D + RENDERIZAÇÃO",
       linhas: [
-        { servico: "Modelagem 3D + renderização interna (ambientes internos)", descricao: "Desenvolvimento da modelagem 3D e imagem realista detalhada do ambiente. 1ª à 5ª imagem / A partir da 6ª imagem", valor: "R$ 210,00\nR$ 170,00" },
-        { servico: "Modelagem 3D + renderização Externa (Fachadas e Áreas Externas)", descricao: "Desenvolvimento da modelagem 3D e imagem realista detalhada da fachada, áreas externas ou vistas em nível do solo. 1ª à 5ª imagem / A partir da 6ª imagem", valor: "A PARTIR DE R$ 350,00\nA PARTIR DE R$ 320,00" },
+        {
+          servico: "Modelagem 3D + renderização interna",
+          subtitulo: "(ambientes internos)",
+          descricao: "Desenvolvimento da modelagem 3D e imagem realista detalhada do ambiente.",
+          faixas: [
+            { quantidade: "1ª à 5ª imagem", valor: "R$ 210,00" },
+            { quantidade: "A partir da 6ª imagem", valor: "R$ 170,00" },
+          ],
+        },
+        {
+          servico: "Modelagem 3D + renderização Externa",
+          subtitulo: "(Fachadas e Áreas Externas)",
+          descricao: "Desenvolvimento da modelagem 3D e imagem realista detalhada da fachada, áreas externas ou vistas em nível do solo.",
+          faixas: [
+            { quantidade: "1ª à 5ª imagem", valor: "A PARTIR DE R$ 350,00" },
+            { quantidade: "A partir da 6ª imagem", valor: "A PARTIR DE R$ 320,00" },
+          ],
+        },
         { servico: "Vista aérea", descricao: "Vista aérea do projeto ou do entorno.", valor: "A PARTIR DE R$ 320,00" },
         { servico: "Com inserção de figuras humanas", descricao: "(ou tratativas de imagens especializadas)", valor: "+30% ACRÉSCIMO\nsobre o valor da imagem correspondente" },
       ],

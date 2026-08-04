@@ -500,27 +500,79 @@ function SixTabelaCustos({ doc }: { doc: ContractDoc }) {
     <div className={styles.sixWrap}>
       {t.intro && <p className={styles.clauseP}>{t.intro}</p>}
       {t.tabelas.map((tab, i) => {
-        const cols = tab.colunas ?? ["SERVIÇO", "DESCRIÇÃO", "VALOR UNITÁRIO"];
+        // Tabela com colunas customizadas (ex.: SERVIÇO · COBRANÇA) — layout simples
+        // de 2 colunas, sem DESCRIÇÃO/QUANTIDADE.
+        const custom = tab.colunas && tab.colunas.length > 0;
         return (
           <div key={i} className={styles.costTable}>
             <span className={styles.costTableTitle}>{tab.titulo}</span>
             {tab.nota && <p className={styles.costNote}>{tab.nota}</p>}
+            <div className={styles.costScroll}>
             <table className={styles.costGrid}>
               <thead>
-                <tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr>
+                <tr>
+                  {custom
+                    ? tab.colunas!.map((c, ci) => <th key={ci}>{c}</th>)
+                    : (<>
+                        <th>SERVIÇO</th>
+                        <th>DESCRIÇÃO</th>
+                        <th>QUANTIDADE</th>
+                        <th>VALOR UNITÁRIO</th>
+                      </>)}
+                </tr>
               </thead>
               <tbody>
-                {tab.linhas.map((ln, j) => (
-                  <tr key={j}>
-                    <td className={styles.costServico}>{ln.servico}</td>
-                    {cols.length >= 3 && <td>{ln.descricao}</td>}
-                    <td className={styles.costValor}>
-                      {ln.valor.split("\n").map((v, k) => <div key={k}>{v}</div>)}
-                    </td>
-                  </tr>
-                ))}
+                {custom
+                  ? tab.linhas.map((ln, j) => {
+                      // Tabela de 2 colunas: o valor pode estar em `valor` (legado)
+                      // ou na 1ª faixa (o editor grava sempre em faixas).
+                      const val = ln.valor ?? ln.faixas?.[0]?.valor ?? "";
+                      const valExt = ln.valorExtenso ?? ln.faixas?.[0]?.valorExtenso;
+                      return (
+                        <tr key={j}>
+                          <td className={styles.costServico}>
+                            {ln.servico}
+                            {ln.subtitulo && <span className={styles.costSub}>{ln.subtitulo}</span>}
+                          </td>
+                          <td className={styles.costValor}>
+                            {val.split("\n").map((v, m) => (
+                              <div key={m} className={m > 0 ? styles.costExtenso : undefined}>{v}</div>
+                            ))}
+                            {valExt && <div className={styles.costExtenso}>{valExt}</div>}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  : tab.linhas.map((ln, j) => {
+                      // Faixas de quantidade × valor; sem faixas cai no valor único (legado).
+                      const faixas = ln.faixas && ln.faixas.length > 0
+                        ? ln.faixas
+                        : [{ quantidade: "", valor: ln.valor ?? "", valorExtenso: ln.valorExtenso }];
+                      const span = faixas.length;
+                      return faixas.map((f, k) => (
+                        <tr key={`${j}-${k}`} className={k === span - 1 ? styles.costRowEnd : undefined}>
+                          {k === 0 && (
+                            <>
+                              <td className={styles.costServico} rowSpan={span}>
+                                {ln.servico}
+                                {ln.subtitulo && <span className={styles.costSub}>{ln.subtitulo}</span>}
+                              </td>
+                              <td className={styles.costDesc} rowSpan={span}>{ln.descricao}</td>
+                            </>
+                          )}
+                          <td className={styles.costQtd}>{f.quantidade}</td>
+                          <td className={styles.costValor}>
+                            {(f.valor || "").split("\n").map((v, m) => (
+                              <div key={m} className={m > 0 ? styles.costExtenso : undefined}>{v}</div>
+                            ))}
+                            {f.valorExtenso && <div className={styles.costExtenso}>{f.valorExtenso}</div>}
+                          </td>
+                        </tr>
+                      ));
+                    })}
               </tbody>
             </table>
+            </div>
           </div>
         );
       })}
