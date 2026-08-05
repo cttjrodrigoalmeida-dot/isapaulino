@@ -54,6 +54,7 @@ interface ClientRow {
   phone: string | null;
   birth_date: string | null;
   photo_url: string | null;
+  avatar: string | null;
 }
 interface CalendarRow {
   id: string;
@@ -117,7 +118,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       ).bind(todayStr).all<CalendarRow>(),
       // Clientes (para aniversariantes e fotos no ranking).
       env.DB.prepare(
-        "SELECT id, name, phone, birth_date, photo_url FROM clients WHERE deleted_at IS NULL"
+        "SELECT id, name, phone, birth_date, photo_url, avatar FROM clients WHERE deleted_at IS NULL"
       ).all<ClientRow>(),
     ]);
 
@@ -131,10 +132,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     // Clientes → mapa nome (minúsculo) para anexar foto/telefone ao ranking
     // (o ranking é agrupado por NOME da proposta, não por client_id).
     const allClients = clientsRes.results ?? [];
-    const clientByName = new Map<string, { id: string; phone: string | null; photo: string | null }>();
+    const clientByName = new Map<string, { id: string; phone: string | null; photo: string | null; avatar: string | null }>();
     for (const c of allClients) {
       const key = (c.name ?? "").trim().toLowerCase();
-      if (key && !clientByName.has(key)) clientByName.set(key, { id: c.id, phone: c.phone, photo: c.photo_url });
+      if (key && !clientByName.has(key)) clientByName.set(key, { id: c.id, phone: c.phone, photo: c.photo_url, avatar: c.avatar });
     }
 
     // ── Propostas: status, valores, ranking, faturamento por mês ──
@@ -200,7 +201,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const clientRanking = [...byClient.entries()]
       .map(([client, v]) => {
         const meta = clientByName.get(client.trim().toLowerCase());
-        return { client, total: v.total, count: v.count, photo: meta?.photo ?? null, clientId: meta?.id ?? null };
+        return { client, total: v.total, count: v.count, photo: meta?.photo ?? null, avatar: meta?.avatar ?? null, clientId: meta?.id ?? null };
       })
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
@@ -286,6 +287,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           name: c.name,
           phone: c.phone,
           photo: c.photo_url,
+          avatar: c.avatar,
           date: `${String(b.day).padStart(2, "0")}/${String(b.month).padStart(2, "0")}`,
           days,
           today: days === 0,

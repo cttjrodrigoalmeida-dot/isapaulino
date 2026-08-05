@@ -294,13 +294,13 @@ export interface DashboardOverview {
     entregues: number;
   };
   revenueByMonth: { key: string; label: string; value: number }[];
-  clientRanking: { client: string; total: number; count: number; photo: string | null; clientId: string | null }[];
+  clientRanking: { client: string; total: number; count: number; photo: string | null; avatar: string | null; clientId: string | null }[];
   recentActivity: { at: string; type: string; title: string; sub: string }[];
   pendencias: { kind: string; count: number; label: string }[];
   /** Itens da agenda de hoje + atrasados não concluídos (card "Atenção hoje"). */
   agendaHoje: { id: string; title: string; time: string | null; kind: "tarefa" | "compromisso"; date: string; overdue: boolean }[];
   /** Aniversariantes de hoje + próximos 30 dias. */
-  aniversariantes: { id: string; name: string; phone: string | null; photo: string | null; date: string; days: number; today: boolean }[];
+  aniversariantes: { id: string; name: string; phone: string | null; photo: string | null; avatar: string | null; date: string; days: number; today: boolean }[];
   finance: {
     faturado: number;
     recebido: number;

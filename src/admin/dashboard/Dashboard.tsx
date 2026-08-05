@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Cell } from "recharts";
 import { api, type DashboardOverview } from "../api";
+import { AvatarSVG, avatarById } from "../../avatars";
 import s from "./Dashboard.module.css";
 import { formatBRL, formatBRLShort, timeAgo, saudacao } from "./format";
 import {
@@ -222,7 +223,7 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
                 <div key={c.client} className={s.listItem}>
                   <span className={s.listRank}>{i + 1}</span>
                   <span className={s.dashAvatar} style={{ width: 30, height: 30, fontSize: 11 }}>
-                    {c.photo ? <img src={c.photo} alt={c.client} /> : initials(c.client)}
+                    {avatarById(c.avatar) ? <AvatarSVG id={c.avatar} size={30} /> : c.photo ? <img src={c.photo} alt={c.client} /> : initials(c.client)}
                   </span>
                   <span className={s.listMain}>
                     <span className={s.listTitle}>{c.client}</span>
@@ -243,7 +244,7 @@ export default function Dashboard({ username, onGoComercial, onGoContratos, onGo
               {aniversariantes.map((b) => (
                 <div key={b.id} className={s.listItem}>
                   <span className={s.dashAvatar}>
-                    {b.photo ? <img src={b.photo} alt={b.name} /> : initials(b.name)}
+                    {avatarById(b.avatar) ? <AvatarSVG id={b.avatar} size={34} /> : b.photo ? <img src={b.photo} alt={b.name} /> : initials(b.name)}
                   </span>
                   <span className={s.listMain}>
                     <span className={s.listTitle}>{b.name}{b.today ? " 🎉" : ""}</span>
