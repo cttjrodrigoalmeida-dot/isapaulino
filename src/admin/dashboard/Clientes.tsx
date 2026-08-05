@@ -3,11 +3,13 @@ import ClientsList from "../ClientsList";
 import ClientEditor from "../ClientEditor";
 import ClientHistory from "../ClientHistory";
 import ClientPanorama from "../ClientPanorama";
+import ProjectHistory from "../ProjectHistory";
 
 type View =
   | { name: "list" }
   | { name: "editor"; id: string | null }
   | { name: "panorama"; id: string }
+  | { name: "projectHistory"; contractId: string; projectLabel: string; clientName: string; signed: boolean; clientId: string }
   | { name: "history"; id: string; clientName: string; phone: string | null };
 
 export default function Clientes({ requestNew }: { requestNew?: number | null }) {
@@ -29,11 +31,26 @@ export default function Clientes({ requestNew }: { requestNew?: number | null })
   }
 
   if (view.name === "panorama") {
+    const cid = view.id;
     return (
       <ClientPanorama
-        clientId={view.id}
+        clientId={cid}
         onBack={() => setView({ name: "list" })}
         onEdit={(id) => setView({ name: "editor", id })}
+        onOpenHistory={(contractId, projectLabel, signed, clientName) =>
+          setView({ name: "projectHistory", contractId, projectLabel, signed, clientName, clientId: cid })}
+      />
+    );
+  }
+
+  if (view.name === "projectHistory") {
+    return (
+      <ProjectHistory
+        contractId={view.contractId}
+        projectLabel={view.projectLabel}
+        clientName={view.clientName}
+        signed={view.signed}
+        onBack={() => setView({ name: "panorama", id: view.clientId })}
       />
     );
   }

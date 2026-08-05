@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
+import { eventTypeMeta } from "../projectEvents";
 import styles from "./AreaCliente.module.css";
 
 interface Contract {
@@ -17,12 +18,17 @@ interface HistoryItem {
 interface ClientFile {
   key: string; name: string; size: number; uploaded: string;
 }
+interface ProjectHistoryItem {
+  id: string; contractId: string; date: string; type: string; description: string;
+  phase: string | null; contractTitle: string;
+}
 interface Overview {
   client: { name: string; email: string | null; phone: string | null };
   contracts: Contract[];
   installments: Installment[];
   history: HistoryItem[];
   files: ClientFile[];
+  projectHistory: ProjectHistoryItem[];
 }
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -36,6 +42,15 @@ function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+function groupByContract(items: ProjectHistoryItem[]): [string, ProjectHistoryItem[]][] {
+  const map = new Map<string, ProjectHistoryItem[]>();
+  for (const it of items) {
+    const arr = map.get(it.contractId) ?? [];
+    arr.push(it);
+    map.set(it.contractId, arr);
+  }
+  return [...map.entries()];
 }
 
 const INST_STATUS: Record<string, { label: string; cls: string }> = {
@@ -196,6 +211,37 @@ export default function AreaCliente() {
             ))
           )}
         </section>
+
+        {d.projectHistory && d.projectHistory.length > 0 && (
+          <section className={styles.section}>
+            <h2 className={styles.h2}>Andamento do projeto</h2>
+            {groupByContract(d.projectHistory).map(([cid, evs]) => (
+              <div key={cid} className={styles.card}>
+                <div className={styles.cardTitle} style={{ marginBottom: 14 }}>{evs[0].contractTitle}</div>
+                {evs.map((h, idx) => {
+                  const meta = eventTypeMeta(h.type);
+                  const last = idx === evs.length - 1;
+                  return (
+                    <div key={h.id} style={{ display: "flex", gap: 12, paddingBottom: last ? 0 : 16 }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <span style={{ width: 13, height: 13, borderRadius: "50%", background: meta.color, marginTop: 3, flexShrink: 0, boxShadow: `0 0 0 4px ${meta.color}22` }} />
+                        {!last && <span style={{ flex: 1, width: 2, background: "rgba(0,0,0,0.12)", marginTop: 4 }} />}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: meta.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>{meta.label}</span>
+                          <span style={{ fontSize: 12.5, opacity: 0.65 }}>{fmtDate(h.date)}</span>
+                          {h.phase && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.06)", opacity: 0.85 }}>{h.phase}</span>}
+                        </div>
+                        <div style={{ marginTop: 4, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </section>
+        )}
 
         <section className={styles.section}>
           <h2 className={styles.h2}>Pagamentos</h2>

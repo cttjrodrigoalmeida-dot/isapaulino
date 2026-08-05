@@ -258,3 +258,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   ip         TEXT                              -- CF-Connecting-IP (rate limit login)
 );
 CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_logs(at);
+
+-- Histórico do Projeto (timeline): eventos por CONTRATO (projeto), preenchidos
+-- pelo admin. Liberado ao cliente após a assinatura (functions/api/client/overview.ts).
+-- Cada `type` tem uma cor no front (src/projectEvents.ts). Não confundir com
+-- client_history (financeiro/HF).
+CREATE TABLE IF NOT EXISTS project_history (
+  id          TEXT PRIMARY KEY,
+  contract_id TEXT NOT NULL,
+  date        TEXT NOT NULL DEFAULT (date('now')),
+  type        TEXT NOT NULL DEFAULT 'observacao',   -- reuniao|entrega|revisao|alteracao|inicio|marco|observacao
+  description TEXT NOT NULL DEFAULT '',
+  phase       TEXT,                                  -- status/fase do projeto (opcional)
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_project_history_contract ON project_history(contract_id);

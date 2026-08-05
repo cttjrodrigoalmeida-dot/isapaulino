@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject } from "./api";
-import { formatBRL, formatDate } from "./dashboard/format";
+import { formatBRL } from "./dashboard/format";
 import { formatPhone, formatCpfCnpj } from "./validation";
 import styles from "./Admin.module.css";
 
@@ -33,10 +33,11 @@ function situacaoOf(p: ClientPanoramaProject): Situacao {
 const initials = (name: string) =>
   (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
 
-export default function ClientPanorama({ clientId, onBack, onEdit }: {
+export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory }: {
   clientId: string;
   onBack: () => void;
   onEdit: (id: string) => void;
+  onOpenHistory: (contractId: string, projectLabel: string, signed: boolean, clientName: string) => void;
 }) {
   const [data, setData] = useState<Panorama | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -172,11 +173,19 @@ export default function ClientPanorama({ clientId, onBack, onEdit }: {
                       <td><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 999, color: sit.color, background: sit.soft, border: `1px solid ${sit.color}55` }}>{sit.label}</span></td>
                       <td className={styles.mono}>{p.value != null ? formatBRL(p.value) : "—"}</td>
                       <td style={{ textAlign: "right" }}>
-                        {(p.status === "signed" || p.status === "published") && p.slug ? (
-                          <a className={`${styles.btn} ${styles.btnGhost}`} href={`/contrato/${p.slug}`} target="_blank" rel="noopener noreferrer">Ver contrato ↗</a>
-                        ) : (
-                          <span style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>{p.signedAt ? `assinado ${formatDate(p.signedAt)}` : "não publicado"}</span>
-                        )}
+                        <div style={{ display: "inline-flex", gap: 6, justifyContent: "flex-end" }}>
+                          <button
+                            className={styles.btn}
+                            style={{ padding: "4px 10px" }}
+                            onClick={() => onOpenHistory(p.id, `${p.number ? `Nº ${p.number} · ` : ""}${p.projectName || p.title || "Projeto"}`, p.status === "signed", cl.name)}
+                            title="Histórico (linha do tempo) deste projeto"
+                          >
+                            Histórico
+                          </button>
+                          {(p.status === "signed" || p.status === "published") && p.slug && (
+                            <a className={`${styles.btn} ${styles.btnGhost}`} href={`/contrato/${p.slug}`} target="_blank" rel="noopener noreferrer">Ver ↗</a>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -186,7 +195,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit }: {
           </div>
         )}
         <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 10 }}>
-          O <strong>histórico (linha do tempo) de cada projeto</strong> entra na próxima fase — aparecerá aqui e na Área do Cliente.
+          Clique em <strong>Histórico</strong> para registrar a linha do tempo do projeto — após a assinatura, ela aparece automaticamente na Área do Cliente.
         </div>
       </div>
     </div>

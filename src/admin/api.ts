@@ -60,6 +60,23 @@ export interface AdminUser {
   name?: string;
 }
 
+/** Evento do Histórico do Projeto (timeline). */
+export interface ProjectHistoryEntry {
+  id: string;
+  contractId: string;
+  date: string;
+  type: string;
+  description: string;
+  phase: string | null;
+  createdAt: string;
+}
+export interface ProjectHistoryInput {
+  date: string;
+  type: string;
+  description: string;
+  phase?: string;
+}
+
 /** Panorama do cliente (Central do Cliente). */
 export interface ClientPanoramaProject {
   id: string;
@@ -595,6 +612,16 @@ export const api = {
     req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}`, { method: "DELETE" }),
   cancelContract: (id: string) =>
     req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
+
+  // ── histórico do projeto (timeline) ──
+  listProjectHistory: (contractId: string) =>
+    req<{ history: ProjectHistoryEntry[] }>(`/api/contracts/${encodeURIComponent(contractId)}/history`),
+  addProjectHistory: (contractId: string, e: ProjectHistoryInput) =>
+    req<{ ok: true; id: string }>(`/api/contracts/${encodeURIComponent(contractId)}/history`, { method: "POST", body: JSON.stringify(e) }),
+  updateProjectHistory: (contractId: string, hid: string, e: ProjectHistoryInput) =>
+    req<{ ok: true }>(`/api/contracts/${encodeURIComponent(contractId)}/history/${encodeURIComponent(hid)}`, { method: "PUT", body: JSON.stringify(e) }),
+  deleteProjectHistory: (contractId: string, hid: string) =>
+    req<{ ok: true }>(`/api/contracts/${encodeURIComponent(contractId)}/history/${encodeURIComponent(hid)}`, { method: "DELETE" }),
   publishContract: (id: string) =>
     req<{ ok: true; slug: string; status: ContractStatus }>(
       `/api/contracts/${encodeURIComponent(id)}/publish`,

@@ -33,6 +33,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        FROM client_history WHERE client_id = ? AND status != 'cancelled' ORDER BY date DESC`
     ).bind(clientId).all()).results ?? [];
 
+    // Histórico do Projeto (timeline): eventos dos contratos ASSINADOS do cliente
+    // — a área de histórico é liberada após a assinatura. Agrupado por contrato no front.
+    const projectHistory = (await env.DB.prepare(
+      `SELECT ph.id, ph.contract_id AS contractId, ph.date, ph.type, ph.description, ph.phase, c.title AS contractTitle
+         FROM project_history ph JOIN contracts c ON c.id = ph.contract_id
+        WHERE c.client_id = ? AND c.status = 'signed' AND c.deleted_at IS NULL
+        ORDER BY ph.date DESC, ph.created_at DESC`
+    ).bind(clientId).all()).results ?? [];
+
     // Arquivos compartilhados com este cliente (docs/ com clientId no metadata).
     const files: { key: string; name: string; size: number; uploaded: string }[] = [];
     let cursor: string | undefined;
@@ -53,7 +62,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     } while (cursor);
     files.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
 
-    return json({ client, contracts, installments, history, files });
+    return json({ client, contracts, installments, history, files, projectHistory });
   } catch (e) {
     return toErrorResponse(e);
   }
