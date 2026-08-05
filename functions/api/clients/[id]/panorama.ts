@@ -47,7 +47,25 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
          FROM client_history WHERE client_id = ?`
     ).bind(id).first();
 
-    return json({ client, projects, hf });
+    // Parcelas do cliente (recebido / a receber / em atraso).
+    const parcelas = await env.DB.prepare(
+      `SELECT COALESCE(SUM(CASE WHEN i.status IN ('received','confirmed') THEN i.amount ELSE 0 END), 0) AS recebido,
+              COALESCE(SUM(CASE WHEN i.status = 'overdue' THEN i.amount ELSE 0 END), 0) AS atraso,
+              COALESCE(SUM(CASE WHEN i.status = 'pending' THEN i.amount ELSE 0 END), 0) AS aReceber,
+              COUNT(*) AS n
+         FROM installments i JOIN contracts c ON c.id = i.contract_id
+        WHERE c.client_id = ? AND i.status != 'deleted'`
+    ).bind(id).first();
+
+    // Atividades recentes = eventos do histórico do projeto (timeline).
+    const { results: atividades } = await env.DB.prepare(
+      `SELECT ph.date, ph.type, ph.description, ph.phase, c.title AS contractTitle
+         FROM project_history ph JOIN contracts c ON c.id = ph.contract_id
+        WHERE c.client_id = ? AND c.deleted_at IS NULL
+        ORDER BY ph.date DESC, ph.created_at DESC LIMIT 8`
+    ).bind(id).all();
+
+    return json({ client, projects, hf, parcelas, atividades: atividades ?? [] });
   } catch (e) {
     return toErrorResponse(e);
   }

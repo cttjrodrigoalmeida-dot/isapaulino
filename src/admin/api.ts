@@ -99,6 +99,8 @@ export interface ClientPanorama {
   };
   projects: ClientPanoramaProject[];
   hf: { total: number; pago: number; pendente: number; n: number };
+  parcelas: { recebido: number; atraso: number; aReceber: number; n: number };
+  atividades: { date: string; type: string; description: string; phase: string | null; contractTitle: string }[];
 }
 
 export interface Client {
