@@ -5,6 +5,7 @@ import ProposalsSummary from "./ProposalsSummary";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
+import { useSort, SortTh, dateKey, type SortValue } from "./listSort";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -12,6 +13,24 @@ const yearOf = (number: string) => (/^\d{2}/.test(number) ? `20${number.slice(0,
 
 type OutcomeFilter = "todas" | "aprovada" | "nao-aprovada";
 const PAGE_SIZE = 8;
+
+// Rank de status p/ agrupar: aprovada → não aprovada → rascunho → cancelada.
+function proposalStatusRank(p: ProposalSummary): number {
+  if (p.status === "cancelled") return 3;
+  if (p.status !== "published") return 2;
+  return p.outcome === "aprovada" ? 0 : 1;
+}
+function proposalSortVal(p: ProposalSummary, key: string): SortValue {
+  switch (key) {
+    case "num": return Number(p.number) || 0;
+    case "cliente": return p.client ?? null;
+    case "servico": return p.serviceTitle ?? null;
+    case "data": return dateKey(p.date);
+    case "valor": return p.value ?? null;
+    case "status": return proposalStatusRank(p);
+    default: return null;
+  }
+}
 
 export default function ProposalsList({
   onNew,
@@ -120,8 +139,10 @@ export default function ProposalsList({
     () => (tab === "todas" ? yearItems : yearItems.filter((p) => (tab === "aprovada" ? p.outcome === "aprovada" : p.outcome !== "aprovada"))),
     [yearItems, tab]
   );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { sorted, sort, toggle } = useSort(filtered, proposalSortVal);
+  useEffect(() => { setPage(1); }, [sort]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const approvedValue = yearItems.filter((p) => p.outcome === "aprovada").reduce((s, p) => s + (p.value || 0), 0);
   const lostValue = yearItems.filter((p) => p.outcome !== "aprovada").reduce((s, p) => s + (p.value || 0), 0);
@@ -181,12 +202,12 @@ export default function ProposalsList({
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Nº</th>
-                  <th>Cliente</th>
-                  <th>Serviço</th>
-                  <th>Data</th>
-                  <th>Valor</th>
-                  <th>Status</th>
+                  <SortTh label="Nº" k="num" sort={sort} onSort={toggle} />
+                  <SortTh label="Cliente" k="cliente" sort={sort} onSort={toggle} />
+                  <SortTh label="Serviço" k="servico" sort={sort} onSort={toggle} />
+                  <SortTh label="Data" k="data" sort={sort} onSort={toggle} defaultDir="desc" />
+                  <SortTh label="Valor" k="valor" sort={sort} onSort={toggle} defaultDir="desc" />
+                  <SortTh label="Status" k="status" sort={sort} onSort={toggle} />
                   <th style={{ textAlign: "right" }}>Ações</th>
                 </tr>
               </thead>

@@ -4,6 +4,7 @@ import { formatBRL, formatDate } from "./dashboard/format";
 import ContractsAnalytics from "./ContractsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
+import { useSort, SortTh, type SortValue } from "./listSort";
 import styles from "./Admin.module.css";
 
 // Vencimento = assinatura + vigência (padrão 3 meses); null se não assinado.
@@ -27,6 +28,21 @@ const yearOf = (number: string | null) =>
 
 type StatusFilter = "todas" | "draft" | "published" | "signed" | "cancelled";
 const PAGE_SIZE = 8;
+
+// Ordem de agrupamento por status (ao clicar em "Status").
+const STATUS_RANK: Record<string, number> = { published: 0, signed: 1, draft: 2, cancelled: 3 };
+function contractSortVal(c: ContractSummary, key: string): SortValue {
+  switch (key) {
+    case "num": return Number(c.contractNumber) || 0;
+    case "cliente": return c.clientName ?? null;
+    case "titulo": return c.projectName || c.proposalTitle || c.title || null;
+    case "assinado": return c.signedAt ? Date.parse(c.signedAt) : null;
+    case "vence": { const d = vencimentoDate(c); return d ? d.getTime() : null; }
+    case "valor": return c.value ?? null;
+    case "status": return STATUS_RANK[c.status] ?? 9;
+    default: return null;
+  }
+}
 
 export default function ContractsList({
   onNew,
@@ -78,8 +94,10 @@ export default function ContractsList({
     () => (tab === "todas" ? yearItems : yearItems.filter((c) => c.status === tab)),
     [yearItems, tab]
   );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { sorted, sort, toggle } = useSort(filtered, contractSortVal);
+  useEffect(() => { setPage(1); }, [sort]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Contagens e valores
   const counts = useMemo(() => {
@@ -196,13 +214,13 @@ export default function ContractsList({
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Nº</th>
-                  <th>Cliente</th>
-                  <th>Título</th>
-                  <th>Assinado em</th>
-                  <th>Vence em</th>
-                  <th>Valor</th>
-                  <th>Status</th>
+                  <SortTh label="Nº" k="num" sort={sort} onSort={toggle} />
+                  <SortTh label="Cliente" k="cliente" sort={sort} onSort={toggle} />
+                  <SortTh label="Título" k="titulo" sort={sort} onSort={toggle} />
+                  <SortTh label="Assinado em" k="assinado" sort={sort} onSort={toggle} defaultDir="desc" />
+                  <SortTh label="Vence em" k="vence" sort={sort} onSort={toggle} defaultDir="desc" />
+                  <SortTh label="Valor" k="valor" sort={sort} onSort={toggle} defaultDir="desc" />
+                  <SortTh label="Status" k="status" sort={sort} onSort={toggle} />
                   <th style={{ textAlign: "right" }}>Ações</th>
                 </tr>
               </thead>

@@ -4,6 +4,7 @@ import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import BriefingsAnalytics from "./BriefingsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
+import { useSort, SortTh, type SortValue } from "./listSort";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -27,6 +28,19 @@ function getStatus(b: BriefingSummary): "responded" | "awaiting" | "cancelled" {
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso.slice(0, 10); }
+}
+
+// Rank de status p/ agrupar ao clicar em "Status".
+const B_STATUS_RANK: Record<string, number> = { responded: 0, awaiting: 1, cancelled: 2 };
+function briefingSortVal(b: BriefingSummary, key: string): SortValue {
+  switch (key) {
+    case "num": return Number(b.number) || 0;
+    case "cliente": return b.clientName ?? null;
+    case "titulo": return b.projectName ?? null;
+    case "respondido": return b.lastResponseAt ? Date.parse(b.lastResponseAt) : null;
+    case "status": return B_STATUS_RANK[getStatus(b)] ?? 9;
+    default: return null;
+  }
 }
 
 export default function BriefingsList({
@@ -65,8 +79,10 @@ export default function BriefingsList({
     if (tab === "todas") return yearItems;
     return yearItems.filter((b) => getStatus(b) === tab);
   }, [yearItems, tab]);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { sorted, sort, toggle } = useSort(filtered, briefingSortVal);
+  useEffect(() => { setPage(1); }, [sort]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Contagens
   const counts = useMemo(() => {
@@ -163,11 +179,11 @@ export default function BriefingsList({
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Nº</th>
-                  <th>Cliente</th>
-                  <th>Título</th>
-                  <th>Respondido em</th>
-                  <th>Status</th>
+                  <SortTh label="Nº" k="num" sort={sort} onSort={toggle} />
+                  <SortTh label="Cliente" k="cliente" sort={sort} onSort={toggle} />
+                  <SortTh label="Título" k="titulo" sort={sort} onSort={toggle} />
+                  <SortTh label="Respondido em" k="respondido" sort={sort} onSort={toggle} defaultDir="desc" />
+                  <SortTh label="Status" k="status" sort={sort} onSort={toggle} />
                   <th style={{ textAlign: "right" }}>Ações</th>
                 </tr>
               </thead>
