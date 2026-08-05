@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { api, ApiError, type Client } from "./api";
 import { formatCpfCnpj, formatPhone, onlyDigits } from "./validation";
+import { AvatarSVG, avatarById } from "../avatars";
 import styles from "./Admin.module.css";
 
 const initials = (name: string) =>
@@ -132,7 +133,7 @@ export default function ClientsList({
                     style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}
                   >
                     <span className={styles.clientAvatar}>
-                      {c.photo_url ? <img src={c.photo_url} alt={c.name} /> : initials(c.name)}
+                      {avatarById(c.avatar) ? <AvatarSVG id={c.avatar} size={36} /> : c.photo_url ? <img src={c.photo_url} alt={c.name} /> : initials(c.name)}
                     </span>
                     <span style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>{c.name}</span>
                   </button>

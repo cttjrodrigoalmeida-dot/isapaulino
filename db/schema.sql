@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS clients (
   access_token_version INTEGER NOT NULL DEFAULT 1, -- ++ ao "gerar novo link" (revoga os antigos)
   username      TEXT,                        -- usuário de acesso (Área do Cliente); único
   password_hash TEXT,                        -- senha (PBKDF2); só o admin define/altera
+  avatar        TEXT,                        -- avatar ilustrado escolhido (id em src/avatars.tsx)
+  gender        TEXT,                        -- f|m|n (prioriza avatares compatíveis)
   deleted_at    TEXT,                        -- soft-delete (lixeira); NULL = ativo
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))

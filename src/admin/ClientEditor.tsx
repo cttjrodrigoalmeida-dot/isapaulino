@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type ClientInput } from "./api";
 import { isValidCpfCnpj, isValidEmail } from "./validation";
+import { AvatarPicker, AvatarSVG, avatarById } from "../avatars";
 import UploadHint from "./UploadHint";
 import styles from "./Admin.module.css";
 
@@ -15,6 +16,7 @@ const EMPTY: ClientInput = {
   role: "",
   nacionalidade: "",
   birth_date: "",
+  gender: "",
 };
 
 export default function ClientEditor({
@@ -42,6 +44,8 @@ export default function ClientEditor({
   const [hasPassword, setHasPassword] = useState(false);
   const [credBusy, setCredBusy] = useState(false);
   const [credMsg, setCredMsg] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   useEffect(() => {
     if (isNew) return;
@@ -61,7 +65,9 @@ export default function ClientEditor({
           role: client.role ?? "",
           nacionalidade: client.nacionalidade ?? "",
           birth_date: client.birth_date ?? "",
+          gender: client.gender ?? "",
         });
+        setAvatar(client.avatar ?? null);
         setPhoto(client.photo_url ?? null);
         setUsername(client.username ?? "");
         setHasPassword(!!client.hasPassword);
@@ -164,6 +170,19 @@ export default function ClientEditor({
       setError(err instanceof ApiError ? err.message : "Erro ao salvar o acesso.");
     } finally {
       setCredBusy(false);
+    }
+  };
+  const chooseAvatar = async (idAvatar: string) => {
+    if (isNew) return;
+    setError(null);
+    setAvatar(idAvatar);
+    setAvatarBusy(true);
+    try {
+      await api.setClientAvatar(id!, idAvatar);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao salvar o avatar.");
+    } finally {
+      setAvatarBusy(false);
     }
   };
   const copyLink = () => {
@@ -315,6 +334,19 @@ export default function ClientEditor({
         </div>
 
         <div className={styles.field}>
+          <label className={styles.label}>Gênero (opcional)</label>
+          <select className={styles.input} value={form.gender ?? ""} onChange={(e) => set("gender", e.target.value)}>
+            <option value="">Não informar</option>
+            <option value="f">Feminino</option>
+            <option value="m">Masculino</option>
+            <option value="n">Neutro / outro</option>
+          </select>
+          <div className={styles.pageHint} style={{ marginTop: 6 }}>
+            Se informado, prioriza avatares compatíveis na escolha (mas o cliente escolhe livremente).
+          </div>
+        </div>
+
+        <div className={styles.field}>
           <label className={styles.label}>Endereço</label>
           <input
             className={styles.input}
@@ -354,6 +386,27 @@ export default function ClientEditor({
           </button>
         </div>
       </div>
+
+      {!isNew && (
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Avatar</div>
+          <div className={styles.pageHint} style={{ marginBottom: 12 }}>
+            O cliente escolhe o avatar no 1º acesso à Área do Cliente — mas você também pode definir/trocar aqui. É sincronizado nos dois lugares.
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+            <span className={styles.clientAvatar} style={{ width: 56, height: 56 }}>
+              {avatarById(avatar) ? <AvatarSVG id={avatar} size={56} /> : <span>{initials(form.name ?? "")}</span>}
+            </span>
+            <span className={styles.pageHint}>
+              {avatarBusy ? "Salvando…" : avatarById(avatar) ? "Avatar definido." : "Nenhum avatar escolhido ainda."}
+              {avatarById(avatar) && !avatarBusy && (
+                <button className={`${styles.btn} ${styles.btnGhost}`} style={{ marginLeft: 10, padding: "3px 9px" }} onClick={() => chooseAvatar("")}>Remover</button>
+              )}
+            </span>
+          </div>
+          <AvatarPicker value={avatar} onChange={chooseAvatar} gender={form.gender} size={54} />
+        </div>
+      )}
 
       {!isNew && (
         <div className={styles.card}>

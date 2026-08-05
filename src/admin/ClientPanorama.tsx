@@ -3,6 +3,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject } from "./api";
 import { formatBRL } from "./dashboard/format";
 import { formatPhone, formatCpfCnpj } from "./validation";
+import { AvatarSVG, avatarById } from "../avatars";
 import styles from "./Admin.module.css";
 
 const C = { green: "#2f9e44", amber: "#b07a16", blue: "#2f6fed", red: "#dd5c4e", slate: "#7c8698" };
@@ -79,7 +80,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
       <div className={styles.pageHead}>
         <div className={styles.clientNameCell} style={{ gap: 14 }}>
           <span className={styles.clientAvatar} style={{ width: 52, height: 52, fontSize: 18 }}>
-            {cl.photoUrl ? <img src={cl.photoUrl} alt={cl.name} /> : initials(cl.name)}
+            {avatarById(cl.avatar) ? <AvatarSVG id={cl.avatar} size={52} /> : cl.photoUrl ? <img src={cl.photoUrl} alt={cl.name} /> : initials(cl.name)}
           </span>
           <div>
             <div className={styles.pageTitle} style={{ marginBottom: 2 }}>{cl.name}</div>

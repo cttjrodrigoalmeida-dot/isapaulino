@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { eventTypeMeta } from "../projectEvents";
+import { AvatarSVG, AvatarPicker, avatarById } from "../avatars";
 import styles from "./AreaCliente.module.css";
 import admin from "../admin/Admin.module.css";
 
@@ -47,7 +48,7 @@ interface ProjectHistoryItem {
   phase: string | null; contractTitle: string;
 }
 interface Overview {
-  client: { name: string; email: string | null; phone: string | null; photoUrl: string | null };
+  client: { name: string; email: string | null; phone: string | null; photoUrl: string | null; avatar: string | null; gender: string | null };
   contracts: Contract[];
   installments: Installment[];
   history: HistoryItem[];
@@ -98,6 +99,9 @@ export default function AreaCliente() {
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [avatarSel, setAvatarSel] = useState("");
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
   const load = async () => {
     try {
@@ -168,6 +172,21 @@ export default function AreaCliente() {
     } finally {
       setLoggingIn(false);
     }
+  };
+
+  const saveAvatar = async () => {
+    if (!avatarSel) return;
+    setAvatarSaving(true);
+    try {
+      const res = await fetch("/api/client/avatar", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: avatarSel }),
+      });
+      if (res.ok) { setAvatarOpen(false); await load(); }
+    } catch { /* ignore */ }
+    finally { setAvatarSaving(false); }
   };
 
   const logout = async () => {
@@ -280,23 +299,61 @@ export default function AreaCliente() {
 
   const d = data!;
   const first = d.client.name.split(" ")[0];
+  const initials = d.client.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
+  // 1º acesso: escolher avatar é obrigatório. Também aparece ao clicar "trocar".
+  if (!avatarById(d.client.avatar) || avatarOpen) {
+    const mandatory = !avatarById(d.client.avatar);
+    return (
+      <div className={admin.loginScreen}>
+        <div className={admin.loginPattern} aria-hidden />
+        <div className={admin.loginVignette} aria-hidden />
+        <div className={admin.loginSplit} style={{ gridTemplateColumns: "1fr", maxWidth: 640 }}>
+          <div className={admin.loginRight} style={{ padding: 40 }}>
+            <h1 className={admin.loginBigTitle} style={{ fontSize: 24 }}>Escolha seu avatar</h1>
+            <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13.5, margin: "8px 0 20px" }}>
+              {mandatory ? `Olá, ${first}! Para começar, escolha um avatar que combine com você.` : "Toque em outro avatar para trocar."}
+            </p>
+            <AvatarPicker value={avatarSel || d.client.avatar || ""} onChange={setAvatarSel} gender={d.client.gender} size={62} />
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 24 }}>
+              <button className={admin.enterBtn} onClick={saveAvatar} disabled={!avatarSel || avatarSaving}>
+                {avatarSaving ? "Salvando…" : "Confirmar"}
+              </button>
+              {!mandatory && (
+                <button type="button" className={admin.forgot} style={{ textDecoration: "none" }} onClick={() => { setAvatarOpen(false); setAvatarSel(""); }}>
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.top}>
         <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.topLogo} />
         <div className={styles.topRight}>
-          <span
-            aria-hidden
+          <button
+            type="button"
+            aria-label="Trocar avatar"
+            onClick={() => { setAvatarSel(d.client.avatar || ""); setAvatarOpen(true); }}
+            title="Trocar avatar"
             style={{
               width: 34, height: 34, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
               display: "grid", placeItems: "center", background: "rgba(255,255,255,0.1)",
               fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "0.02em",
+              border: "none", padding: 0, cursor: "pointer", lineHeight: 0,
             }}
           >
-            {d.client.photoUrl
-              ? <img src={d.client.photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : d.client.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
-          </span>
+            {avatarById(d.client.avatar)
+              ? <AvatarSVG id={d.client.avatar} size={34} />
+              : d.client.photoUrl
+                ? <img src={d.client.photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span>{initials}</span>}
+          </button>
           <span className={styles.topName}>{d.client.name}</span>
           <button className={styles.logout} onClick={logout}>Sair</button>
         </div>

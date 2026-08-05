@@ -95,7 +95,7 @@ export interface ClientPanorama {
   client: {
     id: string; name: string; cpfCnpj: string | null; email: string | null;
     phone: string | null; address: string | null; city: string | null; state: string | null;
-    photoUrl: string | null; role: string | null; accessEnabled: number; createdAt: string;
+    photoUrl: string | null; avatar: string | null; gender: string | null; role: string | null; accessEnabled: number; createdAt: string;
   };
   projects: ClientPanoramaProject[];
   hf: { total: number; pago: number; pendente: number; n: number };
@@ -123,6 +123,10 @@ export interface Client {
   hasPassword?: number;
   /** 1 se o acesso à Área do Cliente está liberado. */
   accessEnabled?: number;
+  /** Avatar ilustrado escolhido (id em src/avatars.tsx). */
+  avatar?: string | null;
+  /** Gênero informado (f|m|n) — prioriza avatares compatíveis. */
+  gender?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,7 +134,7 @@ export interface Client {
 /** Campos editáveis de um cliente (sem id/timestamps). */
 export type ClientInput = Pick<
   Client,
-  "name" | "cpf_cnpj" | "email" | "phone" | "address" | "city" | "state" | "role" | "nacionalidade" | "birth_date"
+  "name" | "cpf_cnpj" | "email" | "phone" | "address" | "city" | "state" | "role" | "nacionalidade" | "birth_date" | "gender"
 >;
 
 // ── Histórico Financeiro (HF) ──
@@ -604,6 +608,11 @@ export const api = {
     req<{ ok: true; username: string }>(`/api/clients/${encodeURIComponent(clientId)}/credentials`, {
       method: "POST",
       body: JSON.stringify({ username, password }),
+    }),
+  setClientAvatar: (clientId: string, avatar: string | null) =>
+    req<{ ok: true }>(`/api/clients/${encodeURIComponent(clientId)}/avatar`, {
+      method: "POST",
+      body: JSON.stringify({ avatar }),
     }),
 
   // ── contratos ──

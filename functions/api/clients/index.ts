@@ -17,9 +17,10 @@ export interface ClientInput {
   role?: string | null;
   nacionalidade?: string | null;
   birth_date?: string | null;
+  gender?: string | null;
 }
 
-const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, created_at AS createdAt, updated_at AS updatedAt";
+const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, avatar, gender, created_at AS createdAt, updated_at AS updatedAt";
 
 // Normaliza um campo opcional: trim + vazio vira null.
 function opt(v: unknown): string | null {
@@ -64,11 +65,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     const id = crypto.randomUUID();
     await env.DB.prepare(
-      `INSERT INTO clients (id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO clients (id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, gender)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(id, name, cpf_cnpj, email, opt(body.phone), opt(body.address), opt(body.city), opt(body.state),
-        opt(body.role), opt(body.nacionalidade), opt(body.birth_date))
+        opt(body.role), opt(body.nacionalidade), opt(body.birth_date), opt(body.gender))
       .run();
 
     return json({ ok: true, id }, { status: 201 });

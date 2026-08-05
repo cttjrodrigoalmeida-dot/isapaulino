@@ -8,7 +8,7 @@ import { requireAuth } from "../_lib/auth";
 import { isValidEmail, isValidCpfCnpj } from "../_lib/validation";
 import type { ClientInput } from "./index";
 
-const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, username, access_enabled AS accessEnabled, (password_hash IS NOT NULL) AS hasPassword, created_at AS createdAt, updated_at AS updatedAt";
+const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, avatar, gender, username, access_enabled AS accessEnabled, (password_hash IS NOT NULL) AS hasPassword, created_at AS createdAt, updated_at AS updatedAt";
 
 function opt(v: unknown): string | null {
   const s = typeof v === "string" ? v.trim() : "";
@@ -47,11 +47,11 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     await env.DB.prepare(
       `UPDATE clients
        SET name = ?, cpf_cnpj = ?, email = ?, phone = ?, address = ?, city = ?, state = ?,
-           role = ?, nacionalidade = ?, birth_date = ?, updated_at = datetime('now')
+           role = ?, nacionalidade = ?, birth_date = ?, gender = ?, updated_at = datetime('now')
        WHERE id = ?`
     )
       .bind(name, cpf_cnpj, email, opt(body.phone), opt(body.address), opt(body.city), opt(body.state),
-        opt(body.role), opt(body.nacionalidade), opt(body.birth_date), id)
+        opt(body.role), opt(body.nacionalidade), opt(body.birth_date), opt(body.gender), id)
       .run();
 
     return json({ ok: true, id });

@@ -13,7 +13,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 
     const client = await env.DB.prepare(
       `SELECT id, name, cpf_cnpj AS cpfCnpj, email, phone, address, city, state,
-              photo_url AS photoUrl, role, access_enabled AS accessEnabled, created_at AS createdAt
+              photo_url AS photoUrl, avatar, gender, role, access_enabled AS accessEnabled, created_at AS createdAt
          FROM clients WHERE id = ? AND deleted_at IS NULL`
     ).bind(id).first();
     if (!client) return error(404, "Cliente não encontrado.");
