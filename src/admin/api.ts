@@ -60,6 +60,30 @@ export interface AdminUser {
   name?: string;
 }
 
+/** Panorama do cliente (Central do Cliente). */
+export interface ClientPanoramaProject {
+  id: string;
+  title: string | null;
+  value: number | null;
+  status: ContractStatus;
+  slug: string | null;
+  signedAt: string | null;
+  number: string | null;
+  vigenciaMeses: number | null;
+  kind: "principal" | "aditivo" | null;
+  projectName: string | null;
+  proposalNumber: string | null;
+}
+export interface ClientPanorama {
+  client: {
+    id: string; name: string; cpfCnpj: string | null; email: string | null;
+    phone: string | null; address: string | null; city: string | null; state: string | null;
+    photoUrl: string | null; role: string | null; accessEnabled: number; createdAt: string;
+  };
+  projects: ClientPanoramaProject[];
+  hf: { total: number; pago: number; pendente: number; n: number };
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -475,6 +499,8 @@ export const api = {
   listClients: (q?: string) =>
     req<{ clients: Client[] }>(`/api/clients${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   getClient: (id: string) => req<{ client: Client }>(`/api/clients/${encodeURIComponent(id)}`),
+  clientPanorama: (id: string) =>
+    req<ClientPanorama>(`/api/clients/${encodeURIComponent(id)}/panorama`),
   createClient: (client: ClientInput) =>
     req<{ ok: true; id: string }>("/api/clients", {
       method: "POST",

@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import ClientsList from "../ClientsList";
 import ClientEditor from "../ClientEditor";
 import ClientHistory from "../ClientHistory";
+import ClientPanorama from "../ClientPanorama";
 
 type View =
   | { name: "list" }
   | { name: "editor"; id: string | null }
+  | { name: "panorama"; id: string }
   | { name: "history"; id: string; clientName: string; phone: string | null };
 
 export default function Clientes({ requestNew }: { requestNew?: number | null }) {
@@ -26,6 +28,16 @@ export default function Clientes({ requestNew }: { requestNew?: number | null })
     );
   }
 
+  if (view.name === "panorama") {
+    return (
+      <ClientPanorama
+        clientId={view.id}
+        onBack={() => setView({ name: "list" })}
+        onEdit={(id) => setView({ name: "editor", id })}
+      />
+    );
+  }
+
   if (view.name === "history") {
     return (
       <ClientHistory
@@ -41,6 +53,7 @@ export default function Clientes({ requestNew }: { requestNew?: number | null })
     <ClientsList
       onNew={() => setView({ name: "editor", id: null })}
       onEdit={(id) => setView({ name: "editor", id })}
+      onPanorama={(id) => setView({ name: "panorama", id })}
       onHistory={(id, name, phone) => setView({ name: "history", id, clientName: name, phone })}
     />
   );

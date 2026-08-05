@@ -9,10 +9,12 @@ const initials = (name: string) =>
 export default function ClientsList({
   onNew,
   onEdit,
+  onPanorama,
   onHistory,
 }: {
   onNew: () => void;
   onEdit: (id: string) => void;
+  onPanorama: (id: string) => void;
   onHistory: (id: string, name: string, phone: string | null) => void;
 }) {
   const [items, setItems] = useState<Client[]>([]);
@@ -122,12 +124,18 @@ export default function ClientsList({
             {filtered.map((c) => (
               <tr key={c.id}>
                 <td>
-                  <div className={styles.clientNameCell}>
+                  <button
+                    type="button"
+                    className={styles.clientNameCell}
+                    onClick={() => onPanorama(c.id)}
+                    title="Abrir central do cliente"
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}
+                  >
                     <span className={styles.clientAvatar}>
                       {c.photo_url ? <img src={c.photo_url} alt={c.name} /> : initials(c.name)}
                     </span>
-                    {c.name}
-                  </div>
+                    <span style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>{c.name}</span>
+                  </button>
                 </td>
                 <td className={styles.mono}>{c.cpf_cnpj ? formatCpfCnpj(c.cpf_cnpj) : "—"}</td>
                 <td>{c.email || "—"}</td>
@@ -135,6 +143,9 @@ export default function ClientsList({
                 <td>{[c.city, c.state].filter(Boolean).join(" / ") || "—"}</td>
                 <td>
                   <div className={styles.rowActions}>
+                    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onPanorama(c.id)}>
+                      Abrir
+                    </button>
                     <button className={styles.btn} onClick={() => onEdit(c.id)}>
                       Editar
                     </button>
