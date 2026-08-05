@@ -159,12 +159,13 @@ export default function ContractEditor({
   }, []);
 
   // Aplica os dados do cliente ao contrato: CONTRATANTE, nomes de exibição
-  // (Cliente/Projeto/Data) e nº do contrato/proposta. Projeto e nº vêm da
-  // proposta mais recente do cliente; Data vira hoje (se ainda vazia).
-  const applyClient = (cid: string) => {
+  // (Cliente/Projeto/Data) e nº do contrato/proposta. Projeto e nº vêm de uma
+  // proposta específica (se informada) ou da mais recente do cliente; Data vira
+  // hoje (se ainda vazia).
+  const applyClient = (cid: string, preferProposal?: ProposalSummary) => {
     const c = clients.find((x) => x.id === cid);
     if (!c) return;
-    const latest = proposals
+    const latest = preferProposal ?? proposals
       .filter((p) => (p.client || "").trim().toLowerCase() === (c.name || "").trim().toLowerCase())
       .sort((a, b) => Number(b.number) - Number(a.number))[0];
     const endereco = [c.address, c.city, c.state].filter(Boolean).join(", ");
@@ -267,6 +268,31 @@ export default function ContractEditor({
   const selectClient = (cid: string) => {
     setClientId(cid);
     applyClient(cid);
+  };
+
+  // Informar o Nº da proposta → busca a proposta e preenche cliente, projeto,
+  // partes e nºs a partir dela (o número é o identificador do documento).
+  const fillFromProposalNumber = (raw: string) => {
+    const n = (raw || "").replace(/\D/g, ""); // aceita "26/25" ou "2625"
+    if (!n) return;
+    const prop = proposals.find((p) => p.number === n);
+    if (!prop) { setError(`Proposta Nº ${n} não encontrada.`); return; }
+    const c = clients.find((x) => (x.name || "").trim().toLowerCase() === (prop.client || "").trim().toLowerCase());
+    if (c) {
+      setClientId(c.id);
+      applyClient(c.id, prop);
+    } else {
+      // Sem cliente cadastrado com esse nome: preenche o que dá da própria proposta.
+      setDoc((prev) => prev ? {
+        ...prev,
+        clientName: prop.client ?? prev.clientName,
+        serviceTitle: prop.serviceTitle ?? prev.serviceTitle,
+        contractNumber: n,
+        proposalNumber: n,
+      } : prev);
+    }
+    setError(null);
+    setNotice(`Dados da proposta Nº ${n} aplicados.`);
   };
 
   // (Termo aditivo) Copia partes/cliente/projeto do CONTRATO PRINCIPAL vinculado.
@@ -661,7 +687,27 @@ export default function ContractEditor({
             <div className={styles.cardTitle}>Identificação / cabeçalho</div>
             <div className={styles.row2}>
               <Txt label="Nº do contrato" value={doc.contractNumber} onChange={(v) => patch({ contractNumber: v })} mono />
-              <Txt label="Nº da proposta" value={doc.proposalNumber ?? ""} onChange={(v) => patch({ proposalNumber: v })} mono />
+              <div className={styles.field}>
+                <label className={styles.label}>Nº da proposta</label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    className={`${styles.input} ${styles.mono}`}
+                    value={doc.proposalNumber ?? ""}
+                    onChange={(e) => patch({ proposalNumber: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); fillFromProposalNumber(doc.proposalNumber ?? ""); } }}
+                    placeholder="ex.: 2625"
+                  />
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    onClick={() => fillFromProposalNumber(doc.proposalNumber ?? "")}
+                    title="Buscar e preencher os dados vinculados a este número"
+                  >
+                    🔍 Buscar
+                  </button>
+                </div>
+                <div className={styles.placeholderHint}>Informe o nº e clique em 🔍 para preencher cliente, projeto e partes vinculados.</div>
+              </div>
             </div>
             <div className={styles.row2}>
               <Txt label="Data" value={doc.date} onChange={(v) => patch({ date: v })} placeholder="24/06/2026" />
