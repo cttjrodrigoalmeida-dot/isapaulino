@@ -53,12 +53,15 @@ function SignIcon() {
 export default function ContractEditor({
   id,
   kind = "principal",
+  parentId = null,
   onBack,
   onSaved,
 }: {
   id: string | null;
   /** Tipo do documento ao criar um NOVO (ignorado ao editar). */
   kind?: "principal" | "aditivo";
+  /** (Novo aditivo) contrato principal a pré-selecionar/copiar automaticamente. */
+  parentId?: string | null;
   onBack: () => void;
   onSaved: () => void;
 }) {
@@ -283,6 +286,9 @@ export default function ContractEditor({
         ...prev,
         parentContractId: parentId,
         parentContractNumber: src.contractNumber || "",
+        // O aditivo herda o MESMO número do contrato principal (identificado como
+        // "Aditivo" na listagem). Editável se precisar de outro número.
+        contractNumber: src.contractNumber || prev.contractNumber,
         clientName: src.clientName,
         projectName: src.projectName,
         serviceTitle: src.serviceTitle,
@@ -301,6 +307,17 @@ export default function ContractEditor({
       setError(err instanceof ApiError ? err.message : "Erro ao carregar o contrato principal.");
     }
   };
+
+  // Novo aditivo gerado a partir de um contrato específico: pré-seleciona e copia
+  // o principal automaticamente (roda uma vez, quando o doc em branco estiver pronto).
+  const parentApplied = useRef(false);
+  useEffect(() => {
+    if (isNew && kind === "aditivo" && parentId && doc && !parentApplied.current) {
+      parentApplied.current = true;
+      applyParentContract(parentId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, kind, parentId, doc]);
 
   const goJsonTab = () => {
     if (doc) setJsonText(JSON.stringify(doc, null, 2));
@@ -605,6 +622,11 @@ export default function ContractEditor({
                   </select>
                   {principals.length === 0 && (
                     <div className={styles.placeholderHint}>Nenhum contrato principal encontrado. Crie o contrato principal primeiro.</div>
+                  )}
+                  {doc.parentContractNumber && (
+                    <div className={styles.placeholderHint} style={{ marginTop: 6 }}>
+                      Aditivo ao contrato principal <strong>Nº {doc.parentContractNumber}</strong> — herda o mesmo número, identificado como “Aditivo” na listagem.
+                    </div>
                   )}
                 </div>
               ) : (

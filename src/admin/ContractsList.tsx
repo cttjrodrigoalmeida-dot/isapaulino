@@ -59,7 +59,7 @@ export default function ContractsList({
   onPayments,
 }: {
   onNew: () => void;
-  onNewAditivo: () => void;
+  onNewAditivo: (parentId?: string) => void;
   onEdit: (id: string) => void;
   onPayments: (id: string, title: string) => void;
 }) {
@@ -69,6 +69,7 @@ export default function ContractsList({
   const [busy, setBusy] = useState<string | null>(null);
   const [year, setYear] = useState<string>("");
   const [tab, setTab] = useState<StatusFilter>("todas");
+  const [kindFilter, setKindFilter] = useState<"todos" | "principais" | "aditivos">("todos");
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
 
@@ -95,14 +96,16 @@ export default function ContractsList({
   useEffect(() => {
     if (years.length && !years.includes(year)) setYear(years[0]);
   }, [years, year]);
-  useEffect(() => { setPage(1); }, [tab, year]);
+  useEffect(() => { setPage(1); }, [tab, year, kindFilter]);
 
   // Filtros
   const yearItems = useMemo(() => items.filter((c) => yearOf(c.contractNumber) === year), [items, year]);
-  const filtered = useMemo(
-    () => (tab === "todas" ? yearItems : yearItems.filter((c) => c.status === tab)),
-    [yearItems, tab]
-  );
+  const filtered = useMemo(() => {
+    let arr = tab === "todas" ? yearItems : yearItems.filter((c) => c.status === tab);
+    if (kindFilter === "principais") arr = arr.filter((c) => c.kind !== "aditivo");
+    else if (kindFilter === "aditivos") arr = arr.filter((c) => c.kind === "aditivo");
+    return arr;
+  }, [yearItems, tab, kindFilter]);
   // Busca: quando há termo, procura em TODOS os anos/status; senão, usa o filtro atual.
   const nq = norm(q).trim();
   const base = nq ? items.filter((c) => contractMatches(c, nq)) : filtered;
@@ -191,13 +194,24 @@ export default function ContractsList({
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
+          <select
+            className={styles.input}
+            style={{ width: "auto", minWidth: 120 }}
+            value={kindFilter}
+            onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
+            title="Filtrar por tipo de contrato"
+          >
+            <option value="todos">Todos os tipos</option>
+            <option value="principais">Só principais</option>
+            <option value="aditivos">Só aditivos</option>
+          </select>
           {years.length > 0 && (
             <select className={styles.input} style={{ width: "auto", minWidth: 110 }} value={year} onChange={(e) => setYear(e.target.value)}>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           )}
           <button className={styles.btn} onClick={load} disabled={loading}>Atualizar</button>
-          <button className={styles.btn} onClick={onNewAditivo} title="Cria um Termo Aditivo (altera/inclui itens no contrato principal)">+ Termo aditivo</button>
+          <button className={styles.btn} onClick={() => onNewAditivo()} title="Cria um Termo Aditivo (altera/inclui itens no contrato principal)">+ Termo aditivo</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onNew}>+ Novo contrato</button>
         </div>
       </div>
@@ -249,7 +263,14 @@ export default function ContractsList({
                   const isPublic = (c.status === "published" || c.status === "signed") && c.slug;
                   return (
                     <tr key={c.id}>
-                      <td className={styles.rowNumber}>{c.contractNumber || "—"}</td>
+                      <td className={styles.rowNumber}>
+                        {c.contractNumber || "—"}
+                        {c.kind === "aditivo" && (
+                          <span style={{ display: "inline-block", marginLeft: 6, fontSize: 9, fontFamily: "var(--font-mono)", letterSpacing: "0.06em", padding: "2px 6px", borderRadius: 6, color: "#8a5a00", background: "rgba(176,122,22,0.16)", border: "1px solid rgba(176,122,22,0.4)", verticalAlign: "middle" }}>
+                            ADITIVO
+                          </span>
+                        )}
+                      </td>
                       <td>{c.clientName || "—"}</td>
                       <td>{c.projectName || c.proposalTitle || c.title}</td>
                       <td className={styles.mono}>{c.signedAt ? formatDate(c.signedAt) : "—"}</td>
@@ -267,7 +288,7 @@ export default function ContractsList({
                             { label: "Duplicar", onSelect: () => duplicate(c), disabled: busy === c.id },
                             { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !isPublic },
                             { label: "Baixar PDF", href: isPublic ? `/contrato/${c.slug}` : undefined, hidden: !isPublic },
-                            { label: "Gerar contrato aditivo", onSelect: () => onNewAditivo(), hidden: c.kind === "aditivo" },
+                            { label: "Gerar contrato aditivo", onSelect: () => onNewAditivo(c.id), hidden: c.kind === "aditivo" },
                             { label: "Cancelar", onSelect: () => cancelC(c), disabled: busy === c.id, hidden: c.status === "cancelled" },
                             { label: "Excluir", onSelect: () => remove(c), danger: true, disabled: busy === c.id },
                           ];

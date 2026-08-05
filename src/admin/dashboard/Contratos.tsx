@@ -5,7 +5,7 @@ import ContractPayments from "../ContractPayments";
 
 type View =
   | { name: "list" }
-  | { name: "editor"; id: string | null; kind?: "principal" | "aditivo" }
+  | { name: "editor"; id: string | null; kind?: "principal" | "aditivo"; parentId?: string | null }
   | { name: "payments"; id: string; title: string };
 
 export default function Contratos({ requestNew }: { requestNew?: number | null }) {
@@ -20,6 +20,7 @@ export default function Contratos({ requestNew }: { requestNew?: number | null }
       <ContractEditor
         id={view.id}
         kind={view.kind}
+        parentId={view.parentId}
         onBack={() => setView({ name: "list" })}
         onSaved={() => setView({ name: "list" })}
       />
@@ -39,7 +40,7 @@ export default function Contratos({ requestNew }: { requestNew?: number | null }
   return (
     <ContractsList
       onNew={() => setView({ name: "editor", id: null, kind: "principal" })}
-      onNewAditivo={() => setView({ name: "editor", id: null, kind: "aditivo" })}
+      onNewAditivo={(parentId) => setView({ name: "editor", id: null, kind: "aditivo", parentId })}
       onEdit={(id) => setView({ name: "editor", id })}
       onPayments={(id, title) => setView({ name: "payments", id, title })}
     />
