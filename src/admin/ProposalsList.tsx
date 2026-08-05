@@ -5,7 +5,7 @@ import ProposalsSummary from "./ProposalsSummary";
 import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
-import { useSort, SortTh, dateKey, type SortValue } from "./listSort";
+import { useSort, SortTh, dateKey, norm, type SortValue } from "./listSort";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -19,6 +19,10 @@ function proposalStatusRank(p: ProposalSummary): number {
   if (p.status === "cancelled") return 3;
   if (p.status !== "published") return 2;
   return p.outcome === "aprovada" ? 0 : 1;
+}
+// Busca por número, cliente e projeto (serviço).
+function proposalMatches(p: ProposalSummary, nq: string): boolean {
+  return norm(p.number).includes(nq) || norm(p.client).includes(nq) || norm(p.serviceTitle).includes(nq);
 }
 function proposalSortVal(p: ProposalSummary, key: string): SortValue {
   switch (key) {
@@ -46,6 +50,7 @@ export default function ProposalsList({
   const [year, setYear] = useState<string>("");
   const [tab, setTab] = useState<OutcomeFilter>("todas");
   const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,8 +144,10 @@ export default function ProposalsList({
     () => (tab === "todas" ? yearItems : yearItems.filter((p) => (tab === "aprovada" ? p.outcome === "aprovada" : p.outcome !== "aprovada"))),
     [yearItems, tab]
   );
-  const { sorted, sort, toggle } = useSort(filtered, proposalSortVal);
-  useEffect(() => { setPage(1); }, [sort]);
+  const nq = norm(q).trim();
+  const base = nq ? items.filter((p) => proposalMatches(p, nq)) : filtered;
+  const { sorted, sort, toggle } = useSort(base, proposalSortVal);
+  useEffect(() => { setPage(1); }, [sort, nq]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -163,6 +170,13 @@ export default function ProposalsList({
           <div className={styles.pageHint}>Crie, edite e publique as propostas dos clientes.</div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <input
+            className={styles.input}
+            style={{ width: "auto", minWidth: 210 }}
+            placeholder="🔍 Buscar nº, cliente ou projeto"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
           {years.length > 0 && (
             <select className={styles.input} style={{ width: "auto", minWidth: 110 }} value={year} onChange={(e) => setYear(e.target.value)}>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -288,17 +302,17 @@ export default function ProposalsList({
                   </tr>
                 ))}
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>Nenhuma proposta neste filtro.</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>{nq ? `Nenhuma proposta para "${q}".` : "Nenhuma proposta neste filtro."}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           {/* Paginação */}
-          {filtered.length > 0 && (
+          {sorted.length > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap", gap: 10 }}>
               <span className={styles.pageHint}>
-                Mostrando {(page - 1) * PAGE_SIZE + 1} a {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} proposta{filtered.length === 1 ? "" : "s"}
+                Mostrando {(page - 1) * PAGE_SIZE + 1} a {Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} proposta{sorted.length === 1 ? "" : "s"}{nq ? " (busca em todos os anos)" : ""}
               </span>
               {totalPages > 1 && (
                 <div style={{ display: "flex", gap: 6 }}>

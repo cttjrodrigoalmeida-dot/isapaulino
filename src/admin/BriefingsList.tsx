@@ -4,7 +4,7 @@ import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import BriefingsAnalytics from "./BriefingsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
-import { useSort, SortTh, type SortValue } from "./listSort";
+import { useSort, SortTh, norm, type SortValue } from "./listSort";
 import styles from "./Admin.module.css";
 
 // Ano derivado do número (AANN): "2624" → "2026".
@@ -32,6 +32,14 @@ function fmtDate(iso: string | null): string {
 
 // Rank de status p/ agrupar ao clicar em "Status".
 const B_STATUS_RANK: Record<string, number> = { responded: 0, awaiting: 1, cancelled: 2 };
+// Busca por número, cliente e projeto (título/nome do projeto).
+function briefingMatches(b: BriefingSummary, nq: string): boolean {
+  return (
+    norm(b.number).includes(nq) ||
+    norm(b.clientName).includes(nq) ||
+    norm(b.projectName || b.proposalTitle).includes(nq)
+  );
+}
 function briefingSortVal(b: BriefingSummary, key: string): SortValue {
   switch (key) {
     case "num": return Number(b.number) || 0;
@@ -55,6 +63,7 @@ export default function BriefingsList({
   const [year, setYear] = useState<string>("");
   const [tab, setTab] = useState<StatusFilter>("todas");
   const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -79,8 +88,10 @@ export default function BriefingsList({
     if (tab === "todas") return yearItems;
     return yearItems.filter((b) => getStatus(b) === tab);
   }, [yearItems, tab]);
-  const { sorted, sort, toggle } = useSort(filtered, briefingSortVal);
-  useEffect(() => { setPage(1); }, [sort]);
+  const nq = norm(q).trim();
+  const base = nq ? items.filter((b) => briefingMatches(b, nq)) : filtered;
+  const { sorted, sort, toggle } = useSort(base, briefingSortVal);
+  useEffect(() => { setPage(1); }, [sort, nq]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -139,6 +150,13 @@ export default function BriefingsList({
           <div className={styles.pageHint}>Cada briefing é vinculado a uma proposta (mesmo número).</div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <input
+            className={styles.input}
+            style={{ width: "auto", minWidth: 210 }}
+            placeholder="🔍 Buscar nº, cliente ou projeto"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
           {years.length > 0 && (
             <select className={styles.input} style={{ width: "auto", minWidth: 110 }} value={year} onChange={(e) => setYear(e.target.value)}>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -221,17 +239,17 @@ export default function BriefingsList({
                   );
                 })}
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>Nenhum briefing neste filtro.</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>{nq ? `Nenhum briefing para "${q}".` : "Nenhum briefing neste filtro."}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           {/* Paginação */}
-          {filtered.length > 0 && (
+          {sorted.length > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap", gap: 10 }}>
               <span className={styles.pageHint}>
-                Mostrando {(page - 1) * PAGE_SIZE + 1} a {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} briefing{filtered.length === 1 ? "" : "s"}
+                Mostrando {(page - 1) * PAGE_SIZE + 1} a {Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} briefing{sorted.length === 1 ? "" : "s"}{nq ? " (busca em todos os anos)" : ""}
               </span>
               {totalPages > 1 && (
                 <div style={{ display: "flex", gap: 6 }}>

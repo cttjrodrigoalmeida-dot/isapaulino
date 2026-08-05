@@ -4,7 +4,7 @@ import { formatBRL, formatDate } from "./dashboard/format";
 import ContractsAnalytics from "./ContractsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
-import { useSort, SortTh, type SortValue } from "./listSort";
+import { useSort, SortTh, norm, type SortValue } from "./listSort";
 import styles from "./Admin.module.css";
 
 // Vencimento = assinatura + vigência (padrão 3 meses); null se não assinado.
@@ -31,6 +31,14 @@ const PAGE_SIZE = 8;
 
 // Ordem de agrupamento por status (ao clicar em "Status").
 const STATUS_RANK: Record<string, number> = { published: 0, signed: 1, draft: 2, cancelled: 3 };
+// Busca por número, cliente e projeto (título).
+function contractMatches(c: ContractSummary, nq: string): boolean {
+  return (
+    norm(c.contractNumber).includes(nq) ||
+    norm(c.clientName).includes(nq) ||
+    norm(c.projectName || c.proposalTitle || c.title).includes(nq)
+  );
+}
 function contractSortVal(c: ContractSummary, key: string): SortValue {
   switch (key) {
     case "num": return Number(c.contractNumber) || 0;
@@ -62,6 +70,7 @@ export default function ContractsList({
   const [year, setYear] = useState<string>("");
   const [tab, setTab] = useState<StatusFilter>("todas");
   const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,8 +103,11 @@ export default function ContractsList({
     () => (tab === "todas" ? yearItems : yearItems.filter((c) => c.status === tab)),
     [yearItems, tab]
   );
-  const { sorted, sort, toggle } = useSort(filtered, contractSortVal);
-  useEffect(() => { setPage(1); }, [sort]);
+  // Busca: quando há termo, procura em TODOS os anos/status; senão, usa o filtro atual.
+  const nq = norm(q).trim();
+  const base = nq ? items.filter((c) => contractMatches(c, nq)) : filtered;
+  const { sorted, sort, toggle } = useSort(base, contractSortVal);
+  useEffect(() => { setPage(1); }, [sort, nq]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -172,6 +184,13 @@ export default function ContractsList({
           <div className={styles.pageHint}>Crie, edite e publique contratos vinculados aos clientes.</div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <input
+            className={styles.input}
+            style={{ width: "auto", minWidth: 210 }}
+            placeholder="🔍 Buscar nº, cliente ou projeto"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
           {years.length > 0 && (
             <select className={styles.input} style={{ width: "auto", minWidth: 110 }} value={year} onChange={(e) => setYear(e.target.value)}>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -259,17 +278,17 @@ export default function ContractsList({
                   );
                 })}
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={8} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>Nenhum contrato neste filtro.</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: 24 }}>{nq ? `Nenhum contrato para "${q}".` : "Nenhum contrato neste filtro."}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           {/* Paginação */}
-          {filtered.length > 0 && (
+          {sorted.length > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap", gap: 10 }}>
               <span className={styles.pageHint}>
-                Mostrando {(page - 1) * PAGE_SIZE + 1} a {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} contrato{filtered.length === 1 ? "" : "s"}
+                Mostrando {(page - 1) * PAGE_SIZE + 1} a {Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length} contrato{sorted.length === 1 ? "" : "s"}{nq ? " (busca em todos os anos)" : ""}
               </span>
               {totalPages > 1 && (
                 <div style={{ display: "flex", gap: 6 }}>

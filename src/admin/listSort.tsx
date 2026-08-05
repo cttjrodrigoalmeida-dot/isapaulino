@@ -7,6 +7,11 @@ export type SortDir = "asc" | "desc";
 export interface SortState { key: string; dir: SortDir }
 export type SortValue = string | number | null;
 
+/** Normaliza p/ busca: minúsculas e sem acentos. */
+export function norm(s: string | null | undefined): string {
+  return (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
 /** Converte "DD/MM/AAAA" (ou ISO) num número comparável; null se vazio. */
 export function dateKey(s?: string | null): number | null {
   if (!s) return null;
