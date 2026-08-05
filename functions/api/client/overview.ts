@@ -9,7 +9,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const clientId = await requireVerifiedClient(request, env);
 
-    const client = await env.DB.prepare("SELECT name, email, phone FROM clients WHERE id = ?")
+    const client = await env.DB.prepare("SELECT name, email, phone, photo_url AS photoUrl FROM clients WHERE id = ?")
       .bind(clientId)
       .first();
     if (!client) return error(404, "Cliente não encontrado.");

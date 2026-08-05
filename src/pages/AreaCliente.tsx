@@ -2,6 +2,30 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { eventTypeMeta } from "../projectEvents";
 import styles from "./AreaCliente.module.css";
+import admin from "../admin/Admin.module.css";
+
+// Ícones do login (mesmos do painel).
+const IconUser = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" strokeLinecap="round" />
+  </svg>
+);
+const IconLock = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" strokeLinecap="round" />
+  </svg>
+);
+const IconEye = ({ off }: { off?: boolean }) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />
+    {off && <path d="M4 4l16 16" strokeLinecap="round" />}
+  </svg>
+);
+const IconArrow = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 interface Contract {
   id: string; title: string; status: string; slug: string | null;
@@ -23,7 +47,7 @@ interface ProjectHistoryItem {
   phase: string | null; contractTitle: string;
 }
 interface Overview {
-  client: { name: string; email: string | null; phone: string | null };
+  client: { name: string; email: string | null; phone: string | null; photoUrl: string | null };
   contracts: Contract[];
   installments: Installment[];
   history: HistoryItem[];
@@ -73,6 +97,7 @@ export default function AreaCliente() {
   const [loginPass, setLoginPass] = useState("");
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const load = async () => {
     try {
@@ -182,39 +207,72 @@ export default function AreaCliente() {
   if (state === "noauth") {
     const erro = params.get("erro");
     return (
-      <div className={styles.center}>
-        <form className={styles.gate} onSubmit={submitLogin}>
-          <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.gateLogo} />
-          <h1 className={styles.gateTitle}>Área do Cliente</h1>
-          {loginErr && <p className={styles.err}>{loginErr}</p>}
-          {erro === "link" && <p className={styles.err}>Link inválido ou expirado. Peça um novo ao estúdio.</p>}
-          {erro === "acesso" && <p className={styles.err}>Seu acesso ainda não foi liberado. Fale com o estúdio.</p>}
-          <p className={styles.gateText} style={{ marginBottom: 16 }}>
-            Entre com o <strong>usuário e a senha</strong> que o estúdio criou pra você.
-          </p>
-          <input
-            className={styles.verifyInput}
-            autoFocus
-            placeholder="Usuário"
-            autoCapitalize="none"
-            autoCorrect="off"
-            value={loginUser}
-            onChange={(ev) => setLoginUser(ev.target.value)}
-          />
-          <input
-            className={styles.verifyInput}
-            type="password"
-            placeholder="Senha"
-            style={{ marginTop: 10 }}
-            value={loginPass}
-            onChange={(ev) => setLoginPass(ev.target.value)}
-          />
-          <button className={styles.verifyBtn} type="submit" disabled={loggingIn}>
-            {loggingIn ? "Entrando…" : "Entrar"}
-          </button>
-          <p className={styles.gateText} style={{ marginTop: 16, fontSize: 13, opacity: 0.8 }}>
-            Esqueceu a senha? Fale com o estúdio — só o estúdio altera o acesso.
-          </p>
+      <div className={admin.loginScreen}>
+        <div className={admin.loginPattern} aria-hidden />
+        <div className={admin.loginVignette} aria-hidden />
+
+        <form className={admin.loginSplit} onSubmit={submitLogin}>
+          {/* Coluna esquerda — marca */}
+          <div className={admin.loginLeft}>
+            <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={admin.loginLogoImg} />
+            <div className={admin.loginLeftBottom}>
+              <h1 className={admin.loginBigTitle}>ÁREA DO<br />CLIENTE</h1>
+              <span className={admin.loginAccess}>Acesso exclusivo do cliente</span>
+              <span className={admin.loginDivider} />
+            </div>
+          </div>
+
+          {/* Coluna direita — formulário */}
+          <div className={admin.loginRight}>
+            {loginErr && <div className={admin.error}>{loginErr}</div>}
+            {erro === "link" && <div className={admin.error}>Link inválido ou expirado. Peça um novo ao estúdio.</div>}
+            {erro === "acesso" && <div className={admin.error}>Seu acesso ainda não foi liberado. Fale com o estúdio.</div>}
+
+            <div className={admin.loginField}>
+              <label className={admin.loginLabel}>Usuário</label>
+              <div className={admin.inputWrap}>
+                <span className={admin.inputIcon}><IconUser /></span>
+                <input
+                  className={admin.loginInput}
+                  value={loginUser}
+                  onChange={(e) => setLoginUser(e.target.value)}
+                  placeholder="Seu usuário"
+                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            <div className={admin.loginField}>
+              <label className={admin.loginLabel}>Senha</label>
+              <div className={admin.inputWrap}>
+                <span className={admin.inputIcon}><IconLock /></span>
+                <input
+                  className={admin.loginInput}
+                  type={showPass ? "text" : "password"}
+                  value={loginPass}
+                  onChange={(e) => setLoginPass(e.target.value)}
+                  placeholder="Sua senha"
+                  autoComplete="current-password"
+                />
+                <button type="button" className={admin.eyeBtn} onClick={() => setShowPass((s) => !s)} aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}>
+                  <IconEye off={showPass} />
+                </button>
+              </div>
+            </div>
+
+            <div className={admin.loginActions}>
+              <span className={admin.forgot} style={{ textDecoration: "none", cursor: "default" }}>
+                Esqueceu a senha? Fale com o estúdio.
+              </span>
+              <button type="submit" className={admin.enterBtn} disabled={loggingIn}>
+                {loggingIn ? "Entrando…" : "Entrar"}
+                {!loggingIn && <IconArrow />}
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     );
@@ -227,6 +285,18 @@ export default function AreaCliente() {
       <header className={styles.top}>
         <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.topLogo} />
         <div className={styles.topRight}>
+          <span
+            aria-hidden
+            style={{
+              width: 34, height: 34, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+              display: "grid", placeItems: "center", background: "rgba(255,255,255,0.1)",
+              fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "0.02em",
+            }}
+          >
+            {d.client.photoUrl
+              ? <img src={d.client.photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : d.client.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
+          </span>
           <span className={styles.topName}>{d.client.name}</span>
           <button className={styles.logout} onClick={logout}>Sair</button>
         </div>
