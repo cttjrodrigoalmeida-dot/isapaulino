@@ -86,10 +86,13 @@ CREATE TABLE IF NOT EXISTS clients (
   photo_url     TEXT,                        -- foto/avatar do cliente (URL pública no R2)
   access_enabled INTEGER NOT NULL DEFAULT 0, -- 1 = acesso à Área do Cliente liberado
   access_token_version INTEGER NOT NULL DEFAULT 1, -- ++ ao "gerar novo link" (revoga os antigos)
+  username      TEXT,                        -- usuário de acesso (Área do Cliente); único
+  password_hash TEXT,                        -- senha (PBKDF2); só o admin define/altera
   deleted_at    TEXT,                        -- soft-delete (lixeira); NULL = ativo
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_username ON clients(username) WHERE username IS NOT NULL;
 -- NOTA (migração de bancos já criados): rodar UMA vez em bancos existentes:
 --   ALTER TABLE clients ADD COLUMN role TEXT;
 --   ALTER TABLE clients ADD COLUMN nacionalidade TEXT;

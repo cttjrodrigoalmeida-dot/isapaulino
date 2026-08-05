@@ -36,6 +36,12 @@ export default function ClientEditor({
   const [access, setAccess] = useState<{ enabled: boolean; link: string } | null>(null);
   const [accessBusy, setAccessBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Acesso por usuário + senha (Fase C).
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [hasPassword, setHasPassword] = useState(false);
+  const [credBusy, setCredBusy] = useState(false);
+  const [credMsg, setCredMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isNew) return;
@@ -57,6 +63,8 @@ export default function ClientEditor({
           birth_date: client.birth_date ?? "",
         });
         setPhoto(client.photo_url ?? null);
+        setUsername(client.username ?? "");
+        setHasPassword(!!client.hasPassword);
         try {
           const a = await api.getClientAccess(id!);
           if (alive) setAccess(a);
@@ -138,6 +146,24 @@ export default function ClientEditor({
       setError(err instanceof ApiError ? err.message : "Erro ao alterar o acesso.");
     } finally {
       setAccessBusy(false);
+    }
+  };
+  const saveCredentials = async () => {
+    if (isNew) return;
+    setCredMsg(null); setError(null);
+    if (!username.trim()) { setError("Informe o nome de usuário."); return; }
+    if (!hasPassword && !password) { setError("Defina uma senha para o primeiro acesso."); return; }
+    setCredBusy(true);
+    try {
+      await api.setClientCredentials(id!, username.trim(), password || undefined);
+      setPassword("");
+      setHasPassword(true);
+      setCredMsg("Acesso salvo. O cliente entra com usuário e senha.");
+      try { setAccess(await api.getClientAccess(id!)); } catch { /* opcional */ }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao salvar o acesso.");
+    } finally {
+      setCredBusy(false);
     }
   };
   const copyLink = () => {
@@ -331,9 +357,31 @@ export default function ClientEditor({
 
       {!isNew && (
         <div className={styles.card}>
-          <div className={styles.cardTitle}>Área do Cliente</div>
+          <div className={styles.cardTitle}>Área do Cliente — usuário e senha</div>
           <div className={styles.pageHint} style={{ marginBottom: 12 }}>
-            Libere o acesso e envie o <strong>link exclusivo</strong> ao cliente (WhatsApp/e-mail). Ele entra sem senha e vê só o próprio contrato, pagamentos e histórico. O acesso também é liberado automaticamente ao <strong>publicar um contrato</strong>.
+            Crie o <strong>usuário e a senha</strong> que o cliente usa para entrar na Área do Cliente. Cada cliente tem <strong>um único acesso</strong> (todos os projetos ficam nele). Só você altera a senha — o cliente não troca.
+          </div>
+          <div className={styles.row2}>
+            <div className={styles.field}>
+              <label className={styles.label}>Usuário</label>
+              <input className={styles.input} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ex.: marina.prado" autoComplete="off" />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>{hasPassword ? "Nova senha (deixe em branco p/ manter)" : "Senha (mín. 6)"}</label>
+              <input className={styles.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={hasPassword ? "••••••••" : "defina a senha"} autoComplete="new-password" />
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={saveCredentials} disabled={credBusy}>
+              {credBusy ? "Salvando…" : hasPassword ? "Salvar acesso" : "Criar acesso"}
+            </button>
+            {hasPassword && <span className={`${styles.badge} ${styles.badgePublished}`}>Senha definida</span>}
+            {credMsg && <span className={styles.pageHint}>{credMsg}</span>}
+          </div>
+
+          <div className={styles.cardTitle} style={{ marginTop: 22, fontSize: 13 }}>Link mágico (opcional)</div>
+          <div className={styles.pageHint} style={{ marginBottom: 12 }}>
+            Alternativa sem senha: libere o acesso e envie o <strong>link exclusivo</strong> (WhatsApp/e-mail). O acesso também é liberado automaticamente ao <strong>publicar um contrato</strong>.
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <button

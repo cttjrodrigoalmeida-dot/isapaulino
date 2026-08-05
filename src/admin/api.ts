@@ -117,6 +117,12 @@ export interface Client {
   birth_date: string | null;
   /** Foto/avatar do cliente (URL pública no R2). */
   photo_url: string | null;
+  /** Usuário de acesso à Área do Cliente (definido pelo admin). */
+  username?: string | null;
+  /** 1 se o cliente já tem senha definida. */
+  hasPassword?: number;
+  /** 1 se o acesso à Área do Cliente está liberado. */
+  accessEnabled?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -592,6 +598,12 @@ export const api = {
     req<{ ok: true; enabled: boolean; link: string }>(`/api/clients/${encodeURIComponent(clientId)}/access`, {
       method: "PUT",
       body: JSON.stringify({ regenerate: true }),
+    }),
+  // Usuário + senha de acesso (admin cria/altera; senha opcional se já existe).
+  setClientCredentials: (clientId: string, username: string, password?: string) =>
+    req<{ ok: true; username: string }>(`/api/clients/${encodeURIComponent(clientId)}/credentials`, {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
     }),
 
   // ── contratos ──

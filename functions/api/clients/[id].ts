@@ -8,7 +8,7 @@ import { requireAuth } from "../_lib/auth";
 import { isValidEmail, isValidCpfCnpj } from "../_lib/validation";
 import type { ClientInput } from "./index";
 
-const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, created_at AS createdAt, updated_at AS updatedAt";
+const COLS = "id, name, cpf_cnpj, email, phone, address, city, state, role, nacionalidade, birth_date, photo_url, username, access_enabled AS accessEnabled, (password_hash IS NOT NULL) AS hasPassword, created_at AS createdAt, updated_at AS updatedAt";
 
 function opt(v: unknown): string | null {
   const s = typeof v === "string" ? v.trim() : "";

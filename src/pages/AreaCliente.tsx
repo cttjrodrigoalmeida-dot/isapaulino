@@ -69,6 +69,10 @@ export default function AreaCliente() {
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [briefings, setBriefings] = useState<{ number: string; title: string | null; responded: boolean }[]>([]);
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [loginErr, setLoginErr] = useState<string | null>(null);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   const load = async () => {
     try {
@@ -117,6 +121,30 @@ export default function AreaCliente() {
     }
   };
 
+  const submitLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoginErr(null);
+    setLoggingIn(true);
+    try {
+      const res = await fetch("/api/client/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUser, password: loginPass }),
+      });
+      if (res.ok) {
+        await load();
+      } else {
+        const b = await res.json().catch(() => ({}));
+        setLoginErr(b?.error || "Usuário ou senha inválidos.");
+      }
+    } catch {
+      setLoginErr("Erro de conexão. Tente novamente.");
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
   const logout = async () => {
     await fetch("/api/client/logout", { method: "POST", credentials: "include" }).catch(() => {});
     setState("noauth");
@@ -155,15 +183,39 @@ export default function AreaCliente() {
     const erro = params.get("erro");
     return (
       <div className={styles.center}>
-        <div className={styles.gate}>
+        <form className={styles.gate} onSubmit={submitLogin}>
           <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.gateLogo} />
           <h1 className={styles.gateTitle}>Área do Cliente</h1>
+          {loginErr && <p className={styles.err}>{loginErr}</p>}
           {erro === "link" && <p className={styles.err}>Link inválido ou expirado. Peça um novo ao estúdio.</p>}
           {erro === "acesso" && <p className={styles.err}>Seu acesso ainda não foi liberado. Fale com o estúdio.</p>}
-          <p className={styles.gateText}>
-            Para entrar, use o <strong>link exclusivo</strong> que o estúdio enviou pra você (WhatsApp ou e-mail).
+          <p className={styles.gateText} style={{ marginBottom: 16 }}>
+            Entre com o <strong>usuário e a senha</strong> que o estúdio criou pra você.
           </p>
-        </div>
+          <input
+            className={styles.verifyInput}
+            autoFocus
+            placeholder="Usuário"
+            autoCapitalize="none"
+            autoCorrect="off"
+            value={loginUser}
+            onChange={(ev) => setLoginUser(ev.target.value)}
+          />
+          <input
+            className={styles.verifyInput}
+            type="password"
+            placeholder="Senha"
+            style={{ marginTop: 10 }}
+            value={loginPass}
+            onChange={(ev) => setLoginPass(ev.target.value)}
+          />
+          <button className={styles.verifyBtn} type="submit" disabled={loggingIn}>
+            {loggingIn ? "Entrando…" : "Entrar"}
+          </button>
+          <p className={styles.gateText} style={{ marginTop: 16, fontSize: 13, opacity: 0.8 }}>
+            Esqueceu a senha? Fale com o estúdio — só o estúdio altera o acesso.
+          </p>
+        </form>
       </div>
     );
   }
