@@ -48,7 +48,7 @@ interface ProjectHistoryItem {
   phase: string | null; contractTitle: string;
 }
 interface Overview {
-  client: { name: string; email: string | null; phone: string | null; photoUrl: string | null; avatar: string | null; gender: string | null };
+  client: { name: string; email: string | null; phone: string | null; cpfCnpj: string | null; address: string | null; city: string | null; state: string | null; photoUrl: string | null; avatar: string | null; gender: string | null };
   contracts: Contract[];
   installments: Installment[];
   history: HistoryItem[];
@@ -102,12 +102,20 @@ export default function AreaCliente() {
   const [avatarSel, setAvatarSel] = useState("");
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [profile, setProfile] = useState({ name: "", email: "", phone: "", cpf_cnpj: "", address: "", city: "", state: "" });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<string | null>(null);
 
   const load = async () => {
     try {
       const res = await fetch("/api/client/overview", { credentials: "include" });
       if (res.ok) {
-        setData(await res.json());
+        const j: Overview = await res.json();
+        setData(j);
+        setProfile({
+          name: j.client.name ?? "", email: j.client.email ?? "", phone: j.client.phone ?? "",
+          cpf_cnpj: j.client.cpfCnpj ?? "", address: j.client.address ?? "", city: j.client.city ?? "", state: j.client.state ?? "",
+        });
         setState("ok");
         try {
           const br = await fetch("/api/client/briefings", { credentials: "include" });
@@ -187,6 +195,24 @@ export default function AreaCliente() {
       if (res.ok) { setAvatarOpen(false); await load(); }
     } catch { /* ignore */ }
     finally { setAvatarSaving(false); }
+  };
+
+  const saveProfile = async (e: FormEvent) => {
+    e.preventDefault();
+    setProfileMsg(null);
+    if (!profile.name.trim()) { setProfileMsg("Informe seu nome."); return; }
+    setProfileSaving(true);
+    try {
+      const res = await fetch("/api/client/profile", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profile),
+      });
+      if (res.ok) { setProfileMsg("Dados atualizados ✓"); await load(); }
+      else { const b = await res.json().catch(() => ({})); setProfileMsg(b?.error || "Não foi possível salvar."); }
+    } catch { setProfileMsg("Erro de conexão."); }
+    finally { setProfileSaving(false); }
   };
 
   const logout = async () => {
@@ -520,6 +546,51 @@ export default function AreaCliente() {
             </div>
           </section>
         )}
+
+        <section className={styles.section}>
+          <h2 className={styles.h2}>Meus dados</h2>
+          <form className={styles.card} onSubmit={saveProfile}>
+            <div className={styles.profileGrid}>
+              <label className={styles.profileField}>
+                <span className={styles.profileLabel}>Nome</span>
+                <input className={styles.profileInput} value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} />
+              </label>
+              <label className={styles.profileField}>
+                <span className={styles.profileLabel}>E-mail</span>
+                <input className={styles.profileInput} type="email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} placeholder="email@exemplo.com" />
+              </label>
+              <label className={styles.profileField}>
+                <span className={styles.profileLabel}>Telefone</span>
+                <input className={styles.profileInput} value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} placeholder="(00) 00000-0000" inputMode="tel" />
+              </label>
+              <label className={styles.profileField}>
+                <span className={styles.profileLabel}>CPF / CNPJ</span>
+                <input className={styles.profileInput} value={profile.cpf_cnpj} onChange={(e) => setProfile((p) => ({ ...p, cpf_cnpj: e.target.value }))} inputMode="numeric" />
+              </label>
+              <label className={styles.profileField} style={{ gridColumn: "1 / -1" }}>
+                <span className={styles.profileLabel}>Endereço</span>
+                <input className={styles.profileInput} value={profile.address} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} placeholder="Rua, número, complemento" />
+              </label>
+              <label className={styles.profileField}>
+                <span className={styles.profileLabel}>Cidade</span>
+                <input className={styles.profileInput} value={profile.city} onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))} />
+              </label>
+              <label className={styles.profileField}>
+                <span className={styles.profileLabel}>UF</span>
+                <input className={styles.profileInput} value={profile.state} onChange={(e) => setProfile((p) => ({ ...p, state: e.target.value.toUpperCase().slice(0, 2) }))} maxLength={2} placeholder="SP" />
+              </label>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 14, flexWrap: "wrap" }}>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={profileSaving}>
+                {profileSaving ? "Salvando…" : "Salvar meus dados"}
+              </button>
+              {profileMsg && <span className={styles.profileMsg}>{profileMsg}</span>}
+            </div>
+            <p className={styles.profileNote}>
+              Você edita apenas seus dados de contato. Contratos, pagamentos e o andamento do projeto são só para consulta.
+            </p>
+          </form>
+        </section>
 
         <footer className={styles.footer}>ISABELA PAULINO STUDIO · ÁREA DO CLIENTE</footer>
       </main>
