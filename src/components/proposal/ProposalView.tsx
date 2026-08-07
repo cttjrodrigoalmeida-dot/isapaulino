@@ -19,6 +19,14 @@ import styles from "./ProposalView.module.css";
 // (opacity:0 do framer-motion / seções fechadas) sai em branco.
 const PrintContext = createContext(false);
 
+// Valor numérico de um preço formatado ("R$ 200,00" → 200). Não numérico
+// ("a combinar", "—") vai para o fim ao ordenar do menor para o maior.
+function priceNum(v: string): number {
+  const m = (v || "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(m);
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
 // ── Reveal on scroll ──────────────────────────────────────────
 function Reveal({
   children,
@@ -638,7 +646,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
                   )}
                 </div>
                 <ul className={styles.priceList}>
-                  {block.lines.map((line) => (
+                  {[...block.lines].sort((a, b) => priceNum(a.value) - priceNum(b.value)).map((line) => (
                     <li key={line.label} className={styles.priceRow}>
                       <span className={styles.priceLabel}>{line.label}</span>
                       <span className={styles.dots} aria-hidden />
@@ -813,12 +821,12 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
               <div className={styles.prazoRow}>
                 <div className={styles.prazoItem}>
                   <span className={styles.prazoNum}>{p.prazoDetalhamento}</span>
-                  <span className={styles.prazoCaption}>Detalhamento Executivo</span>
+                  <span className={styles.prazoCaption}>{p.investmentBlocks?.[0]?.title || "Detalhamento Executivo"}</span>
                 </div>
                 {p.prazoAnteprojeto && (
                   <div className={styles.prazoItem}>
                     <span className={styles.prazoNum}>{p.prazoAnteprojeto}</span>
-                    <span className={styles.prazoCaption}>Anteprojeto</span>
+                    <span className={styles.prazoCaption}>{p.investmentBlocks?.[1]?.title || "Anteprojeto"}</span>
                   </div>
                 )}
                 {p.availableDate && (

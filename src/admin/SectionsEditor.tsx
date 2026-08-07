@@ -36,13 +36,16 @@ export default function SectionsEditor({
         <div className={styles.cardTitle}>Prazo de entrega</div>
         <div className={styles.row2}>
           <div className={styles.field}>
-            <label className={styles.label}>Prazo de detalhamento</label>
+            <label className={styles.label}>{proposal.investmentBlocks?.[0]?.title ? `Prazo — ${proposal.investmentBlocks[0].title}` : "Prazo de detalhamento"}</label>
             <input className={styles.input} value={proposal.prazoDetalhamento} onChange={(e) => set("prazoDetalhamento", e.target.value)} />
           </div>
           <div className={styles.field}>
-            <label className={styles.label}>Prazo de anteprojeto (opcional)</label>
+            <label className={styles.label}>{proposal.investmentBlocks?.[1]?.title ? `Prazo — ${proposal.investmentBlocks[1].title} (opcional)` : "Prazo de anteprojeto (opcional)"}</label>
             <input className={styles.input} value={proposal.prazoAnteprojeto ?? ""} onChange={(e) => set("prazoAnteprojeto", e.target.value)} />
           </div>
+        </div>
+        <div className={styles.pageHint} style={{ marginTop: -6, marginBottom: 10 }}>
+          Os rótulos acima e as legendas no prazo da proposta puxam os <strong>títulos dos blocos do Investimento</strong> (Bloco 1 → detalhamento, Bloco 2 → anteprojeto).
         </div>
         <div className={styles.field}>
           <label className={styles.label}>Data disponível para iniciar</label>

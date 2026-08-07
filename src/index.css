@@ -85,6 +85,10 @@ a, button, [role="button"], input, select, textarea, a *, button * {
   cursor: pointer !important;
 }
 
+/* Seleção de texto: fundo melancia + texto branco (visível em qualquer fundo). */
+::selection { background: rgba(240, 80, 110, 0.85); color: #fff; }
+::-moz-selection { background: rgba(240, 80, 110, 0.85); color: #fff; }
+
 body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);

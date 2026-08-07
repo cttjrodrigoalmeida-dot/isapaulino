@@ -129,6 +129,7 @@
   line-height: 1.8;
   color: var(--color-text-secondary);
   margin-bottom: 14px;
+  white-space: pre-line;
 }
 
 .miniLabel {
@@ -522,6 +523,8 @@
   line-height: 1.8;
   color: var(--color-text-secondary);
   margin-bottom: 14px;
+  /* preserva as quebras de linha e linhas em branco digitadas (Enter) */
+  white-space: pre-line;
 }
 /* "Ambientes do escopo" — destacada em branco (só dentro da carta) */
 .letterCard .miniLabel {
