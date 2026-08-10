@@ -13,6 +13,15 @@ export default function SectionsEditor({
 }) {
   const set = <K extends keyof Proposal>(key: K, value: Proposal[K]) =>
     onChange({ ...proposal, [key]: value });
+
+  // Prazos adicionais (um por serviço) — legenda + valor.
+  const extras = proposal.prazosExtras ?? [];
+  const setExtras = (v: { label: string; value: string }[]) => set("prazosExtras", v);
+  const addExtra = () => setExtras([...extras, { label: "", value: "" }]);
+  const dupExtra = (i: number) => setExtras([...extras.slice(0, i + 1), { ...extras[i] }, ...extras.slice(i + 1)]);
+  const removeExtra = (i: number) => setExtras(extras.filter((_, j) => j !== i));
+  const setExtra = (i: number, patch: Partial<{ label: string; value: string }>) =>
+    setExtras(extras.map((e, j) => (j === i ? { ...e, ...patch } : e)));
   const setShow = (key: "about" | "process" | "clauses" | "notIncluded", value: boolean) =>
     onChange({ ...proposal, show: { ...proposal.show, [key]: value } });
 
@@ -47,6 +56,31 @@ export default function SectionsEditor({
         <div className={styles.pageHint} style={{ marginTop: -6, marginBottom: 10 }}>
           Os rótulos acima e as legendas no prazo da proposta puxam os <strong>títulos dos blocos do Investimento</strong> (Bloco 1 → detalhamento, Bloco 2 → anteprojeto).
         </div>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Prazos adicionais (um por serviço)</label>
+          <div className={styles.pageHint} style={{ marginBottom: 8 }}>
+            Precisa de mais de um prazo? Adicione (ou duplique) — cada um aparece na proposta com sua legenda.
+          </div>
+          {extras.map((e, i) => (
+            <div key={i} className={styles.row2} style={{ alignItems: "end", marginBottom: 8 }}>
+              <div className={styles.field} style={{ marginBottom: 0 }}>
+                <label className={styles.label}>Legenda</label>
+                <input className={styles.input} value={e.label} onChange={(ev) => setExtra(i, { label: ev.target.value })} placeholder="ex.: Modelagem 3D" />
+              </div>
+              <div className={styles.field} style={{ marginBottom: 0 }}>
+                <label className={styles.label}>Prazo</label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input className={styles.input} value={e.value} onChange={(ev) => setExtra(i, { value: ev.target.value })} placeholder="ex.: 10 dias úteis" />
+                  <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => dupExtra(i)} title="Duplicar">⧉</button>
+                  <button type="button" className={styles.iconBtn} onClick={() => removeExtra(i)} aria-label="Remover">×</button>
+                </div>
+              </div>
+            </div>
+          ))}
+          <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={addExtra} style={{ marginTop: 2 }}>+ Adicionar prazo</button>
+        </div>
+
         <div className={styles.field}>
           <label className={styles.label}>Data disponível para iniciar</label>
           <input className={styles.input} value={proposal.availableDate ?? ""} onChange={(e) => set("availableDate", e.target.value)} placeholder="00-00-2026" />

@@ -135,6 +135,8 @@ export interface Proposal {
   // ── Prazo ──
   prazoDetalhamento: string; // "15 dias úteis"
   prazoAnteprojeto?: string; // "7 dias úteis"
+  /** Prazos adicionais (um por serviço) — legenda + valor. Duplicáveis no editor. */
+  prazosExtras?: { label: string; value: string }[];
   availableDate?: string;    // "DD-MM-AAAA"
   prazoNote?: string;
 

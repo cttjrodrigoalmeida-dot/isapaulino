@@ -829,6 +829,12 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
                     <span className={styles.prazoCaption}>{p.investmentBlocks?.[1]?.title || "Anteprojeto"}</span>
                   </div>
                 )}
+                {(p.prazosExtras ?? []).filter((e) => e.value?.trim()).map((e, i) => (
+                  <div key={`extra-${i}`} className={styles.prazoItem}>
+                    <span className={styles.prazoNum}>{e.value}</span>
+                    <span className={styles.prazoCaption}>{e.label || "Prazo"}</span>
+                  </div>
+                ))}
                 {p.availableDate && (
                   <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
                     <span className={styles.prazoNum}>{p.availableDate}</span>
