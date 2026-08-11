@@ -21,6 +21,7 @@
   --srf-2: #191919;       /* chips/superfície levemente destacada */
   --srf-line: #1e1e1e;    /* borda sutil de cards */
   --srf-3: #262626;       /* borda mais visível */
+  --srf-hover: #202020;   /* fundo sutil no hover das perguntas */
   --srf-glass: rgba(20, 20, 20, 0.7); /* botões “vidro” fixos */
   --t-dim: #7f7f7f;       /* texto bem apagado (eyebrows) */
   --on-accent: #141414;   /* texto sobre o botão de acento */
@@ -55,6 +56,7 @@
   --srf-2: #f6f7f9;
   --srf-line: rgba(20, 22, 28, 0.10);
   --srf-3: rgba(20, 22, 28, 0.14);
+  --srf-hover: #eef0f3;   /* fundo sutil no hover das perguntas (tema claro) */
   --srf-glass: rgba(255, 255, 255, 0.82);
   --t-dim: #939aa6;
   --on-accent: #ffffff;
@@ -657,7 +659,14 @@
      está dentro do seu próprio wrapper <FadeIn>, então :nth-child não alterna. */
   border-radius: 8px 0 8px 0;
   scroll-margin-top: 90px;
-  transition: border-color var(--transition);
+  transition: border-color var(--transition), background-color var(--transition);
+}
+/* Hover: fundo levemente mais claro (como era antes), além da borda. */
+.qItem:hover {
+  background: var(--srf-hover);
+}
+.qItem:hover:not(.qItemPending):not(.qItemFlash) {
+  border-color: var(--srf-3);
 }
 .qItemMirror {
   border-radius: 0 8px 0 8px;

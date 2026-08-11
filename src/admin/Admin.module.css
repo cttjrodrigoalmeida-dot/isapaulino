@@ -23,6 +23,7 @@
   --color-text-secondary: #565b66;
   --color-text-muted: #939aa6;
   --color-accent: #6b7280; /* CINZA no tema claro (sem o creme, a pedido) */
+  --color-surface-hover: rgba(20, 22, 28, 0.05); /* fundo sutil no hover (linhas, itens) */
   --admin-pattern: rgba(20, 22, 28, 0.035);
 }
 /* ── Tema ESCURO ── */
@@ -37,6 +38,7 @@
   --color-text-secondary: #a8a8a8;
   --color-text-muted: #707070;
   --color-accent: #d4c5b0;
+  --color-surface-hover: rgba(255, 255, 255, 0.05); /* fundo sutil no hover (linhas, itens) */
   --admin-pattern: rgba(212, 197, 176, 0.05);
 }
 
@@ -271,7 +273,7 @@
   border-bottom: none;
 }
 .table tbody tr:hover {
-  background: rgba(212, 197, 176, 0.03);
+  background: var(--color-surface-hover);
 }
 .rowNumber {
   font-family: var(--font-mono);
