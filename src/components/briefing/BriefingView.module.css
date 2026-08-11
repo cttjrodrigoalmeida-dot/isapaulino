@@ -634,7 +634,9 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #fff;
-  background: rgba(240, 80, 110, 0.92);
+  /* Preto translúcido (igual ao editor) — muito mais legível que o rosa. */
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   padding: 2px 5px;
   border-radius: 4px;
   white-space: nowrap;
