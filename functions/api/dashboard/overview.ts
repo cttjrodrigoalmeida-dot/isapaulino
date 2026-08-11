@@ -174,7 +174,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       }
       totalValue += value;
 
-      const approved = p.outcome === "aprovada";
+      // Proposta CANCELADA não conta como aprovada (mesmo com outcome 'aprovada').
+      const approved = p.outcome === "aprovada" && p.status !== "cancelled";
       if (approved) { approvedValue += value; approvedCount++; }
       else { lostValue += value; lostCount++; }
 

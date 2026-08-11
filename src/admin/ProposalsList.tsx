@@ -14,6 +14,10 @@ const yearOf = (number: string) => (/^\d{2}/.test(number) ? `20${number.slice(0,
 type OutcomeFilter = "todas" | "aprovada" | "nao-aprovada";
 const PAGE_SIZE = 8;
 
+// Proposta CANCELADA não conta como aprovada (entra como "não aprovada" nos
+// resumos/contagens), mesmo que o outcome salvo ainda seja "aprovada".
+const isApproved = (p: ProposalSummary) => p.outcome === "aprovada" && p.status !== "cancelled";
+
 // Rank de status p/ agrupar: aprovada → não aprovada → rascunho → cancelada.
 function proposalStatusRank(p: ProposalSummary): number {
   if (p.status === "cancelled") return 3;
@@ -141,7 +145,7 @@ export default function ProposalsList({
   // Propostas do ano selecionado (base do resumo) e da aba (base da tabela).
   const yearItems = useMemo(() => items.filter((p) => yearOf(p.number) === year), [items, year]);
   const filtered = useMemo(
-    () => (tab === "todas" ? yearItems : yearItems.filter((p) => (tab === "aprovada" ? p.outcome === "aprovada" : p.outcome !== "aprovada"))),
+    () => (tab === "todas" ? yearItems : yearItems.filter((p) => (tab === "aprovada" ? isApproved(p) : !isApproved(p)))),
     [yearItems, tab]
   );
   const nq = norm(q).trim();
@@ -151,9 +155,9 @@ export default function ProposalsList({
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const approvedValue = yearItems.filter((p) => p.outcome === "aprovada").reduce((s, p) => s + (p.value || 0), 0);
-  const lostValue = yearItems.filter((p) => p.outcome !== "aprovada").reduce((s, p) => s + (p.value || 0), 0);
-  const approvedCount = yearItems.filter((p) => p.outcome === "aprovada").length;
+  const approvedValue = yearItems.filter(isApproved).reduce((s, p) => s + (p.value || 0), 0);
+  const lostValue = yearItems.filter((p) => !isApproved(p)).reduce((s, p) => s + (p.value || 0), 0);
+  const approvedCount = yearItems.filter(isApproved).length;
   const lostCount = yearItems.length - approvedCount;
 
   const counts = {
