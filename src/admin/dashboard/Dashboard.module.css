@@ -75,6 +75,10 @@
   background: color-mix(in srgb, var(--color-accent) 16%, transparent);
   color: var(--color-text-primary);
 }
+/* Item ATIVO também responde ao hover, ficando um pouco mais forte. */
+.navItemActive:hover {
+  background: color-mix(in srgb, var(--color-accent) 24%, transparent);
+}
 .navItemActive .navIcon {
   color: var(--color-accent);
 }

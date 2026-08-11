@@ -882,6 +882,17 @@
 .shell[data-theme="dark"] .tab:hover {
   background: rgba(255, 255, 255, 0.05);
 }
+/* Aba ATIVA também responde ao hover: o fundo fica um pouco mais forte,
+   sem perder o destaque do estado ativo. */
+.tabActive:hover {
+  background: rgba(212, 197, 176, 0.16);
+}
+.shell[data-theme="light"] .tabActive:hover {
+  background: rgba(20, 22, 28, 0.1);
+}
+.shell[data-theme="dark"] .tabActive:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
 /* Aba ativa no tema claro: tinta cinza (sem creme). */
 .shell[data-theme="light"] .tabActive {
   background: rgba(20, 22, 28, 0.06);
