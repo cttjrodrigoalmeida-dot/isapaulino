@@ -153,6 +153,7 @@ export default function BriefingSectionEditor({
   onRemove,
   onMove,
   onDuplicate,
+  onContinuar,
   onQuestionDragStart,
   onQuestionDrop,
   justMovedId,
@@ -166,6 +167,8 @@ export default function BriefingSectionEditor({
   onMove: (dir: -1 | 1) => void;
   /** duplica a seção inteira (imagem + perguntas) logo abaixo */
   onDuplicate: () => void;
+  /** nova seção do MESMO ambiente, logo abaixo, começando em branco */
+  onContinuar: () => void;
   /** DnD: registra a pergunta arrastada (índice) desta seção */
   onQuestionDragStart: (qi: number) => void;
   /** DnD: solta a pergunta arrastada nesta seção, na posição toQ */
@@ -257,6 +260,9 @@ export default function BriefingSectionEditor({
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
           <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo (imagem + perguntas) — é só trocar a imagem.">⧉ Duplicar seção</button>
+          {isAmbiente && (
+            <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={onContinuar} title="Nova seção do mesmo ambiente logo abaixo, começando em branco (sem repetir as perguntas).">+ Continuação</button>
+          )}
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover seção</button>
         </div>
       </div>

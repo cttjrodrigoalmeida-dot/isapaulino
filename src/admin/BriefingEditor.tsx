@@ -147,6 +147,16 @@ export default function BriefingEditor({
         ],
       };
     });
+  // "+ Continuação" por seção: nova seção do MESMO ambiente da seção `i`
+  // (herda o título dela), inserida logo abaixo e começando EM BRANCO.
+  const continuarSection = (i: number) =>
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const base = prev.sections[i];
+      const list = prev.sections.slice();
+      list.splice(i + 1, 0, { id: `sec-${Date.now()}`, kind: "ambiente", title: base?.title ?? "NOVO AMBIENTE", questions: [], image: "" });
+      return { ...prev, sections: list };
+    });
   // Duplica a seção inteira (mesmas perguntas) logo abaixo, com IDs novos.
   // Mantém o título: se for ambiente, vira "continuação" do mesmo (só troca a imagem).
   const duplicateSection = (i: number) =>
@@ -351,6 +361,7 @@ export default function BriefingEditor({
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
               onDuplicate={() => duplicateSection(i)}
+              onContinuar={() => continuarSection(i)}
               onQuestionDragStart={(qi) => { dragSource.current = { s: i, q: qi }; }}
               onQuestionDrop={(toQ) => moveQuestionTo(i, toQ)}
               justMovedId={justMovedId}
