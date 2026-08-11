@@ -133,6 +133,20 @@ export default function BriefingEditor({
     );
   const removeSection = (i: number) =>
     setBriefing((prev) => (prev ? { ...prev, sections: prev.sections.filter((_, idx) => idx !== i) } : prev));
+  // "+ Continuação": nova seção do MESMO ambiente (herda o título do último
+  // ambiente), mas começa EM BRANCO — sem repetir as perguntas anteriores.
+  const addContinuacao = () =>
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const lastAmbiente = [...prev.sections].reverse().find((s) => s.kind === "ambiente");
+      return {
+        ...prev,
+        sections: [
+          ...prev.sections,
+          { id: `sec-${Date.now()}`, kind: "ambiente", title: lastAmbiente?.title ?? "NOVO AMBIENTE", questions: [], image: "" },
+        ],
+      };
+    });
   // Duplica a seção inteira (mesmas perguntas) logo abaixo, com IDs novos.
   // Mantém o título: se for ambiente, vira "continuação" do mesmo (só troca a imagem).
   const duplicateSection = (i: number) =>
@@ -345,9 +359,18 @@ export default function BriefingEditor({
             />
           ))}
 
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button type="button" className={styles.btn} onClick={() => addSection("info")}>+ seção de informações</button>
             <button type="button" className={styles.btn} onClick={() => addSection("ambiente")}>+ ambiente</button>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={addContinuacao}
+              disabled={!briefing.sections.some((s) => s.kind === "ambiente")}
+              title="Nova seção do mesmo ambiente, começando em branco (sem repetir as perguntas)"
+            >
+              + continuação
+            </button>
           </div>
         </div>
       ) : (
