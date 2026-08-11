@@ -3,7 +3,7 @@ import { formatBRL, formatBRLShort } from "./dashboard/format";
 
 // Bloco de resumo das propostas por VALOR (aprovadas x não aprovadas).
 // Usado na tela de Propostas (rodapé) e no Resumo Geral.
-const GREEN = "#a3e635";
+const GREEN = "#4ade80"; // mesmo verde do Financeiro (padronizado)
 const PINK = "#f0506e"; // melancia da marca (não aprovadas)
 
 const IcCheck = () => (
@@ -103,7 +103,7 @@ export default function ProposalsSummary({
 
         {/* Cards aprovada / não aprovada */}
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ ...cardStyle, background: "rgba(132, 204, 22, 0.10)", border: "1px solid rgba(163, 230, 53, 0.35)" }}>
+          <div style={{ ...cardStyle, background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.35)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={iconBox(GREEN)}><IcCheck /></span>
               <div style={{ flex: 1 }}>

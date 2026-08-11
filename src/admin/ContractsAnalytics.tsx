@@ -13,7 +13,7 @@ const yearOf = (number: string | null) =>
   number && /^\d{2}/.test(number) ? `20${number.slice(0, 2)}` : "Outros";
 
 // Paleta padronizada (semântica).
-const C = { green: "#2f9e44", red: "#dd5c4e", blue: "#2f6fed", amber: "#b07a16", slate: "#7c8698" };
+const C = { green: "#4ade80", red: "#dd5c4e", blue: "#2f6fed", amber: "#b07a16", slate: "#7c8698" };
 const SOFT = {
   green: "rgba(47, 158, 68, 0.12)", red: "rgba(221, 92, 78, 0.12)",
   blue: "rgba(47, 111, 237, 0.12)", amber: "rgba(176, 122, 22, 0.12)", slate: "rgba(124, 134, 152, 0.14)",

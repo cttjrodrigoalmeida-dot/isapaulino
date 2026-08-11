@@ -10,7 +10,7 @@ import { AvatarSVG, avatarById } from "../avatars";
 import { eventTypeMeta } from "../projectEvents";
 import styles from "./Admin.module.css";
 
-const C = { green: "#2f9e44", amber: "#b07a16", blue: "#2f6fed", red: "#dd5c4e", slate: "#7c8698" };
+const C = { green: "#4ade80", amber: "#b07a16", blue: "#2f6fed", red: "#dd5c4e", slate: "#7c8698" };
 const SOFT = {
   green: "rgba(47,158,68,0.12)", amber: "rgba(176,122,22,0.12)",
   blue: "rgba(47,111,237,0.12)", red: "rgba(221,92,78,0.12)", slate: "rgba(124,134,152,0.14)",

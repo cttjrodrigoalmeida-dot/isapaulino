@@ -279,7 +279,7 @@ export default function ProposalsList({
                             borderRadius: 999,
                             border: "1px solid",
                             ...(p.outcome === "aprovada"
-                              ? { color: "#4d7c0f", background: "rgba(132,204,22,0.16)", borderColor: "rgba(132,204,22,0.45)" }
+                              ? { color: "#4ade80", background: "rgba(74,222,128,0.16)", borderColor: "rgba(74,222,128,0.45)" }
                               : { color: "#c92d4f", background: "rgba(240,80,110,0.16)", borderColor: "rgba(240,80,110,0.5)" }),
                           }}
                         >
