@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   BarChart, Bar, LabelList, Tooltip,
 } from "recharts";
+import RadialGauge from "./RadialGauge";
 import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject } from "./api";
 import { formatBRL, formatBRLShort, formatDate } from "./dashboard/format";
 import { formatPhone, formatCpfCnpj } from "./validation";
@@ -10,10 +11,10 @@ import { AvatarSVG, avatarById } from "../avatars";
 import { eventTypeMeta } from "../projectEvents";
 import styles from "./Admin.module.css";
 
-const C = { green: "#4ade80", amber: "#b07a16", blue: "#2f6fed", red: "#dd5c4e", slate: "#7c8698" };
+const C = { green: "#4ade80", amber: "#b07a16", blue: "#3b82f6", red: "#dd5c4e", slate: "#7c8698" };
 const SOFT = {
-  green: "rgba(47,158,68,0.12)", amber: "rgba(176,122,22,0.12)",
-  blue: "rgba(47,111,237,0.12)", red: "rgba(221,92,78,0.12)", slate: "rgba(124,134,152,0.14)",
+  green: "rgba(74,222,128,0.12)", amber: "rgba(176,122,22,0.12)",
+  blue: "rgba(59,130,246,0.12)", red: "rgba(221,92,78,0.12)", slate: "rgba(124,134,152,0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -152,21 +153,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
           <PanelTitle title="Projetos por situação" />
           {donut.length === 0 ? <Empty>Sem projetos ainda.</Empty> : (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 130, height: 130, position: "relative" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={donut} dataKey="value" innerRadius={40} outerRadius={60} paddingAngle={2} stroke="none">
-                      {donut.map((d, i) => <Cell key={i} fill={d.color} />)}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none" }}>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)" }}>{m.total}</div>
-                    <div style={{ fontSize: 10, color: "var(--color-text-muted)" }}>projetos</div>
-                  </div>
-                </div>
-              </div>
+              <RadialGauge data={donut} center={m.total} centerLabel="projetos" size={130} />
               <div style={{ display: "grid", gap: 7, flex: 1 }}>
                 {donut.map((d) => (
                   <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>

@@ -2,14 +2,15 @@
 // do ano selecionado. Cores padronizadas (paleta do layout).
 import { useMemo } from "react";
 import {
-  ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
+  ResponsiveContainer, AreaChart, Area,
   XAxis, YAxis, Tooltip,
 } from "recharts";
+import RadialGauge from "./RadialGauge";
 import type { BriefingSummary } from "./api";
 
 const C = { green: "#4ade80", amber: "#b07a16", red: "#dd5c4e", slate: "#7c8698" };
 const SOFT = {
-  green: "rgba(47, 158, 68, 0.12)", amber: "rgba(176, 122, 22, 0.12)",
+  green: "rgba(74, 222, 128, 0.12)", amber: "rgba(176, 122, 22, 0.12)",
   red: "rgba(221, 92, 78, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -75,7 +76,7 @@ export default function BriefingsAnalytics({ items, year, onSeeDetails }: {
         <div style={card}>
           <PanelTitle title="Briefings por status" sub="Distribuição no ano." />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Donut data={donut} center={m.total} centerLabel="total" />
+            <RadialGauge data={donut} center={m.total} centerLabel="total" />
             <div style={{ display: "grid", gap: 8, flex: 1 }}>
               {donut.map((d) => {
                 const p = m.total ? Math.round((d.value / m.total) * 100) : 0;
@@ -123,7 +124,7 @@ export default function BriefingsAnalytics({ items, year, onSeeDetails }: {
         <div style={card}>
           <PanelTitle title="Taxa de respostas" sub="Respondidos ÷ (respondidos + pendentes)." />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Donut data={taxa} center={`${m.taxaPct}%`} centerLabel="respondidos" />
+            <RadialGauge data={taxa} center={`${m.taxaPct}%`} centerLabel="respondidos" />
             <div style={{ display: "grid", gap: 8, flex: 1 }}>
               {taxa.map((d) => {
                 const p = m.respBase ? Math.round((d.value / m.respBase) * 100) : 0;
@@ -158,26 +159,6 @@ function PanelTitle({ title, sub }: { title: string; sub?: string }) {
     <div style={{ marginBottom: 10 }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>{title}</div>
       {sub && <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function Donut({ data, center, centerLabel }: { data: { name: string; value: number; color: string }[]; center: number | string; centerLabel: string }) {
-  return (
-    <div style={{ width: 150, height: 150, position: "relative", flexShrink: 0 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie data={data} dataKey="value" innerRadius={46} outerRadius={68} paddingAngle={2} stroke="none">
-            {data.map((d, i) => <Cell key={i} fill={d.color} />)}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)" }}>{center}</div>
-          <div style={{ fontSize: 10, color: "var(--color-text-muted)" }}>{centerLabel}</div>
-        </div>
-      </div>
     </div>
   );
 }

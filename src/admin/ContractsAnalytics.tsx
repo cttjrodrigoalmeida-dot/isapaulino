@@ -2,9 +2,10 @@
 // selecionado (sem storage extra; o ano vem do filtro da lista). Cores padronizadas.
 import { useMemo, useState } from "react";
 import {
-  ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
+  ResponsiveContainer, AreaChart, Area,
   BarChart, Bar, XAxis, YAxis, LabelList, LineChart, Line, Tooltip,
 } from "recharts";
+import RadialGauge from "./RadialGauge";
 import type { ContractSummary } from "./api";
 import { formatBRL, formatBRLShort, formatDate } from "./dashboard/format";
 
@@ -13,10 +14,10 @@ const yearOf = (number: string | null) =>
   number && /^\d{2}/.test(number) ? `20${number.slice(0, 2)}` : "Outros";
 
 // Paleta padronizada (semântica).
-const C = { green: "#4ade80", red: "#dd5c4e", blue: "#2f6fed", amber: "#b07a16", slate: "#7c8698" };
+const C = { green: "#4ade80", red: "#dd5c4e", blue: "#3b82f6", amber: "#b07a16", slate: "#7c8698" };
 const SOFT = {
-  green: "rgba(47, 158, 68, 0.12)", red: "rgba(221, 92, 78, 0.12)",
-  blue: "rgba(47, 111, 237, 0.12)", amber: "rgba(176, 122, 22, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
+  green: "rgba(74, 222, 128, 0.12)", red: "rgba(221, 92, 78, 0.12)",
+  blue: "rgba(59, 130, 246, 0.12)", amber: "rgba(176, 122, 22, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -190,21 +191,7 @@ export default function ContractsAnalytics({
         <div style={card}>
           <PanelTitle title="Contratos por status" sub="Distribuição no ano." />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 150, height: 150, position: "relative" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={donut} dataKey="value" innerRadius={46} outerRadius={68} paddingAngle={2} stroke="none">
-                    {donut.map((d, i) => <Cell key={i} fill={d.color} />)}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none" }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--color-text-primary)" }}>{m.total}</div>
-                  <div style={{ fontSize: 10, color: "var(--color-text-muted)" }}>contratos</div>
-                </div>
-              </div>
-            </div>
+            <RadialGauge data={donut} center={m.total} centerLabel="contratos" />
             <div style={{ display: "grid", gap: 8, flex: 1 }}>
               {donut.map((d) => {
                 const pct = m.total ? Math.round((d.value / m.total) * 100) : 0;
