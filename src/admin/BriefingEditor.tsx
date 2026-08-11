@@ -135,7 +135,8 @@ export default function BriefingEditor({
     setBriefing((prev) => (prev ? { ...prev, sections: prev.sections.filter((_, idx) => idx !== i) } : prev));
   // "+ Continuação": nova seção do MESMO ambiente (herda o título do último
   // ambiente), mas começa EM BRANCO — sem repetir as perguntas anteriores.
-  const addContinuacao = () =>
+  const addContinuacao = () => {
+    const newId = `sec-${Date.now()}`;
     setBriefing((prev) => {
       if (!prev) return prev;
       const lastAmbiente = [...prev.sections].reverse().find((s) => s.kind === "ambiente");
@@ -143,20 +144,25 @@ export default function BriefingEditor({
         ...prev,
         sections: [
           ...prev.sections,
-          { id: `sec-${Date.now()}`, kind: "ambiente", title: lastAmbiente?.title ?? "NOVO AMBIENTE", questions: [], image: "" },
+          { id: newId, kind: "ambiente", title: lastAmbiente?.title ?? "NOVO AMBIENTE", questions: [], image: "" },
         ],
       };
     });
+    setScrollToId(newId);
+  };
   // "+ Continuação" por seção: nova seção do MESMO ambiente da seção `i`
   // (herda o título dela), inserida logo abaixo e começando EM BRANCO.
-  const continuarSection = (i: number) =>
+  const continuarSection = (i: number) => {
+    const newId = `sec-${Date.now()}`;
     setBriefing((prev) => {
       if (!prev) return prev;
       const base = prev.sections[i];
       const list = prev.sections.slice();
-      list.splice(i + 1, 0, { id: `sec-${Date.now()}`, kind: "ambiente", title: base?.title ?? "NOVO AMBIENTE", questions: [], image: "" });
+      list.splice(i + 1, 0, { id: newId, kind: "ambiente", title: base?.title ?? "NOVO AMBIENTE", questions: [], image: "" });
       return { ...prev, sections: list };
     });
+    setScrollToId(newId);
+  };
   // Duplica a seção inteira (mesmas perguntas) logo abaixo, com IDs novos.
   // Mantém o título: se for ambiente, vira "continuação" do mesmo (só troca a imagem).
   const duplicateSection = (i: number) =>
@@ -184,6 +190,14 @@ export default function BriefingEditor({
   // id da pergunta recém-movida → dispara o destaque animado no card de destino.
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
   const moveTimer = useRef<number | undefined>(undefined);
+  // Após criar uma "continuação", rola até a seção recém-criada.
+  const [scrollToId, setScrollToId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!scrollToId) return;
+    const el = document.getElementById(`sec-card-${scrollToId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setScrollToId(null);
+  }, [scrollToId]);
   const moveQuestionTo = (toS: number, toQ: number) => {
     const src = dragSource.current;
     dragSource.current = null;

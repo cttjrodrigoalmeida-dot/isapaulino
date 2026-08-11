@@ -251,7 +251,7 @@ export default function BriefingSectionEditor({
   };
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} id={`sec-card-${section.id}`}>
       <div className={styles.blockHead}>
         <div className={styles.cardTitle} style={{ margin: 0 }}>
           Seção {index + 1} · {isAmbiente ? "Ambiente" : "Informações"}
@@ -394,6 +394,11 @@ export default function BriefingSectionEditor({
         <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
         <span className={styles.pageHint} style={{ margin: 0 }}>ou arraste uma pergunta (de qualquer bloco) para cá</span>
       </div>
+      {isAmbiente && (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+          <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={onContinuar} title="Nova seção do mesmo ambiente logo abaixo, começando em branco (sem repetir as perguntas).">+ Continuação deste ambiente</button>
+        </div>
+      )}
     </div>
   );
 }
