@@ -7,6 +7,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth, getSession } from "../_lib/auth";
+import { hasAccess } from "../_lib/proposal-access";
 
 interface ProposalLike {
   number?: string;
@@ -16,20 +17,34 @@ interface ProposalLike {
   [k: string]: unknown;
 }
 
-type Row = { data: string; status: string };
+type Row = { data: string; status: string; access_password: string | null };
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
     const number = String(params.number);
-    const row = await env.DB.prepare("SELECT data, status FROM proposals WHERE number = ?")
+    const row = await env.DB.prepare("SELECT data, status, access_password FROM proposals WHERE number = ?")
       .bind(number)
       .first<Row>();
     if (!row) return error(404, "Proposta não encontrada.");
 
+    const session = await getSession(request, env);
+    const isAdmin = !!session;
+
     // Rascunho só aparece para admin autenticado.
-    if (row.status !== "published") {
-      const session = await getSession(request, env);
-      if (!session) return error(404, "Proposta não encontrada.");
+    if (row.status !== "published" && !isAdmin) {
+      return error(404, "Proposta não encontrada.");
+    }
+
+    // Admin enxerga tudo (inclusive a senha, para reenviar ao cliente).
+    if (isAdmin) {
+      return json({ proposal: JSON.parse(row.data), status: row.status, accessPassword: row.access_password ?? "" });
+    }
+
+    // Proposta protegida por senha: sem token válido, não devolve o conteúdo.
+    const pw = (row.access_password ?? "").trim();
+    if (pw) {
+      const ok = await hasAccess(request, env.SESSION_SECRET, number);
+      if (!ok) return json({ locked: true });
     }
 
     return json({ proposal: JSON.parse(row.data), status: row.status });
@@ -42,20 +57,26 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   try {
     await requireAuth(request, env);
     const number = String(params.number);
-    const body = await readJson<{ proposal?: ProposalLike; status?: string }>(request);
+    const body = await readJson<{ proposal?: ProposalLike; status?: string; accessPassword?: string | null }>(request);
     const proposal = body.proposal;
     if (!proposal) return error(400, "Proposta inválida.");
 
-    const existing = await env.DB.prepare("SELECT status FROM proposals WHERE number = ?")
+    const existing = await env.DB.prepare("SELECT status, access_password FROM proposals WHERE number = ?")
       .bind(number)
-      .first<{ status: string }>();
+      .first<{ status: string; access_password: string | null }>();
     if (!existing) return error(404, "Proposta não encontrada.");
 
     const status = body.status === "published" || body.status === "draft" || body.status === "cancelled" ? body.status : existing.status;
+    // Se `accessPassword` veio no corpo, atualiza (vazio → NULL = pública);
+    // se não veio, mantém a senha atual.
+    const accessPassword =
+      "accessPassword" in body
+        ? ((body.accessPassword ?? "").toString().trim() || null)
+        : existing.access_password;
 
     await env.DB.prepare(
       `UPDATE proposals
-       SET client = ?, service_title = ?, date = ?, status = ?, data = ?, updated_at = datetime('now')
+       SET client = ?, service_title = ?, date = ?, status = ?, access_password = ?, data = ?, updated_at = datetime('now')
        WHERE number = ?`
     )
       .bind(
@@ -63,6 +84,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
         proposal.serviceTitle ?? null,
         proposal.date ?? null,
         status,
+        accessPassword,
         JSON.stringify(proposal),
         number
       )

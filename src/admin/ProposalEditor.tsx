@@ -71,6 +71,9 @@ export default function ProposalEditor({
   const isNew = number === null;
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [status, setStatus] = useState<Status>("draft");
+  // Senha de acesso da proposta (vazio = link público). Fica fora do JSON da
+  // proposta (nunca vai para a página pública) — é uma coluna própria no banco.
+  const [accessPassword, setAccessPassword] = useState("");
   const [comboEnabled, setComboEnabled] = useState(false);
   const [comboPercent, setComboPercent] = useState(10);
   const [pixDiscount, setPixDiscount] = useState(5);
@@ -133,7 +136,7 @@ export default function ProposalEditor({
           );
           setStatus("draft");
         } else {
-          const { proposal: p, status: s } = await api.getProposal(number!);
+          const { proposal: p, status: s, accessPassword: pw } = await api.getProposal(number!);
           if (!alive) return;
           setComboEnabled(readComboFromNote(p.comboNote).enabled);
           setComboPercent(readComboFromNote(p.comboNote).percent);
@@ -141,6 +144,7 @@ export default function ProposalEditor({
           setMaxInstallments(readMaxInstallments(p.installmentPlan?.rows));
           setProposal(p);
           setStatus(s);
+          setAccessPassword(pw ?? "");
         }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -217,8 +221,8 @@ export default function ProposalEditor({
     };
     setSaving(true);
     try {
-      if (isNew) await api.createProposal(clean, finalStatus);
-      else await api.updateProposal(number!, clean, finalStatus);
+      if (isNew) await api.createProposal(clean, finalStatus, accessPassword);
+      else await api.updateProposal(number!, clean, finalStatus, accessPassword);
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
@@ -442,6 +446,20 @@ export default function ProposalEditor({
             <option value="draft">Rascunho (oculto)</option>
             <option value="published">Publicada (link ativo)</option>
           </select>
+        </div>
+        <div className={styles.field} style={{ margin: 0 }}>
+          <label className={styles.label} style={{ marginBottom: 4 }}>
+            Senha de acesso {accessPassword ? "🔒" : "(link público)"}
+          </label>
+          <input
+            className={styles.input}
+            type="text"
+            value={accessPassword}
+            onChange={(e) => setAccessPassword(e.target.value)}
+            placeholder="Deixe em branco = pública"
+            title="Se preenchida, o cliente precisa digitar esta senha para ver a proposta. Deixe em branco para deixar o link público."
+            style={{ width: 210 }}
+          />
         </div>
         <div className={styles.editorBarRight}>
           <button className={styles.btn} onClick={() => save(false)} disabled={saving}>

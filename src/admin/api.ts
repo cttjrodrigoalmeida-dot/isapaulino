@@ -468,18 +468,18 @@ export const api = {
       body: JSON.stringify({ outcome }),
     }),
   getProposal: (number: string) =>
-    req<{ proposal: Proposal; status: "draft" | "published" }>(
+    req<{ proposal: Proposal; status: "draft" | "published"; accessPassword?: string }>(
       `/api/proposals/${encodeURIComponent(number)}`
     ),
-  createProposal: (proposal: Proposal, status: "draft" | "published") =>
+  createProposal: (proposal: Proposal, status: "draft" | "published", accessPassword?: string) =>
     req<{ ok: true; number: string; status: string }>("/api/proposals", {
       method: "POST",
-      body: JSON.stringify({ proposal, status }),
+      body: JSON.stringify({ proposal, status, accessPassword }),
     }),
-  updateProposal: (number: string, proposal: Proposal, status: "draft" | "published") =>
+  updateProposal: (number: string, proposal: Proposal, status: "draft" | "published", accessPassword?: string) =>
     req<{ ok: true; number: string; status: string }>(
       `/api/proposals/${encodeURIComponent(number)}`,
-      { method: "PUT", body: JSON.stringify({ proposal, status }) }
+      { method: "PUT", body: JSON.stringify({ proposal, status, accessPassword }) }
     ),
   deleteProposal: (number: string) =>
     req<{ ok: true }>(`/api/proposals/${encodeURIComponent(number)}`, {

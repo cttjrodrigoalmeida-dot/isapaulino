@@ -47,12 +47,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
     await requireAuth(request, env);
-    const body = await readJson<{ proposal?: ProposalLike; status?: string }>(request);
+    const body = await readJson<{ proposal?: ProposalLike; status?: string; accessPassword?: string | null }>(request);
     const proposal = body.proposal;
     if (!proposal || typeof proposal.number !== "string" || !proposal.number.trim()) {
       return error(400, "Proposta inválida: 'number' é obrigatório.");
     }
     const status = body.status === "published" ? "published" : "draft";
+    const accessPassword = (body.accessPassword ?? "").toString().trim() || null;
 
     const exists = await env.DB.prepare("SELECT number FROM proposals WHERE number = ?")
       .bind(proposal.number)
@@ -60,8 +61,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (exists) return error(409, `Já existe uma proposta com o número ${proposal.number}.`);
 
     await env.DB.prepare(
-      `INSERT INTO proposals (number, client, service_title, date, status, data)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO proposals (number, client, service_title, date, status, access_password, data)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         proposal.number,
@@ -69,6 +70,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         proposal.serviceTitle ?? null,
         proposal.date ?? null,
         status,
+        accessPassword,
         JSON.stringify(proposal)
       )
       .run();
