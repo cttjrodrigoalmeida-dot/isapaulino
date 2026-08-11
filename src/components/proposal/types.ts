@@ -133,12 +133,14 @@ export interface Proposal {
   paymentNote?: string;
 
   // ── Prazo ──
+  /** Nome do projeto no título do bloco principal: "Prazo de Entrega: {prazoTitulo}". */
+  prazoTitulo?: string;
   prazoDetalhamento: string; // "15 dias úteis"
   prazoAnteprojeto?: string; // "7 dias úteis"
-  /** Prazos adicionais (um por serviço) — legenda + valor. Duplicáveis no editor. */
-  prazosExtras?: { label: string; value: string }[];
   availableDate?: string;    // "DD-MM-AAAA"
   prazoNote?: string;
+  /** Blocos de prazo adicionais (um por projeto/serviço) — cards separados abaixo. */
+  prazoBlocos?: { titulo: string; itens: { label: string; value: string }[] }[];
 
   // ── Contato ──
   contact: ContactInfo;

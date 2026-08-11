@@ -14,14 +14,18 @@ export default function SectionsEditor({
   const set = <K extends keyof Proposal>(key: K, value: Proposal[K]) =>
     onChange({ ...proposal, [key]: value });
 
-  // Prazos adicionais (um por serviço) — legenda + valor.
-  const extras = proposal.prazosExtras ?? [];
-  const setExtras = (v: { label: string; value: string }[]) => set("prazosExtras", v);
-  const addExtra = () => setExtras([...extras, { label: "", value: "" }]);
-  const dupExtra = (i: number) => setExtras([...extras.slice(0, i + 1), { ...extras[i] }, ...extras.slice(i + 1)]);
-  const removeExtra = (i: number) => setExtras(extras.filter((_, j) => j !== i));
-  const setExtra = (i: number, patch: Partial<{ label: string; value: string }>) =>
-    setExtras(extras.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+  // Blocos de prazo adicionais (um por projeto/serviço) — card separado com título + itens.
+  type Bloco = { titulo: string; itens: { label: string; value: string }[] };
+  const blocos: Bloco[] = proposal.prazoBlocos ?? [];
+  const setBlocos = (v: Bloco[]) => set("prazoBlocos", v);
+  const addBloco = () => setBlocos([...blocos, { titulo: "", itens: [{ label: "", value: "" }] }]);
+  const dupBloco = (i: number) => setBlocos([...blocos.slice(0, i + 1), structuredClone(blocos[i]), ...blocos.slice(i + 1)]);
+  const removeBloco = (i: number) => setBlocos(blocos.filter((_, j) => j !== i));
+  const setBloco = (i: number, patch: Partial<Bloco>) => setBlocos(blocos.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  const addItem = (i: number) => setBloco(i, { itens: [...blocos[i].itens, { label: "", value: "" }] });
+  const removeItem = (i: number, k: number) => setBloco(i, { itens: blocos[i].itens.filter((_, j) => j !== k) });
+  const setItem = (i: number, k: number, patch: Partial<{ label: string; value: string }>) =>
+    setBloco(i, { itens: blocos[i].itens.map((it, j) => (j === k ? { ...it, ...patch } : it)) });
   const setShow = (key: "about" | "process" | "clauses" | "notIncluded", value: boolean) =>
     onChange({ ...proposal, show: { ...proposal.show, [key]: value } });
 
@@ -43,6 +47,10 @@ export default function SectionsEditor({
     <>
       <div className={styles.card}>
         <div className={styles.cardTitle}>Prazo de entrega</div>
+        <div className={styles.field}>
+          <label className={styles.label}>Nome do projeto no título (opcional)</label>
+          <input className={styles.input} value={proposal.prazoTitulo ?? ""} onChange={(e) => set("prazoTitulo", e.target.value)} placeholder="ex.: Projeto Legal — aparece como “Prazo de Entrega: …”" />
+        </div>
         <div className={styles.row2}>
           <div className={styles.field}>
             <label className={styles.label}>{proposal.investmentBlocks?.[0]?.title ? `Prazo — ${proposal.investmentBlocks[0].title}` : "Prazo de detalhamento"}</label>
@@ -58,30 +66,6 @@ export default function SectionsEditor({
         </div>
 
         <div className={styles.field}>
-          <label className={styles.label}>Prazos adicionais (um por serviço)</label>
-          <div className={styles.pageHint} style={{ marginBottom: 8 }}>
-            Precisa de mais de um prazo? Adicione (ou duplique) — cada um aparece na proposta com sua legenda.
-          </div>
-          {extras.map((e, i) => (
-            <div key={i} className={styles.row2} style={{ alignItems: "end", marginBottom: 8 }}>
-              <div className={styles.field} style={{ marginBottom: 0 }}>
-                <label className={styles.label}>Legenda</label>
-                <input className={styles.input} value={e.label} onChange={(ev) => setExtra(i, { label: ev.target.value })} placeholder="ex.: Modelagem 3D" />
-              </div>
-              <div className={styles.field} style={{ marginBottom: 0 }}>
-                <label className={styles.label}>Prazo</label>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input className={styles.input} value={e.value} onChange={(ev) => setExtra(i, { value: ev.target.value })} placeholder="ex.: 10 dias úteis" />
-                  <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => dupExtra(i)} title="Duplicar">⧉</button>
-                  <button type="button" className={styles.iconBtn} onClick={() => removeExtra(i)} aria-label="Remover">×</button>
-                </div>
-              </div>
-            </div>
-          ))}
-          <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={addExtra} style={{ marginTop: 2 }}>+ Adicionar prazo</button>
-        </div>
-
-        <div className={styles.field}>
           <label className={styles.label}>Data disponível para iniciar</label>
           <input className={styles.input} value={proposal.availableDate ?? ""} onChange={(e) => set("availableDate", e.target.value)} placeholder="00-00-2026" />
         </div>
@@ -89,6 +73,44 @@ export default function SectionsEditor({
           <label className={styles.label}>Observação do prazo</label>
           <textarea className={styles.textarea} rows={4} value={proposal.prazoNote ?? ""} onChange={(e) => set("prazoNote", e.target.value)} />
         </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.cardTitle}>Blocos de prazo adicionais</div>
+        <div className={styles.pageHint} style={{ marginBottom: 12 }}>
+          Para projetos/serviços com prazos diferentes, adicione um bloco separado — cada um vira um card próprio na proposta, com o título que você quiser (“Prazo de Entrega: …”).
+        </div>
+        {blocos.map((b, i) => (
+          <div key={i} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+            <div className={styles.row2} style={{ alignItems: "end" }}>
+              <div className={styles.field} style={{ marginBottom: 6 }}>
+                <label className={styles.label}>Título do bloco (nome do projeto)</label>
+                <input className={styles.input} value={b.titulo} onChange={(e) => setBloco(i, { titulo: e.target.value })} placeholder="ex.: Modelagem 3D" />
+              </div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 6, justifyContent: "flex-end" }}>
+                <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => dupBloco(i)} title="Duplicar bloco">⧉ Duplicar</button>
+                <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeBloco(i)}>Excluir</button>
+              </div>
+            </div>
+            {b.itens.map((it, k) => (
+              <div key={k} className={styles.row2} style={{ alignItems: "end", marginBottom: 8 }}>
+                <div className={styles.field} style={{ marginBottom: 0 }}>
+                  <label className={styles.label}>Legenda</label>
+                  <input className={styles.input} value={it.label} onChange={(e) => setItem(i, k, { label: e.target.value })} placeholder="ex.: Detalhamento" />
+                </div>
+                <div className={styles.field} style={{ marginBottom: 0 }}>
+                  <label className={styles.label}>Prazo</label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input className={styles.input} value={it.value} onChange={(e) => setItem(i, k, { value: e.target.value })} placeholder="ex.: 10 dias úteis" />
+                    <button type="button" className={styles.iconBtn} onClick={() => removeItem(i, k)} aria-label="Remover">×</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => addItem(i)} style={{ marginTop: 2 }}>+ Adicionar prazo neste bloco</button>
+          </div>
+        ))}
+        <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={addBloco}>+ Adicionar bloco de prazo</button>
       </div>
 
       <div className={styles.card}>
