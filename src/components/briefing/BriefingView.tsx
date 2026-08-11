@@ -8,6 +8,7 @@ import {
   useContext,
 } from "react";
 import type { Briefing, BriefingSection, BriefingQuestion } from "./types";
+import { DEFAULT_QUICKFILLS } from "./types";
 import { getProposalByNumber } from "../proposal/proposalsRegistry";
 import CustomCursor from "../CustomCursor";
 import FadeIn from "../FadeIn";
@@ -214,6 +215,12 @@ function QuestionItem({
   const refIsLink = !!refImage && !refImage.startsWith("blob:") && !refImage.startsWith("/api/files/");
   const type = question.type ?? "longtext";
   const allowReference = question.allowReference ?? sectionKind === "ambiente";
+  // Botões de resposta rápida: padrões ("À DEFINIR"/"NÃO SE APLICA") em todas as
+  // perguntas, exceto "maquete"; extras da pergunta vêm depois, na mesma linha.
+  const quickFills =
+    type === "maquete"
+      ? question.quickFills ?? []
+      : [...DEFAULT_QUICKFILLS, ...(question.quickFills ?? []).filter((v) => !DEFAULT_QUICKFILLS.includes(v))];
   const required = isRequired(question);
   const wantsTemplateAttach = type === "radio" && answer.startsWith("Anexar");
   const hasAlertAnswer = (question.alertOptions ?? []).includes(answer);
@@ -455,7 +462,7 @@ function QuestionItem({
         <span className={styles.pendingMsg}>Esta pergunta é obrigatória.</span>
       )}
 
-      {(question.quickFills?.length || allowReference) && !printing && !locked && (
+      {(quickFills.length || allowReference) && !printing && !locked && (
         <div className={styles.refRow}>
           {allowReference &&
             (refImage ? (
@@ -484,7 +491,7 @@ function QuestionItem({
                 {attachInput}
               </>
             ))}
-          {question.quickFills?.map((qf) => (
+          {quickFills.map((qf) => (
             <button
               key={qf}
               type="button"

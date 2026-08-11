@@ -13,6 +13,13 @@
 
 import type { ContactInfo } from "../proposal/types";
 
+/**
+ * Botões de resposta rápida presentes em TODAS as perguntas (menos "maquete").
+ * Extras por pergunta ficam em `BriefingQuestion.quickFills` e aparecem depois
+ * destes, na mesma linha.
+ */
+export const DEFAULT_QUICKFILLS = ["À DEFINIR", "NÃO SE APLICA"];
+
 export type QuestionType =
   | "text"
   | "longtext"
@@ -45,7 +52,11 @@ export interface BriefingQuestion {
   required?: boolean;
   /** Se true, oferece anexar imagem de referência. Default depende da seção. */
   allowReference?: boolean;
-  /** Botões de preenchimento rápido (ex.: ["À DEFINIR", "NÃO SE APLICA"]). */
+  /**
+   * Botões de preenchimento rápido EXTRAS desta pergunta (ex.: ["IGUAL AO ANTERIOR"]).
+   * Os padrões `DEFAULT_QUICKFILLS` ("À DEFINIR"/"NÃO SE APLICA") já aparecem em
+   * todas as perguntas automaticamente — não precisa repeti-los aqui.
+   */
   quickFills?: string[];
   /**
    * Opções que, quando selecionadas, deixam o próprio botão em alerta (borda

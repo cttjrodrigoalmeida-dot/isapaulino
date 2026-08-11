@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { BriefingSection, BriefingQuestion, QuestionType } from "../components/briefing/types";
+import { DEFAULT_QUICKFILLS } from "../components/briefing/types";
 import { api, ApiError } from "./api";
 import ListEditor from "./ListEditor";
 import PinCanvas from "./PinCanvas";
@@ -112,6 +113,21 @@ function QuestionEditor({
         <label className={styles.label}>Observação/aviso abaixo (opcional)</label>
         <textarea className={styles.textarea} rows={2} value={q.note ?? ""} onChange={(e) => onChange({ note: e.target.value })} />
       </div>
+
+      {type !== "maquete" && (
+        <div className={styles.field}>
+          <label className={styles.label}>Botões de resposta rápida</label>
+          <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 8 }}>
+            <strong>{DEFAULT_QUICKFILLS[0]}</strong> e <strong>{DEFAULT_QUICKFILLS[1]}</strong> aparecem em todas as
+            perguntas automaticamente. Adicione abaixo botões extras só para esta pergunta (ex.: “IGUAL AO ANTERIOR”, “SIM”, “NÃO”).
+          </p>
+          <ListEditor
+            items={(q.quickFills ?? []).filter((v) => !DEFAULT_QUICKFILLS.includes(v))}
+            onChange={(extras) => onChange({ quickFills: extras })}
+            placeholder="ex.: IGUAL AO ANTERIOR"
+          />
+        </div>
+      )}
 
       {isAmbiente && (
         <div className={styles.row2}>
