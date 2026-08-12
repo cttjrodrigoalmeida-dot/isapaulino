@@ -3,8 +3,9 @@ import type { BriefingQuestion } from "../components/briefing/types";
 import type { LibraryQuestion } from "./api";
 import styles from "./Admin.module.css";
 
-// Modal para escolher uma pergunta salva na biblioteca (D1) e inserir na seção.
-// Também permite renomear e excluir itens.
+// Modal da biblioteca de perguntas (D1). Dois modos:
+//  • inserir (onInsert definido): clicar numa pergunta a insere no destino;
+//  • gerenciar (onInsert ausente): só ver/renomear/excluir.
 const TYPE_LABEL: Record<string, string> = {
   text: "Texto curto", longtext: "Texto longo", radio: "Escolha única",
   checklist: "Lista selecionável", select: "Seleção", maquete: "Maquete",
@@ -26,7 +27,8 @@ export default function QuestionLibraryPicker({
   onClose,
 }: {
   items: LibraryQuestion[];
-  onInsert: (q: BriefingQuestion) => void;
+  /** se ausente, o modal abre em modo "gerenciar" (sem inserir). */
+  onInsert?: (q: BriefingQuestion) => void;
   onRename: (id: string, label: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -39,6 +41,7 @@ export default function QuestionLibraryPicker({
     if (editId && editLabel.trim()) onRename(editId, editLabel.trim());
     setEditId(null);
   };
+  const canInsert = !!onInsert;
   return (
     <div
       onClick={onClose}
@@ -52,26 +55,35 @@ export default function QuestionLibraryPicker({
         style={{
           width: "100%", maxWidth: 560, maxHeight: "80vh", overflow: "auto",
           background: "var(--color-surface)", border: "1px solid var(--color-border)",
-          borderRadius: 14, padding: 18,
+          borderRadius: 12, padding: 18,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <div className={styles.cardTitle} style={{ margin: 0 }}>Biblioteca de perguntas</div>
           <button type="button" className={styles.btn} onClick={onClose}>Fechar</button>
         </div>
+        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 12 }}>
+          {canInsert
+            ? "Clique numa pergunta para inseri-la aqui. Você também pode renomear (✎) ou excluir."
+            : "Suas perguntas salvas. Renomeie (✎) ou exclua. Para inserir uma pergunta, use “+ da biblioteca” dentro de uma seção."}
+        </p>
 
         {items.length === 0 ? (
           <p className={styles.pageHint} style={{ margin: 0 }}>
-            Nenhuma pergunta salva ainda. Em qualquer pergunta, use <strong>☆ Biblioteca</strong> para salvar e reutilizar aqui.
+            Nenhuma pergunta salva ainda. Em qualquer pergunta, use <strong>☆ Salvar</strong> para guardá-la e reutilizar aqui.
           </p>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
             {items.map((it) => (
               <div key={it.id} style={{
                 display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                border: "1px solid var(--color-border)", borderRadius: 10,
+                border: "1px solid var(--color-border)", borderRadius: 8,
               }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{ flex: 1, minWidth: 0, cursor: canInsert && editId !== it.id ? "pointer" : "default" }}
+                  onClick={() => { if (canInsert && editId !== it.id) onInsert!(it.question); }}
+                  title={canInsert ? "Inserir esta pergunta" : undefined}
+                >
                   {editId === it.id ? (
                     <input className={styles.input} autoFocus value={editLabel}
                       onChange={(e) => setEditLabel(e.target.value)}
@@ -86,7 +98,9 @@ export default function QuestionLibraryPicker({
                     </>
                   )}
                 </div>
-                <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onInsert(it.question)}>Inserir</button>
+                {canInsert && (
+                  <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onInsert!(it.question)}>Inserir</button>
+                )}
                 <button type="button" className={styles.btn} title="Renomear" onClick={() => (editId === it.id ? commitEdit() : startEdit(it))}>✎</button>
                 <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ minWidth: delId === it.id ? 96 : undefined }}
                   title="Excluir" onClick={() => { if (delId === it.id) { onDelete(it.id); setDelId(null); } else setDelId(it.id); }}

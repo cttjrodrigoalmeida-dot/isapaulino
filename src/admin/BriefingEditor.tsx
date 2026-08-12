@@ -246,6 +246,7 @@ export default function BriefingEditor({
   // ── Biblioteca de perguntas (D1) ──
   const [library, setLibrary] = useState<LibraryQuestion[]>([]);
   const [pickerFor, setPickerFor] = useState<number | null>(null);
+  const [manageOpen, setManageOpen] = useState(false); // biblioteca global (gerenciar)
   const refreshLibrary = () =>
     api.listQuestionLibrary().then(({ items }) => setLibrary(items)).catch(() => { /* sem biblioteca ainda */ });
   useEffect(() => { refreshLibrary(); }, []);
@@ -396,6 +397,9 @@ export default function BriefingEditor({
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
+          <button className={styles.btn} onClick={() => setManageOpen(true)} title="Ver, renomear e excluir as perguntas salvas na biblioteca.">
+            📚 Biblioteca{library.length ? ` (${library.length})` : ""}
+          </button>
           <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
             {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
           </button>
@@ -536,6 +540,16 @@ export default function BriefingEditor({
               onRename={async (id, label) => { await api.renameLibraryQuestion(id, label); await refreshLibrary(); }}
               onDelete={async (id) => { await api.deleteLibraryQuestion(id); await refreshLibrary(); }}
               onClose={() => setPickerFor(null)}
+            />
+          )}
+
+          {/* Biblioteca global (só gerenciar — sem destino para inserir) */}
+          {manageOpen && (
+            <QuestionLibraryPicker
+              items={library}
+              onRename={async (id, label) => { await api.renameLibraryQuestion(id, label); await refreshLibrary(); }}
+              onDelete={async (id) => { await api.deleteLibraryQuestion(id); await refreshLibrary(); }}
+              onClose={() => setManageOpen(false)}
             />
           )}
 
