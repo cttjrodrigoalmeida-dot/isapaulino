@@ -3,15 +3,15 @@ import type { BriefingQuestion } from "../components/briefing/types";
 import type { LibraryQuestion } from "./api";
 import styles from "./Admin.module.css";
 
-// Modal da biblioteca de perguntas (D1). Dois modos:
-//  • inserir (onInsert definido): clicar numa pergunta a insere no destino;
-//  • gerenciar (onInsert ausente): só ver/renomear/excluir.
+// Modal da biblioteca de perguntas (D1). Clicar numa pergunta a insere no
+// destino (a seção que abriu, ou o fim do briefing pelo botão do cabeçalho).
+// Também dá para renomear (✎) e excluir (✕).
 const TYPE_LABEL: Record<string, string> = {
   text: "Texto curto", longtext: "Texto longo", radio: "Escolha única",
   checklist: "Lista selecionável", select: "Seleção", maquete: "Maquete",
 };
 
-function preview(q: BriefingQuestion): string {
+function meta(q: BriefingQuestion): string {
   const parts = [TYPE_LABEL[q.type ?? "longtext"] ?? "Texto longo"];
   if (q.options?.length) parts.push(`${q.options.length} opções`);
   const extras = (q.quickFills ?? []).length;
@@ -25,13 +25,15 @@ export default function QuestionLibraryPicker({
   onRename,
   onDelete,
   onClose,
+  destino,
 }: {
   items: LibraryQuestion[];
-  /** se ausente, o modal abre em modo "gerenciar" (sem inserir). */
-  onInsert?: (q: BriefingQuestion) => void;
+  onInsert: (q: BriefingQuestion) => void;
   onRename: (id: string, label: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
+  /** texto curto do destino da inserção (ex.: "COZINHA" ou "fim do briefing") */
+  destino?: string;
 }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
@@ -41,7 +43,6 @@ export default function QuestionLibraryPicker({
     if (editId && editLabel.trim()) onRename(editId, editLabel.trim());
     setEditId(null);
   };
-  const canInsert = !!onInsert;
   return (
     <div
       onClick={onClose}
@@ -53,19 +54,17 @@ export default function QuestionLibraryPicker({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "100%", maxWidth: 560, maxHeight: "80vh", overflow: "auto",
+          width: "100%", maxWidth: 760, maxHeight: "85vh", overflow: "auto",
           background: "var(--color-surface)", border: "1px solid var(--color-border)",
-          borderRadius: 12, padding: 18,
+          borderRadius: 12, padding: 20,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <div className={styles.cardTitle} style={{ margin: 0 }}>Biblioteca de perguntas</div>
           <button type="button" className={styles.btn} onClick={onClose}>Fechar</button>
         </div>
-        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 12 }}>
-          {canInsert
-            ? "Clique numa pergunta para inseri-la aqui. Você também pode renomear (✎) ou excluir."
-            : "Suas perguntas salvas. Renomeie (✎) ou exclua. Para inserir uma pergunta, use “+ da biblioteca” dentro de uma seção."}
+        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 14 }}>
+          Clique numa pergunta para inseri-la{destino ? <> em <strong>{destino}</strong></> : " no briefing"}. Renomeie (✎) ou exclua (✕).
         </p>
 
         {items.length === 0 ? (
@@ -76,13 +75,13 @@ export default function QuestionLibraryPicker({
           <div style={{ display: "grid", gap: 8 }}>
             {items.map((it) => (
               <div key={it.id} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px",
                 border: "1px solid var(--color-border)", borderRadius: 8,
               }}>
                 <div
-                  style={{ flex: 1, minWidth: 0, cursor: canInsert && editId !== it.id ? "pointer" : "default" }}
-                  onClick={() => { if (canInsert && editId !== it.id) onInsert!(it.question); }}
-                  title={canInsert ? "Inserir esta pergunta" : undefined}
+                  style={{ flex: 1, minWidth: 0, cursor: editId !== it.id ? "pointer" : "default" }}
+                  onClick={() => { if (editId !== it.id) onInsert(it.question); }}
+                  title={editId !== it.id ? "Inserir esta pergunta" : undefined}
                 >
                   {editId === it.id ? (
                     <input className={styles.input} autoFocus value={editLabel}
@@ -91,22 +90,25 @@ export default function QuestionLibraryPicker({
                       onBlur={commitEdit} />
                   ) : (
                     <>
-                      <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.label}</div>
-                      <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {it.question.text ? `“${it.question.text}” · ` : ""}{preview(it.question)}
-                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--color-text-primary)", marginBottom: 3 }}>{it.label}</div>
+                      {it.question.text && (
+                        <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)", lineHeight: 1.4, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                          {it.question.text}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 3, fontFamily: "var(--font-mono)" }}>{meta(it.question)}</div>
                     </>
                   )}
                 </div>
-                {canInsert && (
-                  <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onInsert!(it.question)}>Inserir</button>
-                )}
-                <button type="button" className={styles.btn} title="Renomear" onClick={() => (editId === it.id ? commitEdit() : startEdit(it))}>✎</button>
-                <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ minWidth: delId === it.id ? 96 : undefined }}
-                  title="Excluir" onClick={() => { if (delId === it.id) { onDelete(it.id); setDelId(null); } else setDelId(it.id); }}
-                  onBlur={() => setDelId((d) => (d === it.id ? null : d))}>
-                  {delId === it.id ? "Confirmar?" : "✕"}
-                </button>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onInsert(it.question)}>Inserir</button>
+                  <button type="button" className={styles.btn} title="Renomear" onClick={() => (editId === it.id ? commitEdit() : startEdit(it))}>✎</button>
+                  <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ minWidth: delId === it.id ? 96 : undefined }}
+                    title="Excluir" onClick={() => { if (delId === it.id) { onDelete(it.id); setDelId(null); } else setDelId(it.id); }}
+                    onBlur={() => setDelId((d) => (d === it.id ? null : d))}>
+                    {delId === it.id ? "Confirmar?" : "✕"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

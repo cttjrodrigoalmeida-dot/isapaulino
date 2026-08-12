@@ -230,23 +230,24 @@ export default function BriefingEditor({
     try { const raw = window.localStorage.getItem(CLIP_KEY); if (raw) q = JSON.parse(raw) as BriefingQuestion; } catch { /* ignore */ }
     if (!q) return;
     const item = q;
+    const newId = `q-${Date.now()}`;
     setBriefing((prev) => {
       if (!prev) return prev;
       const sections = prev.sections.map((s, idx) => {
         if (idx !== si) return s;
         const qs = s.questions.slice();
         const pos = at == null ? qs.length : Math.max(0, Math.min(at, qs.length));
-        qs.splice(pos, 0, { ...item, id: `q-${Date.now()}` });
+        qs.splice(pos, 0, { ...item, id: newId });
         return { ...s, questions: qs };
       });
       return { ...prev, sections };
     });
+    flashQuestion(newId); // destaca a cópia recém-colada
   };
 
   // ── Biblioteca de perguntas (D1) ──
   const [library, setLibrary] = useState<LibraryQuestion[]>([]);
   const [pickerFor, setPickerFor] = useState<number | null>(null);
-  const [manageOpen, setManageOpen] = useState(false); // biblioteca global (gerenciar)
   const refreshLibrary = () =>
     api.listQuestionLibrary().then(({ items }) => setLibrary(items)).catch(() => { /* sem biblioteca ainda */ });
   useEffect(() => { refreshLibrary(); }, []);
@@ -266,13 +267,18 @@ export default function BriefingEditor({
     }
   };
   const insertFromLibrary = (si: number, q: BriefingQuestion) => {
+    const newId = `q-${Date.now()}`;
+    let targetSecId: string | undefined;
     setBriefing((prev) => {
       if (!prev) return prev;
+      targetSecId = prev.sections[si]?.id;
       const sections = prev.sections.map((s, idx) =>
-        idx === si ? { ...s, questions: [...s.questions, { ...q, id: `q-${Date.now()}` }] } : s);
+        idx === si ? { ...s, questions: [...s.questions, { ...q, id: newId }] } : s);
       return { ...prev, sections };
     });
     setPickerFor(null);
+    if (targetSecId) { setCollapsed((c) => { const n = new Set(c); n.delete(targetSecId!); return n; }); setScrollToId(targetSecId); }
+    flashQuestion(newId);
   };
 
   // Deriva, por seção, se é continuação (e qual "parte") — só para o editor.
@@ -295,6 +301,13 @@ export default function BriefingEditor({
   // id da pergunta recém-movida → dispara o destaque animado no card de destino.
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
   const moveTimer = useRef<number | undefined>(undefined);
+  // Destaca (anima) uma pergunta recém-inserida/colada por ~1,3s.
+  const flashQuestion = (qid: string) => {
+    setJustMovedId(null);
+    window.clearTimeout(moveTimer.current);
+    requestAnimationFrame(() => setJustMovedId(qid));
+    moveTimer.current = window.setTimeout(() => setJustMovedId(null), 1300);
+  };
   // Após criar uma "continuação", rola até a seção recém-criada.
   const [scrollToId, setScrollToId] = useState<string | null>(null);
   useEffect(() => {
@@ -397,7 +410,7 @@ export default function BriefingEditor({
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button className={styles.btn} onClick={() => setManageOpen(true)} title="Ver, renomear e excluir as perguntas salvas na biblioteca.">
+          <button className={styles.btn} onClick={() => setPickerFor(briefing.sections.length - 1)} title="Ver a biblioteca — clique numa pergunta para inseri-la no fim do briefing; também dá para renomear/excluir.">
             📚 Biblioteca{library.length ? ` (${library.length})` : ""}
           </button>
           <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
@@ -536,20 +549,11 @@ export default function BriefingEditor({
           {pickerFor !== null && (
             <QuestionLibraryPicker
               items={library}
+              destino={briefing.sections[pickerFor]?.title || "fim do briefing"}
               onInsert={(q) => insertFromLibrary(pickerFor, q)}
               onRename={async (id, label) => { await api.renameLibraryQuestion(id, label); await refreshLibrary(); }}
               onDelete={async (id) => { await api.deleteLibraryQuestion(id); await refreshLibrary(); }}
               onClose={() => setPickerFor(null)}
-            />
-          )}
-
-          {/* Biblioteca global (só gerenciar — sem destino para inserir) */}
-          {manageOpen && (
-            <QuestionLibraryPicker
-              items={library}
-              onRename={async (id, label) => { await api.renameLibraryQuestion(id, label); await refreshLibrary(); }}
-              onDelete={async (id) => { await api.deleteLibraryQuestion(id); await refreshLibrary(); }}
-              onClose={() => setManageOpen(false)}
             />
           )}
 
