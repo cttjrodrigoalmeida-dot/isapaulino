@@ -123,6 +123,13 @@ function QuestionEditor({
         </div>
       )}
 
+      {(type === "radio" || type === "checklist") && (
+        <label className={styles.comboToggle} style={{ margin: "0 0 12px" }}>
+          <input type="checkbox" checked={!!q.allowOther} onChange={(e) => onChange({ allowOther: e.target.checked })} />
+          <span>Incluir opção “Outros” — ao selecionar, abre um campo livre para o cliente digitar.</span>
+        </label>
+      )}
+
       <div className={styles.field}>
         <label className={styles.label}>Observação/aviso abaixo (opcional)</label>
         <textarea className={styles.textarea} rows={2} value={q.note ?? ""} onChange={(e) => onChange({ note: e.target.value })} />

@@ -41,6 +41,11 @@ export interface BriefingQuestion {
   type?: QuestionType;
   /** Opções para radio/select/maquete. */
   options?: string[];
+  /**
+   * Se true (radio/checklist), inclui uma opção "Outros" — ao selecionar, abre
+   * um campo livre para o cliente digitar. A resposta fica "Outros: <texto>".
+   */
+  allowOther?: boolean;
   /** Placeholder do select (ex.: "selecione"). */
   placeholder?: string;
   /**

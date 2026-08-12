@@ -9,6 +9,9 @@ import {
 } from "react";
 import type { Briefing, BriefingSection, BriefingQuestion } from "./types";
 import { DEFAULT_QUICKFILLS } from "./types";
+
+// Prefixo da resposta quando o cliente escolhe "Outros" e digita um valor livre.
+const OUTROS_PREFIX = "Outros: ";
 import { getProposalByNumber } from "../proposal/proposalsRegistry";
 import CustomCursor from "../CustomCursor";
 import FadeIn from "../FadeIn";
@@ -274,7 +277,8 @@ function QuestionItem({
             aria-invalid={pending}
           />
         );
-      case "radio":
+      case "radio": {
+        const otherSel = !!question.allowOther && answer.startsWith(OUTROS_PREFIX);
         return (
           <>
             <div className={styles.options}>
@@ -294,7 +298,26 @@ function QuestionItem({
                   </button>
                 );
               })}
+              {question.allowOther && (
+                <button
+                  type="button"
+                  className={`${styles.optionBtn} ${otherSel ? styles.optionBtnSel : ""}`}
+                  onClick={() => onAnswer(otherSel ? "" : OUTROS_PREFIX)}
+                >
+                  Outros
+                </button>
+              )}
             </div>
+            {otherSel && (
+              <input
+                type="text"
+                className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
+                value={answer.slice(OUTROS_PREFIX.length)}
+                onChange={(e) => onAnswer(OUTROS_PREFIX + e.target.value)}
+                placeholder={question.hint ? `+ ${question.hint}` : "Especifique…"}
+                autoFocus
+              />
+            )}
             {wantsTemplateAttach &&
               (refImage ? (
                 refIsLink ? (
@@ -335,7 +358,9 @@ function QuestionItem({
               ))}
           </>
         );
+      }
       case "checklist": {
+        const otherSel = !!question.allowOther && answer.startsWith(OUTROS_PREFIX);
         return (
           <div className={styles.checklist}>
             <div className={styles.checklistHead}>
@@ -357,6 +382,27 @@ function QuestionItem({
                 </button>
               );
             })}
+            {question.allowOther && (
+              <button
+                type="button"
+                className={`${styles.checklistRow} ${otherSel ? styles.checklistRowSel : ""}`}
+                onClick={() => onAnswer(otherSel ? "" : OUTROS_PREFIX)}
+              >
+                <span className={styles.checklistMark}>{otherSel ? <IconCheck /> : "–"}</span>
+                <span>Outros</span>
+              </button>
+            )}
+            {otherSel && (
+              <input
+                type="text"
+                className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
+                value={answer.slice(OUTROS_PREFIX.length)}
+                onChange={(e) => onAnswer(OUTROS_PREFIX + e.target.value)}
+                placeholder={question.hint ? `+ ${question.hint}` : "Especifique…"}
+                autoFocus
+                style={{ marginTop: 8 }}
+              />
+            )}
           </div>
         );
       }

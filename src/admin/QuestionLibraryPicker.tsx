@@ -73,12 +73,14 @@ export default function QuestionLibraryPicker({
   const [cType, setCType] = useState<QuestionType>("longtext");
   const [cOptions, setCOptions] = useState<string[]>([]);
   const [cQuick, setCQuick] = useState<string[]>([]);
-  const resetCompose = () => { setComposing(false); setCLabel(""); setCText(""); setCType("longtext"); setCOptions([]); setCQuick([]); };
+  const [cOther, setCOther] = useState(false);
+  const resetCompose = () => { setComposing(false); setCLabel(""); setCText(""); setCType("longtext"); setCOptions([]); setCQuick([]); setCOther(false); };
   const saveNew = () => {
     const label = (cLabel || cText).trim();
     if (!label || !cText.trim()) return;
     const q: BriefingQuestion = { id: "", text: cText.trim(), type: cType };
     if (HAS_OPTIONS.includes(cType) && cOptions.length) q.options = cOptions;
+    if (cOther && (cType === "radio" || cType === "checklist")) q.allowOther = true;
     if (cQuick.length) q.quickFills = cQuick;
     onSaveNew(label, q);
     resetCompose();
@@ -148,6 +150,12 @@ export default function QuestionLibraryPicker({
                 <label className={styles.label}>Opções</label>
                 <ListEditor items={cOptions} onChange={setCOptions} placeholder="ex.: Sim" />
               </div>
+            )}
+            {(cType === "radio" || cType === "checklist") && (
+              <label className={styles.comboToggle} style={{ margin: "0 0 12px" }}>
+                <input type="checkbox" checked={cOther} onChange={(e) => setCOther(e.target.checked)} />
+                <span>Incluir opção “Outros” (abre campo livre)</span>
+              </label>
             )}
             <div className={styles.field}>
               <label className={styles.label}>Botões de resposta rápida extras (opcional)</label>
