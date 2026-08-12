@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { BriefingQuestion } from "../components/briefing/types";
 import type { LibraryQuestion } from "./api";
 import styles from "./Admin.module.css";
@@ -30,6 +31,14 @@ export default function QuestionLibraryPicker({
   onDelete: (id: string) => void;
   onClose: () => void;
 }) {
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [delId, setDelId] = useState<string | null>(null); // 2 cliques p/ excluir
+  const startEdit = (it: LibraryQuestion) => { setEditId(it.id); setEditLabel(it.label); };
+  const commitEdit = () => {
+    if (editId && editLabel.trim()) onRename(editId, editLabel.trim());
+    setEditId(null);
+  };
   return (
     <div
       onClick={onClose}
@@ -63,19 +72,27 @@ export default function QuestionLibraryPicker({
                 border: "1px solid var(--color-border)", borderRadius: 10,
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.label}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {it.question.text ? `“${it.question.text}” · ` : ""}{preview(it.question)}
-                  </div>
+                  {editId === it.id ? (
+                    <input className={styles.input} autoFocus value={editLabel}
+                      onChange={(e) => setEditLabel(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditId(null); }}
+                      onBlur={commitEdit} />
+                  ) : (
+                    <>
+                      <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.label}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {it.question.text ? `“${it.question.text}” · ` : ""}{preview(it.question)}
+                      </div>
+                    </>
+                  )}
                 </div>
                 <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onInsert(it.question)}>Inserir</button>
-                <button type="button" className={styles.btn} title="Renomear" onClick={() => {
-                  const nv = window.prompt("Novo nome:", it.label);
-                  if (nv && nv.trim() && nv.trim() !== it.label) onRename(it.id, nv.trim());
-                }}>✎</button>
-                <button type="button" className={`${styles.btn} ${styles.btnDanger}`} title="Excluir" onClick={() => {
-                  if (window.confirm(`Excluir “${it.label}” da biblioteca?`)) onDelete(it.id);
-                }}>✕</button>
+                <button type="button" className={styles.btn} title="Renomear" onClick={() => (editId === it.id ? commitEdit() : startEdit(it))}>✎</button>
+                <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ minWidth: delId === it.id ? 96 : undefined }}
+                  title="Excluir" onClick={() => { if (delId === it.id) { onDelete(it.id); setDelId(null); } else setDelId(it.id); }}
+                  onBlur={() => setDelId((d) => (d === it.id ? null : d))}>
+                  {delId === it.id ? "Confirmar?" : "✕"}
+                </button>
               </div>
             ))}
           </div>

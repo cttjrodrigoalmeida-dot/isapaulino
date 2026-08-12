@@ -4,6 +4,7 @@ import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
 import { api, ApiError, type ProposalSummary, type LibraryQuestion } from "./api";
 import BriefingSectionEditor from "./BriefingSectionEditor";
 import QuestionLibraryPicker from "./QuestionLibraryPicker";
+import BackToTop from "./BackToTop";
 import BriefingView from "../components/briefing/BriefingView";
 import RelatedDocs from "./RelatedDocs";
 import styles from "./Admin.module.css";
@@ -194,6 +195,7 @@ export default function BriefingEditor({
     });
 
   // ── Recolher/expandir seções ──
+  const [indexOpen, setIndexOpen] = useState(false); // índice começa recolhido (pode ficar grande)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const toggleCollapse = (id: string) =>
     setCollapsed((prev) => {
@@ -241,12 +243,16 @@ export default function BriefingEditor({
   const refreshLibrary = () =>
     api.listQuestionLibrary().then(({ items }) => setLibrary(items)).catch(() => { /* sem biblioteca ainda */ });
   useEffect(() => { refreshLibrary(); }, []);
-  const saveQuestionToLibrary = async (q: BriefingQuestion) => {
-    const label = window.prompt("Nome desta pergunta na biblioteca:", (q.text || "").slice(0, 60) || "Pergunta");
-    if (!label || !label.trim()) return;
+  // Modal de "salvar na biblioteca" (substitui o window.prompt nativo).
+  const [saveFor, setSaveFor] = useState<BriefingQuestion | null>(null);
+  const [saveName, setSaveName] = useState("");
+  const openSaveDialog = (q: BriefingQuestion) => { setSaveFor(q); setSaveName((q.text || "").slice(0, 70) || "Pergunta"); };
+  const confirmSave = async () => {
+    if (!saveFor || !saveName.trim()) return;
     try {
-      await api.saveQuestionToLibrary(label.trim(), stripQuestion(q));
+      await api.saveQuestionToLibrary(saveName.trim(), stripQuestion(saveFor));
       await refreshLibrary();
+      setSaveFor(null);
       setNotice("Pergunta salva na biblioteca.");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Erro ao salvar na biblioteca.");
@@ -458,25 +464,36 @@ export default function BriefingEditor({
             </div>
           </div>
 
-          {/* Índice de seções — pula direto para o ambiente e recolher/expandir tudo. */}
+          {/* Índice de seções — recolhido por padrão (fica grande); expande p/ pular
+              direto para um ambiente. Pílulas com bordas espelhadas (padrão do sistema). */}
           {briefing.sections.length > 1 && (
-            <div className={styles.card} style={{ position: "sticky", top: 8, zIndex: 5, padding: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className={styles.label} style={{ margin: 0 }}>Índice</span>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1, minWidth: 0 }}>
-                {briefing.sections.map((s, i) => {
-                  const ci = contInfo[i];
-                  const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
-                  return (
-                    <button key={s.id || i} type="button" className={styles.btn}
-                      style={{ fontSize: 11, padding: "4px 9px", opacity: ci?.isCont ? 0.75 : 1 }}
-                      onClick={() => jumpTo(s.id)} title={`${s.questions.length} pergunta(s)`}>
-                      {ci?.isCont ? `↳ ${name} · ${ci.part}` : name} <span style={{ opacity: 0.55 }}>({s.questions.length})</span>
-                    </button>
-                  );
-                })}
+            <div className={styles.card} style={{ position: "sticky", top: 8, zIndex: 5, padding: 10, borderRadius: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" onClick={() => setIndexOpen((v) => !v)}
+                  title={indexOpen ? "Recolher índice" : "Expandir índice"}
+                  style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit", flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)", width: 12 }}>{indexOpen ? "▾" : "▸"}</span>
+                  <span className={styles.label} style={{ margin: 0 }}>Índice</span>
+                  <span style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>· {briefing.sections.length} seções</span>
+                </button>
+                <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
+                <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
               </div>
-              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
-              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
+              {indexOpen && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+                  {briefing.sections.map((s, i) => {
+                    const ci = contInfo[i];
+                    const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
+                    return (
+                      <button key={s.id || i} type="button" className={styles.btn}
+                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: i % 2 === 0 ? "7px 0 7px 0" : "0 7px 0 7px", opacity: ci?.isCont ? 0.75 : 1 }}
+                        onClick={() => jumpTo(s.id)} title={`${s.questions.length} pergunta(s)`}>
+                        {ci?.isCont ? `↳ ${name} · ${ci.part}` : name} <span style={{ opacity: 0.55 }}>({s.questions.length})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -492,7 +509,7 @@ export default function BriefingEditor({
               onCopyQuestion={(qi) => copyQuestion(i, qi)}
               onPasteQuestion={() => pasteQuestion(i)}
               onOpenLibrary={() => setPickerFor(i)}
-              onSaveQuestionToLibrary={(q) => saveQuestionToLibrary(q)}
+              onSaveQuestionToLibrary={(q) => openSaveDialog(q)}
               onChange={(next) => setSection(i, next)}
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
@@ -515,6 +532,24 @@ export default function BriefingEditor({
               onClose={() => setPickerFor(null)}
             />
           )}
+
+          {/* Modal de salvar na biblioteca (nome amigável) */}
+          {saveFor && (
+            <div onClick={() => setSaveFor(null)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.5)", display: "grid", placeItems: "center", padding: 20 }}>
+              <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 }}>
+                <div className={styles.cardTitle} style={{ margin: "0 0 4px" }}>Salvar na biblioteca</div>
+                <p className={styles.pageHint} style={{ marginTop: 0 }}>Dê um nome para reencontrar esta pergunta depois (com as respostas rápidas configuradas).</p>
+                <input className={styles.input} autoFocus value={saveName} onChange={(e) => setSaveName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmSave(); }} placeholder="ex.: Observações do ambiente" />
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+                  <button type="button" className={styles.btn} onClick={() => setSaveFor(null)}>Cancelar</button>
+                  <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={confirmSave} disabled={!saveName.trim()}>Salvar</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <BackToTop />
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button type="button" className={styles.btn} onClick={() => addSection("info")}>+ seção de informações</button>

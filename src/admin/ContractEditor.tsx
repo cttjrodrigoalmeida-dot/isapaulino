@@ -21,6 +21,7 @@ import {
   TabelaCustosEditor,
 } from "./ContractFieldEditors";
 import styles from "./Admin.module.css";
+import BackToTop from "./BackToTop";
 
 type Tab = "campos" | "json";
 
@@ -528,6 +529,7 @@ export default function ContractEditor({
       }
     >
       <div ref={topRef} />
+      <BackToTop />
       <div className={styles.pageHead}>
         <div>
           <div className={styles.pageTitle}>

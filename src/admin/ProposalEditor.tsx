@@ -19,6 +19,7 @@ import InvestmentEditor from "./InvestmentEditor";
 import PaymentEditor from "./PaymentEditor";
 import ProcessEditor from "./ProcessEditor";
 import SectionsEditor from "./SectionsEditor";
+import BackToTop from "./BackToTop";
 import styles from "./Admin.module.css";
 
 type Status = "draft" | "published";
@@ -251,6 +252,7 @@ export default function ProposalEditor({
           : { transition: "margin-right .22s ease" }
       }
     >
+      <BackToTop />
       <div className={styles.pageHead}>
         <div>
           <div className={styles.pageTitle}>

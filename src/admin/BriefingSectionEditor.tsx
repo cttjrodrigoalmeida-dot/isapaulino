@@ -456,9 +456,8 @@ export default function BriefingSectionEditor({
       >
         <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
         <button type="button" className={styles.btn} onClick={onOpenLibrary} title="Inserir uma pergunta salva na biblioteca.">+ da biblioteca</button>
-        {hasClipboard && (
-          <button type="button" className={styles.btn} onClick={onPasteQuestion} title="Colar a pergunta copiada aqui.">⤵ Colar pergunta</button>
-        )}
+        <button type="button" className={styles.btn} onClick={onPasteQuestion} disabled={!hasClipboard}
+          title={hasClipboard ? "Colar aqui a pergunta copiada." : "Copie uma pergunta (botão “Copiar”) para habilitar."}>⤵ Colar pergunta</button>
         <span className={styles.pageHint} style={{ margin: 0 }}>ou arraste uma pergunta (de qualquer bloco) para cá</span>
       </div>
       {isAmbiente && (
