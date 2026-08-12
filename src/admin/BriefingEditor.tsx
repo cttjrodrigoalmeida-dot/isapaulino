@@ -251,16 +251,13 @@ export default function BriefingEditor({
   const refreshLibrary = () =>
     api.listQuestionLibrary().then(({ items }) => setLibrary(items)).catch(() => { /* sem biblioteca ainda */ });
   useEffect(() => { refreshLibrary(); }, []);
-  // Modal de "salvar na biblioteca" (substitui o window.prompt nativo).
-  const [saveFor, setSaveFor] = useState<BriefingQuestion | null>(null);
-  const [saveName, setSaveName] = useState("");
-  const openSaveDialog = (q: BriefingQuestion) => { setSaveFor(q); setSaveName((q.text || "").slice(0, 70) || "Pergunta"); };
-  const confirmSave = async () => {
-    if (!saveFor || !saveName.trim()) return;
+  // Pergunta que o modal oferece para salvar (quando aberto pelo botão da pergunta).
+  const [pendingSave, setPendingSave] = useState<BriefingQuestion | null>(null);
+  // Salva na biblioteca uma pergunta (existente ou nova composta no modal).
+  const saveNewToLibrary = async (label: string, question: BriefingQuestion) => {
     try {
-      await api.saveQuestionToLibrary(saveName.trim(), stripQuestion(saveFor));
+      await api.saveQuestionToLibrary(label.trim(), stripQuestion(question));
       await refreshLibrary();
-      setSaveFor(null);
       setNotice("Pergunta salva na biblioteca.");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Erro ao salvar na biblioteca.");
@@ -532,7 +529,7 @@ export default function BriefingEditor({
               onCopyQuestion={(qi) => copyQuestion(i, qi)}
               onPasteQuestion={(at) => pasteQuestion(i, at)}
               onOpenLibrary={() => setPickerFor(i)}
-              onSaveQuestionToLibrary={(q) => openSaveDialog(q)}
+              onSaveQuestionToLibrary={(q) => { setPendingSave(q); setPickerFor(i); }}
               onChange={(next) => setSection(i, next)}
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
@@ -555,27 +552,13 @@ export default function BriefingEditor({
                 return ci?.isCont ? `↳ ${name} · parte ${ci.part}` : `${i + 1}. ${name}`;
               })}
               defaultTarget={Math.max(0, Math.min(pickerFor, briefing.sections.length - 1))}
+              pendingSave={pendingSave}
               onInsert={(q, target) => insertFromLibrary(target, q)}
+              onSaveNew={saveNewToLibrary}
               onRename={async (id, label) => { await api.renameLibraryQuestion(id, label); await refreshLibrary(); }}
               onDelete={async (id) => { await api.deleteLibraryQuestion(id); await refreshLibrary(); }}
-              onClose={() => setPickerFor(null)}
+              onClose={() => { setPickerFor(null); setPendingSave(null); }}
             />
-          )}
-
-          {/* Modal de salvar na biblioteca (nome amigável) */}
-          {saveFor && (
-            <div onClick={() => setSaveFor(null)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.5)", display: "grid", placeItems: "center", padding: 20 }}>
-              <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 }}>
-                <div className={styles.cardTitle} style={{ margin: "0 0 4px" }}>Salvar na biblioteca</div>
-                <p className={styles.pageHint} style={{ marginTop: 0 }}>Dê um nome para reencontrar esta pergunta depois (com as respostas rápidas configuradas).</p>
-                <input className={styles.input} autoFocus value={saveName} onChange={(e) => setSaveName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") confirmSave(); }} placeholder="ex.: Observações do ambiente" />
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-                  <button type="button" className={styles.btn} onClick={() => setSaveFor(null)}>Cancelar</button>
-                  <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={confirmSave} disabled={!saveName.trim()}>Salvar</button>
-                </div>
-              </div>
-            </div>
           )}
 
           <BackToTop />

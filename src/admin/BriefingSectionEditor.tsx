@@ -91,7 +91,7 @@ function QuestionEditor({
           {hasClipboard && (
             <button type="button" className={styles.btn} onClick={onPasteAfter} title="Colar a pergunta copiada logo abaixo desta.">⤵ Colar aqui</button>
           )}
-          <button type="button" className={styles.btn} onClick={onSaveToLibrary} title="Salvar esta pergunta na biblioteca para reutilizar em qualquer briefing.">☆ Salvar</button>
+          <button type="button" className={styles.btn} onClick={onSaveToLibrary} title="Abrir a biblioteca — salvar esta pergunta, criar uma nova ou inserir uma salva.">☆ Biblioteca</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover</button>
         </div>
       </div>
