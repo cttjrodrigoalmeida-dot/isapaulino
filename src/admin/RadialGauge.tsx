@@ -28,8 +28,8 @@ export default function RadialGauge({
           data={data}
           innerRadius="40%"
           outerRadius="100%"
-          startAngle={90}
-          endAngle={-180}
+          startAngle={270}
+          endAngle={0}
           barSize={7}
         >
           <PolarAngleAxis type="number" domain={[0, total]} tick={false} axisLine={false} />
