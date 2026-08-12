@@ -25,6 +25,8 @@ function QuestionEditor({
   onRemove,
   onMove,
   onDuplicate,
+  onCopy,
+  onSaveToLibrary,
   onDndStart,
   onDndOver,
   onDndDrop,
@@ -40,6 +42,8 @@ function QuestionEditor({
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
   onDuplicate: () => void;
+  onCopy: () => void;
+  onSaveToLibrary: () => void;
   onDndStart: () => void;
   onDndOver: () => void;
   onDndDrop: () => void;
@@ -78,6 +82,8 @@ function QuestionEditor({
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
           <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta pergunta logo abaixo.">⧉ Duplicar</button>
+          <button type="button" className={styles.btn} onClick={onCopy} title="Copiar esta pergunta para colar em outra seção (ou em outro briefing).">⧉ Copiar</button>
+          <button type="button" className={styles.btn} onClick={onSaveToLibrary} title="Salvar esta pergunta na biblioteca para reutilizar em qualquer briefing.">☆ Biblioteca</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover</button>
         </div>
       </div>
@@ -165,6 +171,14 @@ function QuestionEditor({
 export default function BriefingSectionEditor({
   section,
   index,
+  collapsed,
+  onToggleCollapse,
+  continuationInfo,
+  hasClipboard,
+  onCopyQuestion,
+  onPasteQuestion,
+  onOpenLibrary,
+  onSaveQuestionToLibrary,
   onChange,
   onRemove,
   onMove,
@@ -178,6 +192,17 @@ export default function BriefingSectionEditor({
 }: {
   section: BriefingSection;
   index: number;
+  /** seção recolhida (mostra só o resumo) */
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  /** se esta seção (ambiente) é continuação e qual "parte" — só p/ rotular no editor */
+  continuationInfo?: { isCont: boolean; part: number };
+  /** há uma pergunta no clipboard (para exibir "Colar pergunta") */
+  hasClipboard: boolean;
+  onCopyQuestion: (qi: number) => void;
+  onPasteQuestion: () => void;
+  onOpenLibrary: () => void;
+  onSaveQuestionToLibrary: (q: BriefingQuestion) => void;
   onChange: (next: BriefingSection) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
@@ -195,6 +220,7 @@ export default function BriefingSectionEditor({
   isLast: boolean;
 }) {
   const isAmbiente = section.kind === "ambiente";
+  const isCont = isAmbiente && !!continuationInfo?.isCont;
   const set = (patch: Partial<BriefingSection>) => onChange({ ...section, ...patch });
 
   const [activePin, setActivePin] = useState<number | null>(null);
@@ -267,11 +293,28 @@ export default function BriefingSectionEditor({
   };
 
   return (
-    <div className={styles.card} id={`sec-card-${section.id}`}>
+    <div
+      className={styles.card}
+      id={`sec-card-${section.id}`}
+      style={isCont ? { marginLeft: 20, borderLeft: "3px solid var(--color-accent)" } : undefined}
+    >
       <div className={styles.blockHead}>
-        <div className={styles.cardTitle} style={{ margin: 0 }}>
-          Seção {index + 1} · {isAmbiente ? "Ambiente" : "Informações"}
-        </div>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          title={collapsed ? "Expandir" : "Recolher"}
+          style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", flex: 1, minWidth: 0 }}
+        >
+          <span style={{ fontSize: 13, color: "var(--color-text-muted)", width: 12, flexShrink: 0 }}>{collapsed ? "▸" : "▾"}</span>
+          <span className={styles.cardTitle} style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {isCont
+              ? `↳ Continuação · ${section.title || "Ambiente"} (parte ${continuationInfo?.part ?? 2})`
+              : `Seção ${index + 1} · ${isAmbiente ? "AMBIENTE" : "Informações"}${section.title ? ` — ${section.title}` : ""}`}
+          </span>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", flexShrink: 0 }}>
+            · {section.questions.length} pergunta{section.questions.length === 1 ? "" : "s"}
+          </span>
+        </button>
         <div style={{ display: "flex", gap: 6 }}>
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
@@ -283,6 +326,8 @@ export default function BriefingSectionEditor({
         </div>
       </div>
 
+      {collapsed ? null : (
+      <>
       <div className={styles.row2}>
         <div className={styles.field}>
           <label className={styles.label}>Tipo de seção</label>
@@ -386,6 +431,8 @@ export default function BriefingSectionEditor({
           onRemove={() => removeQuestion(qi)}
           onMove={(dir) => moveQuestion(qi, dir)}
           onDuplicate={() => duplicateQuestion(qi)}
+          onCopy={() => onCopyQuestion(qi)}
+          onSaveToLibrary={() => onSaveQuestionToLibrary(section.questions[qi])}
           onDndStart={() => onQuestionDragStart(qi)}
           onDndOver={() => setDropIdx(qi)}
           onDndDrop={() => { onQuestionDrop(qi); setDropIdx(null); }}
@@ -408,12 +455,18 @@ export default function BriefingSectionEditor({
         }}
       >
         <button type="button" className={styles.btn} onClick={addQuestion}>+ adicionar pergunta</button>
+        <button type="button" className={styles.btn} onClick={onOpenLibrary} title="Inserir uma pergunta salva na biblioteca.">+ da biblioteca</button>
+        {hasClipboard && (
+          <button type="button" className={styles.btn} onClick={onPasteQuestion} title="Colar a pergunta copiada aqui.">⤵ Colar pergunta</button>
+        )}
         <span className={styles.pageHint} style={{ margin: 0 }}>ou arraste uma pergunta (de qualquer bloco) para cá</span>
       </div>
       {isAmbiente && (
         <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
           <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={onContinuar} title="Nova seção do mesmo ambiente logo abaixo, começando em branco (sem repetir as perguntas).">+ Continuação deste ambiente</button>
         </div>
+      )}
+      </>
       )}
     </div>
   );

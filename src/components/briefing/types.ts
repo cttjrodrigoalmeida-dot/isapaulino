@@ -86,6 +86,12 @@ export interface BriefingSection {
   intro?: string;
   /** Imagem base (apenas em seções "ambiente"). */
   image?: string;
+  /**
+   * Marca esta seção como CONTINUAÇÃO do ambiente anterior (mesmo título).
+   * Usado SÓ no editor, para agrupar/rotular visualmente (não muda a página do
+   * cliente). Definido pelo botão "+ Continuação".
+   */
+  continuation?: boolean;
   questions: BriefingQuestion[];
 }
 

@@ -1,11 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import type { Briefing, BriefingSection } from "../components/briefing/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Briefing, BriefingSection, BriefingQuestion } from "../components/briefing/types";
 import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
-import { api, ApiError, type ProposalSummary } from "./api";
+import { api, ApiError, type ProposalSummary, type LibraryQuestion } from "./api";
 import BriefingSectionEditor from "./BriefingSectionEditor";
+import QuestionLibraryPicker from "./QuestionLibraryPicker";
 import BriefingView from "../components/briefing/BriefingView";
 import RelatedDocs from "./RelatedDocs";
 import styles from "./Admin.module.css";
+
+// Pergunta reutilizável (clipboard/biblioteca): sem id/pin (posição é do ambiente).
+const CLIP_KEY = "ips_briefing_qclip";
+function stripQuestion(q: BriefingQuestion): BriefingQuestion {
+  const { id: _id, pin: _pin, ...rest } = q;
+  return rest as BriefingQuestion;
+}
 
 type Status = "draft" | "published";
 
@@ -144,7 +152,7 @@ export default function BriefingEditor({
         ...prev,
         sections: [
           ...prev.sections,
-          { id: newId, kind: "ambiente", title: lastAmbiente?.title ?? "NOVO AMBIENTE", questions: [], image: "" },
+          { id: newId, kind: "ambiente", title: lastAmbiente?.title ?? "NOVO AMBIENTE", questions: [], image: "", continuation: !!lastAmbiente },
         ],
       };
     });
@@ -158,7 +166,7 @@ export default function BriefingEditor({
       if (!prev) return prev;
       const base = prev.sections[i];
       const list = prev.sections.slice();
-      list.splice(i + 1, 0, { id: newId, kind: "ambiente", title: base?.title ?? "NOVO AMBIENTE", questions: [], image: "" });
+      list.splice(i + 1, 0, { id: newId, kind: "ambiente", title: base?.title ?? "NOVO AMBIENTE", questions: [], image: "", continuation: true });
       return { ...prev, sections: list };
     });
     setScrollToId(newId);
@@ -184,6 +192,90 @@ export default function BriefingEditor({
       [list[i], list[j]] = [list[j], list[i]];
       return { ...prev, sections: list };
     });
+
+  // ── Recolher/expandir seções ──
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  const collapseAll = () => setCollapsed(new Set((briefing?.sections ?? []).map((s) => s.id)));
+  const expandAll = () => setCollapsed(new Set());
+  // Índice: expande (se recolhida) e rola até a seção.
+  const jumpTo = (id: string) => {
+    setCollapsed((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    setScrollToId(id);
+  };
+
+  // ── Copiar/colar perguntas (clipboard em localStorage, funciona entre briefings) ──
+  const [hasClip, setHasClip] = useState<boolean>(() => {
+    try { return !!window.localStorage.getItem(CLIP_KEY); } catch { return false; }
+  });
+  const copyQuestion = (si: number, qi: number) => {
+    const q = briefing?.sections[si]?.questions[qi];
+    if (!q) return;
+    try {
+      window.localStorage.setItem(CLIP_KEY, JSON.stringify(stripQuestion(q)));
+      setHasClip(true);
+      setNotice("Pergunta copiada. Use “Colar pergunta” na seção desejada (inclusive em outro briefing).");
+    } catch { /* localStorage indisponível */ }
+  };
+  const pasteQuestion = (si: number) => {
+    let q: BriefingQuestion | null = null;
+    try { const raw = window.localStorage.getItem(CLIP_KEY); if (raw) q = JSON.parse(raw) as BriefingQuestion; } catch { /* ignore */ }
+    if (!q) return;
+    const item = q;
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const sections = prev.sections.map((s, idx) =>
+        idx === si ? { ...s, questions: [...s.questions, { ...item, id: `q-${Date.now()}` }] } : s);
+      return { ...prev, sections };
+    });
+  };
+
+  // ── Biblioteca de perguntas (D1) ──
+  const [library, setLibrary] = useState<LibraryQuestion[]>([]);
+  const [pickerFor, setPickerFor] = useState<number | null>(null);
+  const refreshLibrary = () =>
+    api.listQuestionLibrary().then(({ items }) => setLibrary(items)).catch(() => { /* sem biblioteca ainda */ });
+  useEffect(() => { refreshLibrary(); }, []);
+  const saveQuestionToLibrary = async (q: BriefingQuestion) => {
+    const label = window.prompt("Nome desta pergunta na biblioteca:", (q.text || "").slice(0, 60) || "Pergunta");
+    if (!label || !label.trim()) return;
+    try {
+      await api.saveQuestionToLibrary(label.trim(), stripQuestion(q));
+      await refreshLibrary();
+      setNotice("Pergunta salva na biblioteca.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro ao salvar na biblioteca.");
+    }
+  };
+  const insertFromLibrary = (si: number, q: BriefingQuestion) => {
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const sections = prev.sections.map((s, idx) =>
+        idx === si ? { ...s, questions: [...s.questions, { ...q, id: `q-${Date.now()}` }] } : s);
+      return { ...prev, sections };
+    });
+    setPickerFor(null);
+  };
+
+  // Deriva, por seção, se é continuação (e qual "parte") — só para o editor.
+  const contInfo = useMemo(() => {
+    const out: { isCont: boolean; part: number }[] = [];
+    let groupTitle: string | null = null;
+    let part = 0;
+    (briefing?.sections ?? []).forEach((s, i) => {
+      if (s.kind !== "ambiente") { out[i] = { isCont: false, part: 0 }; groupTitle = null; part = 0; return; }
+      const prev = briefing!.sections[i - 1];
+      const continues = groupTitle !== null && (s.continuation === true || (prev?.kind === "ambiente" && prev.title === s.title));
+      if (continues) part += 1; else { groupTitle = s.title; part = 1; }
+      out[i] = { isCont: part > 1, part };
+    });
+    return out;
+  }, [briefing]);
 
   // ── Drag-and-drop de perguntas (inclusive entre blocos) ──
   const dragSource = useRef<{ s: number; q: number } | null>(null);
@@ -366,11 +458,41 @@ export default function BriefingEditor({
             </div>
           </div>
 
+          {/* Índice de seções — pula direto para o ambiente e recolher/expandir tudo. */}
+          {briefing.sections.length > 1 && (
+            <div className={styles.card} style={{ position: "sticky", top: 8, zIndex: 5, padding: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className={styles.label} style={{ margin: 0 }}>Índice</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+                {briefing.sections.map((s, i) => {
+                  const ci = contInfo[i];
+                  const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
+                  return (
+                    <button key={s.id || i} type="button" className={styles.btn}
+                      style={{ fontSize: 11, padding: "4px 9px", opacity: ci?.isCont ? 0.75 : 1 }}
+                      onClick={() => jumpTo(s.id)} title={`${s.questions.length} pergunta(s)`}>
+                      {ci?.isCont ? `↳ ${name} · ${ci.part}` : name} <span style={{ opacity: 0.55 }}>({s.questions.length})</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
+              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
+            </div>
+          )}
+
           {briefing.sections.map((s, i) => (
             <BriefingSectionEditor
               key={s.id || i}
               section={s}
               index={i}
+              collapsed={collapsed.has(s.id)}
+              onToggleCollapse={() => toggleCollapse(s.id)}
+              continuationInfo={contInfo[i]}
+              hasClipboard={hasClip}
+              onCopyQuestion={(qi) => copyQuestion(i, qi)}
+              onPasteQuestion={() => pasteQuestion(i)}
+              onOpenLibrary={() => setPickerFor(i)}
+              onSaveQuestionToLibrary={(q) => saveQuestionToLibrary(q)}
               onChange={(next) => setSection(i, next)}
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
@@ -383,6 +505,16 @@ export default function BriefingEditor({
               isLast={i === briefing.sections.length - 1}
             />
           ))}
+
+          {pickerFor !== null && (
+            <QuestionLibraryPicker
+              items={library}
+              onInsert={(q) => insertFromLibrary(pickerFor, q)}
+              onRename={async (id, label) => { await api.renameLibraryQuestion(id, label); await refreshLibrary(); }}
+              onDelete={async (id) => { await api.deleteLibraryQuestion(id); await refreshLibrary(); }}
+              onClose={() => setPickerFor(null)}
+            />
+          )}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button type="button" className={styles.btn} onClick={() => addSection("info")}>+ seção de informações</button>

@@ -1,9 +1,16 @@
 // Cliente da API admin (Pages Functions). Sempre com credentials:"include"
 // para enviar/receber o cookie de sessão.
 import type { Proposal } from "../components/proposal/types";
-import type { Briefing } from "../components/briefing/types";
+import type { Briefing, BriefingQuestion } from "../components/briefing/types";
 
 export type ProposalOutcome = "aprovada" | "nao-aprovada";
+
+// Pergunta salva na biblioteca (reutilizável entre briefings).
+export interface LibraryQuestion {
+  id: string;
+  label: string;
+  question: BriefingQuestion;
+}
 
 export interface ProposalSummary {
   number: string;
@@ -523,6 +530,21 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ id, answers }),
     }),
+
+  // ── Biblioteca de perguntas (reutilizáveis) ──
+  listQuestionLibrary: () => req<{ items: LibraryQuestion[] }>("/api/question-library"),
+  saveQuestionToLibrary: (label: string, question: BriefingQuestion) =>
+    req<{ ok: true; id: string }>("/api/question-library", {
+      method: "POST",
+      body: JSON.stringify({ label, question }),
+    }),
+  renameLibraryQuestion: (id: string, label: string) =>
+    req<{ ok: true }>(`/api/question-library/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ label }),
+    }),
+  deleteLibraryQuestion: (id: string) =>
+    req<{ ok: true }>(`/api/question-library/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   // ── clientes ──
   listClients: (q?: string) =>

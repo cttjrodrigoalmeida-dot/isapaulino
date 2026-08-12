@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS briefing_responses (
 CREATE INDEX IF NOT EXISTS idx_responses_briefing ON briefing_responses(briefing_number);
 CREATE INDEX IF NOT EXISTS idx_responses_submitted ON briefing_responses(submitted_at DESC);
 
+-- Biblioteca de perguntas reutilizáveis do briefing (cadastra 1x, reusa em
+-- qualquer briefing). `data` = JSON de uma BriefingQuestion (sem id/pin).
+CREATE TABLE IF NOT EXISTS question_library (
+  id         TEXT PRIMARY KEY,               -- uuid
+  label      TEXT NOT NULL,                  -- nome amigável na biblioteca
+  data       TEXT NOT NULL,                  -- JSON da BriefingQuestion
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_qlib_updated ON question_library(updated_at DESC);
+
 -- Clientes do estúdio. Campos planos (sem JSON aninhado), CRUD pelo painel.
 -- cpf_cnpj e email são opcionais, mas validados quando preenchidos.
 CREATE TABLE IF NOT EXISTS clients (
