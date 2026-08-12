@@ -25,19 +25,23 @@ export default function QuestionLibraryPicker({
   onRename,
   onDelete,
   onClose,
-  destino,
+  sectionOptions,
+  defaultTarget,
 }: {
   items: LibraryQuestion[];
-  onInsert: (q: BriefingQuestion) => void;
+  onInsert: (q: BriefingQuestion, target: number) => void;
   onRename: (id: string, label: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
-  /** texto curto do destino da inserção (ex.: "COZINHA" ou "fim do briefing") */
-  destino?: string;
+  /** rótulos das seções (índice = índice da seção) para escolher o destino */
+  sectionOptions: string[];
+  /** seção pré-selecionada (a que abriu o modal, ou a última) */
+  defaultTarget: number;
 }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [delId, setDelId] = useState<string | null>(null); // 2 cliques p/ excluir
+  const [target, setTarget] = useState(defaultTarget);
   const startEdit = (it: LibraryQuestion) => { setEditId(it.id); setEditLabel(it.label); };
   const commitEdit = () => {
     if (editId && editLabel.trim()) onRename(editId, editLabel.trim());
@@ -63,9 +67,17 @@ export default function QuestionLibraryPicker({
           <div className={styles.cardTitle} style={{ margin: 0 }}>Biblioteca de perguntas</div>
           <button type="button" className={styles.btn} onClick={onClose}>Fechar</button>
         </div>
-        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 14 }}>
-          Clique numa pergunta para inseri-la{destino ? <> em <strong>{destino}</strong></> : " no briefing"}. Renomeie (✎) ou exclua (✕).
+        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 10 }}>
+          Clique numa pergunta para inseri-la na seção escolhida abaixo. Renomeie (✎) ou exclua (✕).
         </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <label className={styles.label} style={{ margin: 0, whiteSpace: "nowrap" }}>Inserir em:</label>
+          <select className={styles.input} value={target} onChange={(e) => setTarget(Number(e.target.value))} style={{ maxWidth: 360 }}>
+            {sectionOptions.map((label, i) => (
+              <option key={i} value={i}>{label}</option>
+            ))}
+          </select>
+        </div>
 
         {items.length === 0 ? (
           <p className={styles.pageHint} style={{ margin: 0 }}>
@@ -80,7 +92,7 @@ export default function QuestionLibraryPicker({
               }}>
                 <div
                   style={{ flex: 1, minWidth: 0, cursor: editId !== it.id ? "pointer" : "default" }}
-                  onClick={() => { if (editId !== it.id) onInsert(it.question); }}
+                  onClick={() => { if (editId !== it.id) onInsert(it.question, target); }}
                   title={editId !== it.id ? "Inserir esta pergunta" : undefined}
                 >
                   {editId === it.id ? (
@@ -101,7 +113,7 @@ export default function QuestionLibraryPicker({
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                  <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onInsert(it.question)}>Inserir</button>
+                  <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onInsert(it.question, target)}>Inserir</button>
                   <button type="button" className={styles.btn} title="Renomear" onClick={() => (editId === it.id ? commitEdit() : startEdit(it))}>✎</button>
                   <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ minWidth: delId === it.id ? 96 : undefined }}
                     title="Excluir" onClick={() => { if (delId === it.id) { onDelete(it.id); setDelId(null); } else setDelId(it.id); }}

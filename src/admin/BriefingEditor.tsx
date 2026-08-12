@@ -549,8 +549,13 @@ export default function BriefingEditor({
           {pickerFor !== null && (
             <QuestionLibraryPicker
               items={library}
-              destino={briefing.sections[pickerFor]?.title || "fim do briefing"}
-              onInsert={(q) => insertFromLibrary(pickerFor, q)}
+              sectionOptions={briefing.sections.map((s, i) => {
+                const ci = contInfo[i];
+                const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
+                return ci?.isCont ? `↳ ${name} · parte ${ci.part}` : `${i + 1}. ${name}`;
+              })}
+              defaultTarget={Math.max(0, Math.min(pickerFor, briefing.sections.length - 1))}
+              onInsert={(q, target) => insertFromLibrary(target, q)}
               onRename={async (id, label) => { await api.renameLibraryQuestion(id, label); await refreshLibrary(); }}
               onDelete={async (id) => { await api.deleteLibraryQuestion(id); await refreshLibrary(); }}
               onClose={() => setPickerFor(null)}
