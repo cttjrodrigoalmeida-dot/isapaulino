@@ -52,6 +52,7 @@ export default function BriefingsAnalytics({ items, year, onSeeDetails }: {
   const taxa = [
     { name: "Respondidos", value: m.concluidos, color: C.green },
     { name: "Pendentes", value: m.pendentes, color: C.amber },
+    { name: "Cancelados", value: m.cancelados, color: C.red },
   ];
   const porMes = MONTHS.map((name, i) => ({ name, value: m.monthly.total[i] }));
 
@@ -127,7 +128,8 @@ export default function BriefingsAnalytics({ items, year, onSeeDetails }: {
             <RadialGauge data={taxa} center={`${m.taxaPct}%`} centerLabel="respondidos" />
             <div style={{ display: "grid", gap: 8, flex: 1 }}>
               {taxa.map((d) => {
-                const p = m.respBase ? Math.round((d.value / m.respBase) * 100) : 0;
+                // % sobre o total (inclui cancelados) — coerente com os arcos.
+                const p = m.total ? Math.round((d.value / m.total) * 100) : 0;
                 return (
                   <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
                     <span style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0 }} />

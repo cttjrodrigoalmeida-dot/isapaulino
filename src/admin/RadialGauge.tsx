@@ -26,11 +26,11 @@ export default function RadialGauge({
       <ResponsiveContainer width="100%" height="100%">
         <RadialBarChart
           data={data}
-          innerRadius="40%"
+          innerRadius="52%"
           outerRadius="100%"
           startAngle={270}
           endAngle={0}
-          barSize={7}
+          barSize={6}
         >
           <PolarAngleAxis type="number" domain={[0, total]} tick={false} axisLine={false} />
           <RadialBar

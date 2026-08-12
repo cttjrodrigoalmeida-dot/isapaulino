@@ -80,5 +80,5 @@ const chip: React.CSSProperties = {
   fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 8,
   border: "1px solid var(--color-border)", textDecoration: "none", whiteSpace: "nowrap",
 };
-const chipLink: React.CSSProperties = { color: "var(--color-accent, #3b82f6)", background: "transparent", cursor: "pointer" };
+const chipLink: React.CSSProperties = { color: "var(--color-accent, #8b5cf6)", background: "transparent", cursor: "pointer" };
 const chipCurrent: React.CSSProperties = { color: "var(--color-text-primary)", background: "var(--color-border)" };

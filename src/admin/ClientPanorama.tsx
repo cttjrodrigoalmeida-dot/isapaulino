@@ -11,10 +11,11 @@ import { AvatarSVG, avatarById } from "../avatars";
 import { eventTypeMeta } from "../projectEvents";
 import styles from "./Admin.module.css";
 
-const C = { green: "#4ade80", amber: "#b07a16", blue: "#3b82f6", red: "#dd5c4e", slate: "#7c8698" };
+// `blue` na verdade é ROXO (a pedido) — mantido o nome da chave por simplicidade.
+const C = { green: "#4ade80", amber: "#b07a16", blue: "#8b5cf6", red: "#dd5c4e", slate: "#7c8698" };
 const SOFT = {
   green: "rgba(74,222,128,0.12)", amber: "rgba(176,122,22,0.12)",
-  blue: "rgba(59,130,246,0.12)", red: "rgba(221,92,78,0.12)", slate: "rgba(124,134,152,0.14)",
+  blue: "rgba(139,92,246,0.12)", red: "rgba(221,92,78,0.12)", slate: "rgba(124,134,152,0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 

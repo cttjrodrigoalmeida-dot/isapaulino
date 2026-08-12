@@ -359,8 +359,8 @@
   color: var(--color-accent);
 }
 .badgeSigned {
-  background: rgba(59, 130, 246, 0.14);
-  color: #60a5fa;
+  background: rgba(139, 92, 246, 0.14);
+  color: #a78bfa;
 }
 /* Badges semânticos alinhados às cores dos gráficos (verde/âmbar/cinza/vermelho). */
 .badgeResponded,
