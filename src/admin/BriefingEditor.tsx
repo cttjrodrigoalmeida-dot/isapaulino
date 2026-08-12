@@ -224,15 +224,21 @@ export default function BriefingEditor({
       setNotice("Pergunta copiada. Use “Colar pergunta” na seção desejada (inclusive em outro briefing).");
     } catch { /* localStorage indisponível */ }
   };
-  const pasteQuestion = (si: number) => {
+  // Cola a pergunta copiada na seção `si`, na posição `at` (ou no fim se ausente).
+  const pasteQuestion = (si: number, at?: number) => {
     let q: BriefingQuestion | null = null;
     try { const raw = window.localStorage.getItem(CLIP_KEY); if (raw) q = JSON.parse(raw) as BriefingQuestion; } catch { /* ignore */ }
     if (!q) return;
     const item = q;
     setBriefing((prev) => {
       if (!prev) return prev;
-      const sections = prev.sections.map((s, idx) =>
-        idx === si ? { ...s, questions: [...s.questions, { ...item, id: `q-${Date.now()}` }] } : s);
+      const sections = prev.sections.map((s, idx) => {
+        if (idx !== si) return s;
+        const qs = s.questions.slice();
+        const pos = at == null ? qs.length : Math.max(0, Math.min(at, qs.length));
+        qs.splice(pos, 0, { ...item, id: `q-${Date.now()}` });
+        return { ...s, questions: qs };
+      });
       return { ...prev, sections };
     });
   };
@@ -507,7 +513,7 @@ export default function BriefingEditor({
               continuationInfo={contInfo[i]}
               hasClipboard={hasClip}
               onCopyQuestion={(qi) => copyQuestion(i, qi)}
-              onPasteQuestion={() => pasteQuestion(i)}
+              onPasteQuestion={(at) => pasteQuestion(i, at)}
               onOpenLibrary={() => setPickerFor(i)}
               onSaveQuestionToLibrary={(q) => openSaveDialog(q)}
               onChange={(next) => setSection(i, next)}
