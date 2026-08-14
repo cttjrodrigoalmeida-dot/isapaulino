@@ -46,6 +46,8 @@ export interface BriefingQuestion {
    * um campo livre para o cliente digitar. A resposta fica "Outros: <texto>".
    */
   allowOther?: boolean;
+  /** Se true, NÃO mostra os botões padrão "À DEFINIR"/"NÃO SE APLICA" nesta pergunta. */
+  hideDefaultQuickFills?: boolean;
   /** Placeholder do select (ex.: "selecione"). */
   placeholder?: string;
   /**

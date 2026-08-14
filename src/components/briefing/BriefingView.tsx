@@ -219,11 +219,15 @@ function QuestionItem({
   const type = question.type ?? "longtext";
   const allowReference = question.allowReference ?? sectionKind === "ambiente";
   // Botões de resposta rápida: padrões ("À DEFINIR"/"NÃO SE APLICA") em todas as
-  // perguntas, exceto "maquete"; extras da pergunta vêm depois, na mesma linha.
+  // perguntas, exceto "maquete" ou quando o admin desligou (`hideDefaultQuickFills`);
+  // extras da pergunta vêm depois, na mesma linha.
+  const quickExtras = (question.quickFills ?? []).filter((v) => !DEFAULT_QUICKFILLS.includes(v));
   const quickFills =
     type === "maquete"
       ? question.quickFills ?? []
-      : [...DEFAULT_QUICKFILLS, ...(question.quickFills ?? []).filter((v) => !DEFAULT_QUICKFILLS.includes(v))];
+      : question.hideDefaultQuickFills
+        ? quickExtras
+        : [...DEFAULT_QUICKFILLS, ...quickExtras];
   const required = isRequired(question);
   const wantsTemplateAttach = type === "radio" && answer.startsWith("Anexar");
   const hasAlertAnswer = (question.alertOptions ?? []).includes(answer);

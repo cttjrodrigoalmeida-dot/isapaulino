@@ -175,9 +175,17 @@ function QuestionEditor({
           <span>Obrigatória</span>
         </label>
         <label className={styles.comboToggle} style={{ margin: 0 }}>
-          <input type="checkbox" checked={!!q.allowReference} onChange={(e) => onChange({ allowReference: e.target.checked })} />
+          {/* Reflete o padrão efetivo do cliente (ambiente vem ligado por padrão),
+              para desmarcar realmente esconder o botão. */}
+          <input type="checkbox" checked={q.allowReference ?? isAmbiente} onChange={(e) => onChange({ allowReference: e.target.checked })} />
           <span>Permitir anexar referência</span>
         </label>
+        {type !== "maquete" && (
+          <label className={styles.comboToggle} style={{ margin: 0 }}>
+            <input type="checkbox" checked={q.hideDefaultQuickFills !== true} onChange={(e) => onChange({ hideDefaultQuickFills: !e.target.checked })} />
+            <span>Mostrar “À definir / Não se aplica”</span>
+          </label>
+        )}
       </div>
     </div>
   );
