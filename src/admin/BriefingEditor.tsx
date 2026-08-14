@@ -43,6 +43,18 @@ export default function BriefingEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // ── Apoio pessoal (D1): notas + checklist "preenchido" + salvamento ──
+  const [notes, setNotes] = useState("");
+  const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
+  const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState("");
+  const [apoioOpen, setApoioOpen] = useState(true);
+  const hydratedRef = useRef(false);   // evita marcar "dirty" no carregamento
+  const savingRef = useRef(false);     // evita autosave sobreposto
+  const toggleDone = (id: string) =>
+    setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -61,15 +73,17 @@ export default function BriefingEditor({
           setBriefing(draft);
           setStatus("draft");
         } else {
-          const { briefing: b, status: s } = await api.getBriefing(number!);
+          const { briefing: b, status: s, editorNotes, editorDone } = await api.getBriefing(number!);
           if (!alive) return;
           setBriefing(b);
           setStatus(s);
+          setNotes(editorNotes ?? "");
+          setDoneSet(new Set(editorDone ?? []));
         }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
       } finally {
-        if (alive) setLoading(false);
+        if (alive) { setLoading(false); requestAnimationFrame(() => { hydratedRef.current = true; }); }
       }
     })();
     return () => {
@@ -195,7 +209,6 @@ export default function BriefingEditor({
     });
 
   // ── Recolher/expandir seções ──
-  const [indexOpen, setIndexOpen] = useState(false); // índice começa recolhido (pode ficar grande)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const toggleCollapse = (id: string) =>
     setCollapsed((prev) => {
@@ -356,6 +369,47 @@ export default function BriefingEditor({
     }
   };
 
+  // Marca alterações pendentes (após o carregamento inicial).
+  useEffect(() => {
+    if (hydratedRef.current) setDirty(true);
+  }, [briefing, status, notes, doneSet]);
+
+  // Autosave silencioso (só briefing JÁ criado): debounce ~2,5s de ociosidade.
+  const latestRef = useRef({ briefing, status, notes, doneSet });
+  latestRef.current = { briefing, status, notes, doneSet };
+  useEffect(() => {
+    if (!dirty || isNew) return;
+    const t = window.setTimeout(async () => {
+      if (savingRef.current) return;
+      const cur = latestRef.current;
+      if (!cur.briefing) return;
+      savingRef.current = true; setSaving(true);
+      try {
+        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes, editorDone: [...cur.doneSet] });
+        setLastSavedAt(Date.now()); setDirty(false);
+      } catch { /* mantém dirty; tenta na próxima */ }
+      finally { savingRef.current = false; setSaving(false); }
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, [dirty, briefing, status, notes, doneSet, isNew, number]);
+
+  // Scroll-spy: acende a seção visível durante a rolagem.
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll<HTMLElement>('[id^="sec-card-"]'));
+    if (!els.length) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const vis = entries.filter((e) => e.isIntersecting).sort((a, c) => c.intersectionRatio - a.intersectionRatio)[0];
+        if (vis) setActiveSectionId(vis.target.id.replace("sec-card-", ""));
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 1] }
+    );
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [briefing?.sections.length, collapsed, tab]);
+
+  // Salvar manual: FICA na página (não volta para a lista). Novo briefing:
+  // o 1º salvar cria e volta (depois o autosave passa a valer).
   const save = async (publish?: boolean) => {
     if (!briefing) return;
     setError(null);
@@ -365,17 +419,32 @@ export default function BriefingEditor({
       setError("Informe o número da proposta vinculada.");
       return;
     }
-    setSaving(true);
+    savingRef.current = true; setSaving(true);
     try {
-      if (isNew) await api.createBriefing(briefing, finalStatus);
-      else await api.updateBriefing(number!, briefing, finalStatus);
-      onSaved();
+      if (isNew) { await api.createBriefing(briefing, finalStatus); onSaved(); return; }
+      await api.updateBriefing(number!, briefing, finalStatus, { editorNotes: notes, editorDone: [...doneSet] });
+      if (publish && status !== "published") setStatus("published");
+      setLastSavedAt(Date.now());
+      setDirty(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
     } finally {
-      setSaving(false);
+      savingRef.current = false; setSaving(false);
     }
   };
+
+  // Derivados do apoio (navegação/progresso). Continuações colapsam no "run" pai.
+  const navList = (briefing?.sections ?? []).map((s, i) => ({ s, i })).filter(({ i }) => !contInfo[i]?.isCont);
+  const ambienteList = navList.filter(({ s }) => s.kind === "ambiente");
+  const doneCount = navList.filter(({ s }) => doneSet.has(s.id)).length;
+  const pct = navList.length ? Math.round((doneCount / navList.length) * 100) : 0;
+  let activeRunId = "";
+  if (briefing) {
+    let ai = briefing.sections.findIndex((s) => s.id === activeSectionId);
+    while (ai > 0 && contInfo[ai]?.isCont) ai--;
+    activeRunId = ai >= 0 ? briefing.sections[ai]?.id ?? "" : "";
+  }
+  const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   if (loading || !briefing) {
     return <div className={styles.loading}>Carregando briefing…</div>;
@@ -410,9 +479,6 @@ export default function BriefingEditor({
           <button className={styles.btn} onClick={() => setPickerFor(briefing.sections.length - 1)} title="Ver a biblioteca — clique numa pergunta para inseri-la no fim do briefing; também dá para renomear/excluir.">
             📚 Biblioteca{library.length ? ` (${library.length})` : ""}
           </button>
-          <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
-            {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
-          </button>
           <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>← Voltar</button>
         </div>
       </div>
@@ -428,7 +494,55 @@ export default function BriefingEditor({
       </div>
 
       {tab === "campos" ? (
-        <div className={styles.editorGrid}>
+       <>
+        {/* Barra de ações fixa — Salvar/Pré-visualizar sempre à mão + selo */}
+        <div className={styles.editorToolbar}>
+          <span className={styles.saveBadge}>
+            <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
+            {saving ? "Salvando…" : dirty ? "Alterações não salvas" : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : "Tudo salvo"}
+          </span>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 150 }}>
+              <option value="draft">Rascunho (oculto)</option>
+              <option value="published">Publicado</option>
+            </select>
+            <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
+              {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
+            </button>
+            <button className={styles.btn} onClick={() => save(false)} disabled={saving}>💾 Salvar</button>
+            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>Salvar e publicar</button>
+          </div>
+        </div>
+
+        <div className={styles.editorWorkspace} style={showPreview ? { gridTemplateColumns: "1fr" } : undefined}>
+          {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
+          <aside className={styles.editorRail} style={showPreview ? { display: "none" } : undefined}>
+            <div className={styles.railTitle}>Seções</div>
+            {navList.map(({ s }) => {
+              const done = doneSet.has(s.id);
+              const active = s.id === activeRunId;
+              const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
+              return (
+                <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={name}>
+                  <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+                </button>
+              );
+            })}
+            <div style={{ marginTop: 14 }}>
+              <div className={styles.railTitle} style={{ marginBottom: 6 }}>Progresso · {pct}%</div>
+              <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
+              <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)", flexWrap: "wrap" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Concluído</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Em andamento</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className={styles.statusDot} />Pendente</span>
+              </div>
+            </div>
+            <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
+          </aside>
+
+          {/* MAIN — cards do editor */}
+          <div className={styles.editorGrid}>
           <div className={styles.card}>
             <div className={styles.cardTitle}>Dados do briefing</div>
             <div className={styles.row2}>
@@ -484,36 +598,10 @@ export default function BriefingEditor({
             </div>
           </div>
 
-          {/* Índice de seções — recolhido por padrão (fica grande); expande p/ pular
-              direto para um ambiente. Pílulas com bordas espelhadas (padrão do sistema). */}
           {briefing.sections.length > 1 && (
-            <div className={styles.card} style={{ position: "sticky", top: 8, zIndex: 5, padding: 10, borderRadius: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <button type="button" onClick={() => setIndexOpen((v) => !v)}
-                  title={indexOpen ? "Recolher índice" : "Expandir índice"}
-                  style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit", flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 12, color: "var(--color-text-muted)", width: 12 }}>{indexOpen ? "▾" : "▸"}</span>
-                  <span className={styles.label} style={{ margin: 0 }}>Índice</span>
-                  <span style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>· {briefing.sections.length} seções</span>
-                </button>
-                <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
-                <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
-              </div>
-              {indexOpen && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-                  {briefing.sections.map((s, i) => {
-                    const ci = contInfo[i];
-                    const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
-                    return (
-                      <button key={s.id || i} type="button" className={styles.btn}
-                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: i % 2 === 0 ? "7px 0 7px 0" : "0 7px 0 7px", opacity: ci?.isCont ? 0.75 : 1 }}
-                        onClick={() => jumpTo(s.id)} title={`${s.questions.length} pergunta(s)`}>
-                        {ci?.isCont ? `↳ ${name} · ${ci.part}` : name} <span style={{ opacity: 0.55 }}>({s.questions.length})</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
+              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
             </div>
           )}
 
@@ -576,7 +664,41 @@ export default function BriefingEditor({
               + continuação
             </button>
           </div>
-        </div>
+          </div>{/* fim da coluna principal (editorGrid) */}
+
+          {/* RAIL DIREITO — Meu apoio (checklist de ambientes + bloco de notas) */}
+          <aside className={styles.editorRail} style={showPreview ? { display: "none" } : undefined}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
+              <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setApoioOpen((v) => !v)}>{apoioOpen ? "Recolher" : "Abrir"}</button>
+            </div>
+            {apoioOpen && (
+              <>
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Checklist de ambientes</div>
+                {ambienteList.length === 0 ? (
+                  <p className={styles.pageHint} style={{ margin: "0 0 8px" }}>Sem ambientes ainda.</p>
+                ) : ambienteList.map(({ s }) => (
+                  <label key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 2px", fontSize: 12.5, cursor: "pointer" }}>
+                    <input type="checkbox" checked={doneSet.has(s.id)} onChange={() => toggleDone(s.id)} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title || "Ambiente"}</span>
+                  </label>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, marginBottom: 6 }}>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Bloco de notas</div>
+                  <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setNotes("")} disabled={!notes}>Limpar</button>
+                </div>
+                <textarea className={styles.textarea} rows={6} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anotações rápidas, lembretes, observações…" />
+                <div className={styles.railTitle} style={{ marginTop: 14, marginBottom: 6 }}>Dicas rápidas</div>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
+                  <li>Salva sozinho enquanto você preenche.</li>
+                  <li>Use a prévia para ver como o cliente verá.</li>
+                  <li>Marque os ambientes prontos no checklist.</li>
+                </ul>
+              </>
+            )}
+          </aside>
+        </div>{/* fim do editorWorkspace */}
+       </>
       ) : (
         <div className={styles.card}>
           <div className={styles.cardTitle}>JSON avançado (objeto Briefing completo)</div>
@@ -589,19 +711,6 @@ export default function BriefingEditor({
         </div>
       )}
 
-      <div className={styles.editorBar}>
-        <div className={styles.field} style={{ margin: 0 }}>
-          <label className={styles.label} style={{ marginBottom: 4 }}>Status</label>
-          <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 180 }}>
-            <option value="draft">Rascunho (oculto)</option>
-            <option value="published">Publicado (link ativo)</option>
-          </select>
-        </div>
-        <div className={styles.editorBarRight}>
-          <button className={styles.btn} onClick={() => save(false)} disabled={saving}>{saving ? "Salvando…" : "Salvar"}</button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>Salvar e publicar</button>
-        </div>
-      </div>
 
       {/* Painel de pré-visualização ao vivo (atualiza a cada alteração) */}
       {showPreview && (

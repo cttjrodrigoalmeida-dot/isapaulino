@@ -9,7 +9,11 @@
   color: var(--color-text-primary);
   font-family: var(--font-body);
   font-weight: 300;
+  /* `clip` (não `hidden`) para não virar container de rolagem — senão quebra o
+     position: sticky dos rails/barra do editor. Fallback `hidden` p/ navegadores
+     antigos. */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* ── Tema CLARO (padrão) ── */
@@ -926,6 +930,96 @@
 .editorBarRight {
   display: flex;
   gap: 10px;
+}
+
+/* ── Workspace do editor de briefing (apoio fixo) ── */
+.editorToolbar {
+  position: sticky;
+  top: 128px; /* logo abaixo do header fixo do painel (topbar + atalhos rápidos) */
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px 0 10px 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.saveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+}
+.saveBadgeDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.editorWorkspace {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr) 292px;
+  gap: 16px;
+  align-items: start;
+}
+.editorRail {
+  position: sticky;
+  top: 190px; /* abaixo do header fixo + barra de ações */
+  align-self: start;
+  max-height: calc(100vh - 206px);
+  overflow: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px;
+}
+.railTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin: 0 0 10px;
+}
+.navRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+}
+.navRow:hover { background: var(--color-surface-hover); }
+.navRowActive { background: var(--color-surface-hover); color: var(--color-text-primary); font-weight: 600; }
+.statusDot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--color-text-muted); }
+.statusDotDone { background: #4ade80; }
+.statusDotActive { background: #d9a531; }
+
+.progressTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-hover);
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  background: #4ade80;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+@media (max-width: 1180px) {
+  .editorWorkspace { grid-template-columns: 1fr; }
+  .editorRail { position: static; max-height: none; }
 }
 .loading {
   padding: 70px;

@@ -52,9 +52,15 @@ CREATE TABLE IF NOT EXISTS briefings (
   title           TEXT,
   status          TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published'
   data            TEXT NOT NULL,                 -- JSON do tipo Briefing
+  -- Apoio PESSOAL do admin ao preencher (não vai para o cliente):
+  editor_notes    TEXT,                          -- bloco de notas do editor
+  editor_done     TEXT,                          -- JSON array de ids de seção marcadas "preenchidas"
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Migração p/ bancos já existentes (rodar uma vez, local e remoto):
+--   ALTER TABLE briefings ADD COLUMN editor_notes TEXT;
+--   ALTER TABLE briefings ADD COLUMN editor_done TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_briefings_status ON briefings(status);
 CREATE INDEX IF NOT EXISTS idx_briefings_updated ON briefings(updated_at DESC);

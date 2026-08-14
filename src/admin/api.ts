@@ -502,7 +502,7 @@ export const api = {
   // ── briefings ──
   listBriefings: () => req<{ briefings: BriefingSummary[] }>("/api/briefings"),
   getBriefing: (number: string) =>
-    req<{ briefing: Briefing; status: "draft" | "published" }>(
+    req<{ briefing: Briefing; status: "draft" | "published"; editorNotes?: string; editorDone?: string[] }>(
       `/api/briefings/${encodeURIComponent(number)}`
     ),
   createBriefing: (briefing: Briefing, status: "draft" | "published") =>
@@ -510,10 +510,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ briefing, status }),
     }),
-  updateBriefing: (number: string, briefing: Briefing, status: "draft" | "published") =>
+  updateBriefing: (
+    number: string,
+    briefing: Briefing,
+    status: "draft" | "published",
+    aid?: { editorNotes?: string; editorDone?: string[] }
+  ) =>
     req<{ ok: true; number: string; status: string }>(
       `/api/briefings/${encodeURIComponent(number)}`,
-      { method: "PUT", body: JSON.stringify({ briefing, status }) }
+      { method: "PUT", body: JSON.stringify({ briefing, status, ...(aid ?? {}) }) }
     ),
   deleteBriefing: (number: string) =>
     req<{ ok: true }>(`/api/briefings/${encodeURIComponent(number)}`, {
