@@ -18,9 +18,6 @@ function stripQuestion(q: BriefingQuestion): BriefingQuestion {
 
 type Status = "draft" | "published";
 
-// Largura do painel de prévia (usada no drawer e para "encolher" o editor à esquerda).
-const PREVIEW_W = "min(48vw, 760px)";
-
 export default function BriefingEditor({
   number,
   onBack,
@@ -453,18 +450,9 @@ export default function BriefingEditor({
   return (
     <div
       className={styles.container}
-      style={
-        showPreview
-          ? {
-              // Encolhe o editor p/ a esquerda enquanto a prévia estiver aberta,
-              // reservando a largura do painel (senão ele tapa os campos da direita).
-              maxWidth: "none",
-              marginLeft: 0,
-              marginRight: `calc(${PREVIEW_W} + 20px)`,
-              transition: "margin-right .22s ease",
-            }
-          : { transition: "margin-right .22s ease" }
-      }
+      // Editor mais largo: o conteúdo principal mantém a largura, os apoios
+      // ficam ao lado (não espremem os campos). A prévia sobrepõe (não encolhe).
+      style={{ maxWidth: "none" }}
     >
       <div className={styles.pageHead}>
         <div>
@@ -514,9 +502,9 @@ export default function BriefingEditor({
           </div>
         </div>
 
-        <div className={styles.editorWorkspace} style={showPreview ? { gridTemplateColumns: "1fr" } : undefined}>
+        <div className={styles.editorWorkspace}>
           {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
-          <aside className={styles.editorRail} style={showPreview ? { display: "none" } : undefined}>
+          <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
             {navList.map(({ s }) => {
               const done = doneSet.has(s.id);
@@ -532,10 +520,10 @@ export default function BriefingEditor({
             <div style={{ marginTop: 14 }}>
               <div className={styles.railTitle} style={{ marginBottom: 6 }}>Progresso · {pct}%</div>
               <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
-              <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)", flexWrap: "wrap" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Concluído</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Em andamento</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className={styles.statusDot} />Pendente</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Concluído</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Em andamento</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={styles.statusDot} />Pendente</span>
               </div>
             </div>
             <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
@@ -667,7 +655,7 @@ export default function BriefingEditor({
           </div>{/* fim da coluna principal (editorGrid) */}
 
           {/* RAIL DIREITO — Meu apoio (checklist de ambientes + bloco de notas) */}
-          <aside className={styles.editorRail} style={showPreview ? { display: "none" } : undefined}>
+          <aside className={styles.editorRail}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
               <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setApoioOpen((v) => !v)}>{apoioOpen ? "Recolher" : "Abrir"}</button>
@@ -712,14 +700,16 @@ export default function BriefingEditor({
       )}
 
 
-      {/* Painel de pré-visualização ao vivo (atualiza a cada alteração) */}
+      {/* Painel de pré-visualização ao vivo (sobrepõe o conteúdo, mas deixa o
+          rail direito "Meu apoio" visível — afastado da borda). */}
       {showPreview && (
         <div
           style={{
-            position: "fixed", top: 0, right: 0, zIndex: 60,
-            width: PREVIEW_W, height: "100vh",
-            background: "#0a0a0a", borderLeft: "1px solid var(--color-border)",
-            boxShadow: "-10px 0 40px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column",
+            position: "fixed", top: 132, right: 324, zIndex: 55,
+            width: "min(40vw, 600px)", height: "calc(100vh - 148px)",
+            background: "#0a0a0a", border: "1px solid var(--color-border)",
+            borderRadius: 12,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column",
           }}
         >
           <div style={{
