@@ -139,12 +139,12 @@ function QuestionEditor({
         <div className={styles.field}>
           <label className={styles.label}>Botões de resposta rápida</label>
           <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 8 }}>
-            <strong>{DEFAULT_QUICKFILLS[0]}</strong> e <strong>{DEFAULT_QUICKFILLS[1]}</strong> aparecem em todas as
-            perguntas automaticamente. Adicione abaixo botões extras só para esta pergunta (ex.: “IGUAL AO ANTERIOR”, “SIM”, “NÃO”).
+            Já vêm com <strong>{DEFAULT_QUICKFILLS[0]}</strong> e <strong>{DEFAULT_QUICKFILLS[1]}</strong> — remova (✕) quando
+            não fizer sentido, ou adicione outros (ex.: “IGUAL AO ANTERIOR”, “SIM”, “NÃO”).
           </p>
           <ListEditor
-            items={(q.quickFills ?? []).filter((v) => !DEFAULT_QUICKFILLS.includes(v))}
-            onChange={(extras) => onChange({ quickFills: extras })}
+            items={q.quickFills ?? DEFAULT_QUICKFILLS}
+            onChange={(list) => onChange({ quickFills: list })}
             placeholder="ex.: IGUAL AO ANTERIOR"
           />
         </div>
@@ -180,12 +180,6 @@ function QuestionEditor({
           <input type="checkbox" checked={q.allowReference ?? isAmbiente} onChange={(e) => onChange({ allowReference: e.target.checked })} />
           <span>Permitir anexar referência</span>
         </label>
-        {type !== "maquete" && (
-          <label className={styles.comboToggle} style={{ margin: 0 }}>
-            <input type="checkbox" checked={q.hideDefaultQuickFills !== true} onChange={(e) => onChange({ hideDefaultQuickFills: !e.target.checked })} />
-            <span>Mostrar “À definir / Não se aplica”</span>
-          </label>
-        )}
       </div>
     </div>
   );
@@ -297,7 +291,8 @@ export default function BriefingSectionEditor({
     set({
       questions: [
         ...section.questions,
-        { id: `q-${Date.now()}`, text: "Nova pergunta", type: "longtext", required: true },
+        // Já entra com "À DEFINIR / NÃO SE APLICA" (a Isabela remove com o ✕ quando não fizer sentido).
+        { id: `q-${Date.now()}`, text: "Nova pergunta", type: "longtext", required: true, quickFills: [...DEFAULT_QUICKFILLS] },
       ],
     });
   const removeQuestion = (qi: number) => set({ questions: section.questions.filter((_, i) => i !== qi) });

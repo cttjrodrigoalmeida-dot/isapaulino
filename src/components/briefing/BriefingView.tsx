@@ -218,16 +218,13 @@ function QuestionItem({
   const refIsLink = !!refImage && !refImage.startsWith("blob:") && !refImage.startsWith("/api/files/");
   const type = question.type ?? "longtext";
   const allowReference = question.allowReference ?? sectionKind === "ambiente";
-  // Botões de resposta rápida: padrões ("À DEFINIR"/"NÃO SE APLICA") em todas as
-  // perguntas, exceto "maquete" ou quando o admin desligou (`hideDefaultQuickFills`);
-  // extras da pergunta vêm depois, na mesma linha.
-  const quickExtras = (question.quickFills ?? []).filter((v) => !DEFAULT_QUICKFILLS.includes(v));
+  // Botões de resposta rápida: a lista da pergunta é a fonte da verdade (o admin
+  // pode remover "À DEFINIR"/"NÃO SE APLICA" individualmente). Perguntas antigas
+  // (sem a lista definida) caem no padrão. Maquete não tem quick-fills padrão.
   const quickFills =
     type === "maquete"
-      ? question.quickFills ?? []
-      : question.hideDefaultQuickFills
-        ? quickExtras
-        : [...DEFAULT_QUICKFILLS, ...quickExtras];
+      ? (question.quickFills ?? [])
+      : (question.quickFills ?? DEFAULT_QUICKFILLS);
   const required = isRequired(question);
   const wantsTemplateAttach = type === "radio" && answer.startsWith("Anexar");
   const hasAlertAnswer = (question.alertOptions ?? []).includes(answer);
@@ -1006,7 +1003,9 @@ export default function BriefingView({ briefing: b, preview = false }: Props) {
   );
 
   return (
-    <PrintContext.Provider value={printing || preview}>
+    // Na prévia mostramos a UI COMPLETA (opções, marcadores, botões) — só o PDF
+    // real (printing) usa o modo impressão enxuto.
+    <PrintContext.Provider value={printing}>
       <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} data-theme={theme} ref={pageRef}>
         {!printing && !preview && theme === "dark" && <CustomCursor />}
         <div className={styles.ambient} aria-hidden />
