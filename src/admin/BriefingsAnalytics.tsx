@@ -1,6 +1,6 @@
 // Dashboard analítico da aba Briefings — mesmo modelo do de contratos, calculado
 // do ano selecionado. Cores padronizadas (paleta do layout).
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   ResponsiveContainer, AreaChart, Area,
   LineChart, Line,
@@ -260,27 +260,37 @@ function PanelTitle({ title, sub }: { title: string; sub?: string }) {
 function Kpi({ label, value, sub, color, soft, series }: {
   label: string; value: number; sub: string; color: string; soft: string; series: number[];
 }) {
-  const data = series.map((v, i) => ({ i, v }));
-  const hasSpark = series.some((v) => v > 0);
+  const gid = "bsp" + useId().replace(/:/g, "");
+  const data = series.map((v, i) => ({ v, m: MONTHS[i] }));
   return (
-    <div style={{ ...card, background: soft, border: `1px solid ${color}33` }}>
+    <div style={{ ...card, background: soft, border: `1px solid ${color}33`, overflow: "visible" }}>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-secondary)" }}>{label}</div>
       <div style={{ fontSize: 30, fontWeight: 700, color: "var(--color-text-primary)", marginTop: 8 }}>{value}</div>
       <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 2 }}>{sub}</div>
-      <div style={{ height: 34, marginTop: 8 }}>
-        {hasSpark && (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id={`bsp-${label}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={color} stopOpacity={0.4} />
-                  <stop offset="100%" stopColor={color} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#bsp-${label})`} dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
+      <div style={{ height: 40, marginTop: 8, overflow: "visible" }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+            <defs>
+              <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+                <stop offset="100%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="m" hide />
+            <YAxis hide domain={[0, (max: number) => Math.max(1, max)]} />
+            <Tooltip
+              cursor={{ stroke: color, strokeOpacity: 0.5, strokeWidth: 1 }}
+              allowEscapeViewBox={{ x: true, y: true }}
+              wrapperStyle={{ zIndex: 30 }}
+              contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 11, padding: "3px 9px", boxShadow: "0 6px 20px rgba(0, 0, 0, 0.3)" }}
+              labelStyle={{ color: "var(--color-text-primary)", fontWeight: 600, marginBottom: 1 }}
+              itemStyle={{ color: "var(--color-text-secondary)", padding: 0 }}
+              separator=""
+              formatter={(v) => [`${Number(v)} briefing${Number(v) === 1 ? "" : "s"}`, ""]}
+            />
+            <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#${gid})`} dot={false} isAnimationActive={false} />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
