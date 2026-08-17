@@ -150,6 +150,8 @@ interface Props {
   briefing: Briefing;
   /** modo prévia (dentro do editor): sem cursor custom nem "chrome" fixo. */
   preview?: boolean;
+  /** força o tema (usado na prévia do editor p/ acompanhar o tema do painel). */
+  forceTheme?: "light" | "dark";
 }
 
 const isRequired = (q: BriefingQuestion) => q.required !== false;
@@ -641,7 +643,7 @@ function normalizeLink(url: string): string {
 
 // (a imagem com pinos vive em SectionFigure.tsx — compartilhada com o admin)
 
-export default function BriefingView({ briefing: b, preview = false }: Props) {
+export default function BriefingView({ briefing: b, preview = false, forceTheme }: Props) {
   const linked = getProposalByNumber(b.proposalNumber);
   const clientName = linked?.client ?? b.client ?? "—";
   const projectTitle = linked?.serviceTitle ?? b.serviceTitle ?? b.title;
@@ -650,8 +652,10 @@ export default function BriefingView({ briefing: b, preview = false }: Props) {
   const contact = b.contact;
   const storageKey = `briefing:${b.number}`;
 
-  // ── Tema da página do cliente (escuro por padrão), persistido no navegador ──
+  // ── Tema da página do cliente (escuro por padrão), persistido no navegador.
+  //    Na prévia do editor, `forceTheme` acompanha o tema do painel. ──
   const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (forceTheme) return forceTheme;
     try {
       const v = localStorage.getItem("ips_briefing_theme");
       if (v === "light" || v === "dark") return v;
@@ -661,12 +665,16 @@ export default function BriefingView({ briefing: b, preview = false }: Props) {
     return "dark";
   });
   useEffect(() => {
+    if (forceTheme) { setTheme(forceTheme); return; } // prévia: segue o painel, não persiste
+  }, [forceTheme]);
+  useEffect(() => {
+    if (forceTheme) return; // não sobrescreve o tema salvo do cliente durante a prévia
     try {
       localStorage.setItem("ips_briefing_theme", theme);
     } catch {
       /* ignore */
     }
-  }, [theme]);
+  }, [theme, forceTheme]);
 
   // Quebra o título do hero deixando a última palavra na linha de baixo
   // (ex.: "BRIEFING DE DETALHAMENTO" → "BRIEFING DE" / "DETALHAMENTO").

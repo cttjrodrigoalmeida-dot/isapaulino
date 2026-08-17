@@ -442,6 +442,9 @@ export default function BriefingEditor({
     activeRunId = ai >= 0 ? briefing.sections[ai]?.id ?? "" : "";
   }
   const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  // A prévia acompanha o tema do painel (evita "escuro no escuro" no modo claro).
+  const adminTheme: "light" | "dark" =
+    (typeof window !== "undefined" && window.localStorage.getItem("ips_admin_theme") === "dark") ? "dark" : "light";
 
   if (loading || !briefing) {
     return <div className={styles.loading}>Carregando briefing…</div>;
@@ -707,7 +710,7 @@ export default function BriefingEditor({
           style={{
             position: "fixed", top: 132, right: 324, zIndex: 55,
             width: "min(40vw, 600px)", height: "calc(100vh - 148px)",
-            background: "#0a0a0a", border: "1px solid var(--color-border)",
+            background: adminTheme === "dark" ? "#0a0a0a" : "#ffffff", border: "1px solid var(--color-border)",
             borderRadius: 12,
             boxShadow: "0 20px 60px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column",
           }}
@@ -723,7 +726,7 @@ export default function BriefingEditor({
           <div style={{ flex: 1, overflow: "auto" }}>
             {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}
             <div style={{ zoom: 0.64 }}>
-              <BriefingView briefing={briefing} preview />
+              <BriefingView briefing={briefing} preview forceTheme={adminTheme} />
             </div>
           </div>
         </div>
