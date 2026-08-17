@@ -188,6 +188,8 @@ function QuestionItem({
   pending,
   locked,
   flash,
+  hasPin,
+  onGoToPin,
   registerRef,
   contact,
   studioEmail,
@@ -206,6 +208,10 @@ function QuestionItem({
   locked: boolean;
   /** destaque temporário quando o cliente clica no pino da imagem */
   flash?: boolean;
+  /** esta pergunta tem um pino na imagem (ambiente) — habilita o clique inverso */
+  hasPin?: boolean;
+  /** rola até a imagem e destaca o pino desta pergunta */
+  onGoToPin?: () => void;
   registerRef: (el: HTMLDivElement | null) => void;
   contact: Briefing["contact"];
   studioEmail?: string;
@@ -491,11 +497,17 @@ function QuestionItem({
         pending ? styles.qItemPending : ""
       } ${flash ? styles.qItemFlash : ""}`}
     >
-      <div className={styles.qHead}>
+      <div
+        className={`${styles.qHead} ${hasPin && !printing ? styles.qHeadToPin : ""}`}
+        onClick={hasPin && !printing ? onGoToPin : undefined}
+        role={hasPin && !printing ? "button" : undefined}
+        title={hasPin && !printing ? "Ver este ponto na imagem" : undefined}
+      >
         <span className={styles.qNum}>{String(index + 1).padStart(2, "0")}</span>
         <span className={styles.qText}>
           {question.text}
           {required && !locked && <span className={styles.reqMark}>*</span>}
+          {hasPin && !printing && <span className={styles.qPinHint} aria-hidden> ◉ ver na imagem</span>}
         </span>
       </div>
 
@@ -804,6 +816,20 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
     setFlashId(qid);
   }, []);
 
+  // ── Caminho inverso: clicar na pergunta rola até a imagem e destaca o pino ──
+  const figureEls = useRef<Record<string, HTMLElement | null>>({});
+  const [flashPinId, setFlashPinId] = useState<string | null>(null);
+  const flashPinTimer = useRef<number | undefined>(undefined);
+  const goToPin = useCallback((qid: string) => {
+    const sec = b.sections.find((s) => s.kind === "ambiente" && s.questions.some((q) => q.id === qid && q.pin));
+    if (!sec) return;
+    figureEls.current[sec.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlashPinId(null);
+    window.clearTimeout(flashPinTimer.current);
+    requestAnimationFrame(() => setFlashPinId(qid));
+    flashPinTimer.current = window.setTimeout(() => setFlashPinId(null), 1800);
+  }, [b.sections]);
+
   // ── Blocos de continuação: seção ambiente com o MESMO título da anterior
   //    (novo bloco de imagem do mesmo ambiente) ganha cabeçalho compacto e
   //    não repete a etapa na timeline. ──
@@ -1000,6 +1026,8 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
         pending={pending.has(q.id)}
         locked={isLockedQuestion(q, allQuestions, answers)}
         flash={flashId === q.id}
+        hasPin={section.kind === "ambiente" && !!q.pin}
+        onGoToPin={() => goToPin(q.id)}
         registerRef={(el) => {
           questionEls.current[q.id] = el;
         }}
@@ -1216,6 +1244,8 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
                         interactive
                         printing={printing}
                         onPinClick={goToQuestion}
+                        flashPinId={flashPinId}
+                        figureRef={(el) => { figureEls.current[section.id] = el; }}
                       />
                     </FadeIn>
                   )}

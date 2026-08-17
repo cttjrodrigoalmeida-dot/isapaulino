@@ -14,6 +14,8 @@ export default function SectionFigure({
   interactive = false,
   printing = false,
   onPinClick,
+  flashPinId,
+  figureRef,
 }: {
   section: BriefingSection;
   /** true na página do cliente (pinos clicáveis, pinça no touch). */
@@ -21,6 +23,10 @@ export default function SectionFigure({
   /** modo impressão: desliga interações e dicas. */
   printing?: boolean;
   onPinClick?: (questionId: string) => void;
+  /** id da pergunta cujo pino deve piscar (caminho pergunta → imagem). */
+  flashPinId?: string | null;
+  /** registra o elemento da figura (p/ rolar até a imagem). */
+  figureRef?: (el: HTMLElement | null) => void;
 }) {
   const [zoom, setZoom] = useState({ on: false, x: 50, y: 50, scale: 1 });
   const pinch = useRef<{ dist: number; scale: number } | null>(null);
@@ -56,7 +62,7 @@ export default function SectionFigure({
   const hasPins = section.questions.some((q) => q.pin);
 
   return (
-    <figure className={styles.figure}>
+    <figure className={styles.figure} ref={figureRef}>
       <div className={styles.figureViewport} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div className={styles.figureInner} style={innerStyle}>
           <img src={section.image} alt={section.title} className={styles.image} />
@@ -64,7 +70,7 @@ export default function SectionFigure({
             q.pin ? (
               <span
                 key={q.id}
-                className={`${styles.pin} ${clickable ? styles.pinClickable : ""}`}
+                className={`${styles.pin} ${clickable ? styles.pinClickable : ""} ${flashPinId === q.id ? styles.pinFlash : ""}`}
                 style={{ left: `${q.pin.x}%`, top: `${q.pin.y}%` }}
                 onClick={clickable ? () => onPinClick!(q.id) : undefined}
                 role={clickable ? "button" : undefined}
@@ -80,10 +86,10 @@ export default function SectionFigure({
       {interactive && !printing && hasPins && (
         <figcaption className={styles.figureHint}>
           <span className={styles.figureHintDesktop}>
-            Clique num pino para ir direto à pergunta.
+            Clique num pino para ir à pergunta — ou no número da pergunta para ver o ponto na imagem.
           </span>
           <span className={styles.figureHintMobile}>
-            Toque num pino para ir à pergunta · dois dedos (pinça) para ampliar.
+            Toque num pino para ir à pergunta (e no número da pergunta para voltar à imagem) · dois dedos para ampliar.
           </span>
         </figcaption>
       )}
