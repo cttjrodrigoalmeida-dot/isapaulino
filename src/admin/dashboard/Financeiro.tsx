@@ -164,7 +164,8 @@ export default function Financeiro() {
                 />
                 <Bar dataKey="value" radius={[5, 5, 0, 0]}>
                   {(fin?.receivedByMonth ?? []).map((m, i) => (
-                    <Cell key={i} fill={m.value >= maxRecv ? "#4ade80" : "rgba(74, 222, 128, 0.4)"} />
+                    // Série temporal neutra → cinza (verde fica reservado a positivo/negativo).
+                    <Cell key={i} fill={m.value >= maxRecv ? "#7c8698" : "rgba(124, 134, 152, 0.4)"} />
                   ))}
                 </Bar>
               </BarChart>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Cell, LabelList } from "recharts";
 import { formatBRL, formatBRLShort } from "./dashboard/format";
 
@@ -5,6 +6,9 @@ import { formatBRL, formatBRLShort } from "./dashboard/format";
 // Usado na tela de Propostas (rodapé) e no Resumo Geral.
 const GREEN = "#4ade80"; // mesmo verde do Financeiro (padronizado)
 const PINK = "#f0506e"; // melancia da marca (não aprovadas)
+const SLATE_SOFT = "#aab3c0"; // cinza claro (2ª série da comparação)
+
+type YearAgg = { approvedValue: number; lostValue: number; approvedCount: number; lostCount: number };
 
 const IcCheck = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1a2e05" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -33,14 +37,30 @@ export default function ProposalsSummary({
   lostValue,
   approvedCount,
   lostCount,
+  year,
+  years,
+  perYear,
 }: {
   totalValue: number;
   approvedValue: number;
   lostValue: number;
   approvedCount: number;
   lostCount: number;
+  /** Ano selecionado + anos disponíveis + agregados por ano (comparação). */
+  year?: string;
+  years?: string[];
+  perYear?: Record<string, YearAgg>;
 }) {
   const total = totalValue || approvedValue + lostValue;
+
+  // ── Comparação entre anos ──
+  const otherYears = (years ?? []).filter((y) => y !== year && y !== "Outros");
+  const [compareYear, setCompareYear] = useState<string>("");
+  const cy = compareYear && otherYears.includes(compareYear) ? compareYear : "";
+  const cmp = cy && perYear ? perYear[cy] : undefined;
+  const cmpApproved = cmp?.approvedValue ?? 0;
+  const cmpTotal = cmp ? cmp.approvedValue + cmp.lostValue : 0;
+  const apprDelta = cmp && cmpApproved > 0 ? ((approvedValue - cmpApproved) / cmpApproved) * 100 : null;
   const pct = (v: number) => (total > 0 ? Math.round((v / total) * 1000) / 10 : 0);
   const approvedPct = pct(approvedValue);
   const lostPct = pct(lostValue);
@@ -60,6 +80,35 @@ export default function ProposalsSummary({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      {otherYears.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Comparar com:</span>
+          <select
+            value={cy}
+            onChange={(e) => setCompareYear(e.target.value)}
+            style={{ fontSize: 12, padding: "5px 8px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text-primary)" }}
+          >
+            <option value="">— nenhum —</option>
+            {otherYears.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+      )}
+      {cy && cmp && (
+        <div style={{ ...cardStyle, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 18, padding: "14px 18px" }}>
+          <span style={miniLabel}>Comparativo anual · aprovado</span>
+          <YearTotal year={year ?? ""} value={approvedValue} color={GREEN} />
+          <span style={{ color: "var(--color-text-muted)" }}>×</span>
+          <YearTotal year={cy} value={cmpApproved} color={SLATE_SOFT} />
+          <span style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>
+            (total {formatBRLShort(total)} × {formatBRLShort(cmpTotal)})
+          </span>
+          {apprDelta != null && (
+            <span style={{ fontSize: 13, fontWeight: 700, marginLeft: "auto", color: apprDelta >= 0 ? GREEN : PINK }}>
+              {apprDelta >= 0 ? "▲" : "▼"} {Math.abs(apprDelta).toFixed(1).replace(".", ",")}% vs {cy}
+            </span>
+          )}
+        </div>
+      )}
       {/* Linha 1: total · gráfico · cards aprovada/não aprovada */}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(300px, 1.6fr) minmax(280px, 1.1fr)", gap: 16 }} className="ps-row1">
         {/* Valor total */}
@@ -148,6 +197,16 @@ export default function ProposalsSummary({
         </div>
       </div>
     </div>
+  );
+}
+
+function YearTotal({ year, value, color }: { year: string; value: number; color: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
+      <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>{year}</span>
+      <strong style={{ fontSize: 15, color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>{formatBRL(value)}</strong>
+    </span>
   );
 }
 

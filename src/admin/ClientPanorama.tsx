@@ -12,10 +12,12 @@ import { eventTypeMeta } from "../projectEvents";
 import styles from "./Admin.module.css";
 
 // `blue` na verdade é ROXO (a pedido) — mantido o nome da chave por simplicidade.
-const C = { green: "#4ade80", amber: "#b07a16", blue: "#8b5cf6", red: "#dd5c4e", slate: "#7c8698" };
+// Verde/vermelho reservados p/ positivo/negativo (cores canônicas dos selos).
+// `blue` foi aposentado (roxo) → aponta pro CINZA neutro, pra usar menos cor.
+const C = { green: "#4ade80", amber: "#b07a16", blue: "#7c8698", red: "#f0506e", slate: "#7c8698" };
 const SOFT = {
   green: "rgba(74,222,128,0.12)", amber: "rgba(176,122,22,0.12)",
-  blue: "rgba(139,92,246,0.12)", red: "rgba(221,92,78,0.12)", slate: "rgba(124,134,152,0.14)",
+  blue: "rgba(124,134,152,0.14)", red: "rgba(240,80,110,0.12)", slate: "rgba(124,134,152,0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -175,8 +177,8 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
               <AreaChart data={m.evo} margin={{ top: 6, right: 8, bottom: 0, left: 4 }}>
                 <defs>
                   <linearGradient id="cpg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={C.green} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={C.green} stopOpacity={0} />
+                    <stop offset="0%" stopColor={C.slate} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={C.slate} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: "var(--color-text-secondary)" }} interval={0} />
@@ -186,7 +188,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
                   contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: "var(--color-text-primary)" }} itemStyle={{ color: "var(--color-text-secondary)" }}
                 />
-                <Area type="monotone" dataKey="value" stroke={C.green} strokeWidth={2.5} fill="url(#cpg)" dot={{ r: 2, fill: C.green }} />
+                <Area type="monotone" dataKey="value" stroke={C.slate} strokeWidth={2.5} fill="url(#cpg)" dot={{ r: 2, fill: C.slate }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

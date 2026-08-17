@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Legend } from "recharts";
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, Tooltip, Legend } from "recharts";
 import { api, ApiError, type DashboardOverview, type ReportMonth } from "../api";
 import { formatBRL, formatBRLShort } from "./format";
 import s from "./Dashboard.module.css";
@@ -38,16 +38,24 @@ export default function Relatorios() {
     return [...set].filter(Boolean).sort((a, b) => b - a);
   }, [received]);
 
-  // 12 meses do ano selecionado.
+  // 12 meses do ano selecionado + total do MESMO mês no ano anterior (comparação).
   const yearMonths = useMemo(
     () =>
       MONTHS.map((label, i) => {
         const mm = String(i + 1).padStart(2, "0");
         const rec = received.find((r) => r.ym === `${year}-${mm}`);
-        return { label, Parcelas: rec?.installments ?? 0, Adicionais: rec?.hf ?? 0, total: rec?.total ?? 0 };
+        const prev = received.find((r) => r.ym === `${year - 1}-${mm}`);
+        return {
+          label,
+          Parcelas: rec?.installments ?? 0,
+          Adicionais: rec?.hf ?? 0,
+          total: rec?.total ?? 0,
+          Anterior: prev?.total ?? 0,
+        };
       }),
     [received, year]
   );
+  const hasPrevYear = received.some((r) => r.ym.startsWith(`${year - 1}-`));
   const yearTotal = yearMonths.reduce((sum, m) => sum + m.total, 0);
   const prevYearTotal = received.filter((r) => r.ym.startsWith(`${year - 1}-`)).reduce((sum, r) => sum + r.total, 0);
   const delta = prevYearTotal > 0 ? Math.round(((yearTotal - prevYearTotal) / prevYearTotal) * 100) : yearTotal > 0 ? 100 : 0;
@@ -120,7 +128,7 @@ export default function Relatorios() {
             </div>
             <div className={`${s.card} ${s.kpi}`}>
               <span className={s.kpiLabel}>vs {year - 1}</span>
-              <span className={s.kpiValue} style={{ color: delta >= 0 ? "#5aa06e" : "#d9736f" }}>
+              <span className={s.kpiValue} style={{ color: delta >= 0 ? "#4ade80" : "#f0506e" }}>
                 {delta >= 0 ? "+" : ""}{delta}%
               </span>
               <span className={s.kpiNote}>{formatBRLShort(prevYearTotal)} no ano anterior</span>
@@ -142,23 +150,28 @@ export default function Relatorios() {
             <div className={s.card} style={{ gridColumn: "span 3" }}>
               <div className={s.cardHead}>
                 <div>
-                  <div className={s.cardTitleX}>Recebido por mês — {year}</div>
-                  <div className={s.cardSub}>Parcelas de contrato + serviços adicionais</div>
+                  <div className={s.cardTitleX}>Recebido por mês — {year}{hasPrevYear ? ` × ${year - 1}` : ""}</div>
+                  <div className={s.cardSub}>Parcelas de contrato + serviços adicionais{hasPrevYear ? ` · linha = ${year - 1}` : ""}</div>
                 </div>
               </div>
               <div style={{ width: "100%", height: 240 }}>
                 <ResponsiveContainer>
-                  <BarChart data={yearMonths}>
+                  <ComposedChart data={yearMonths}>
                     <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--color-text-secondary)" }} axisLine={false} tickLine={false} />
                     <Tooltip
-                      cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                      cursor={{ fill: "rgba(127,127,127,0.10)" }}
                       formatter={(v) => formatBRL(Number(v))}
-                      contentStyle={{ background: "#1a1712", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                      contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.25)" }}
+                      labelStyle={{ color: "var(--color-text-primary)", fontWeight: 600 }}
+                      itemStyle={{ color: "var(--color-text-secondary)" }}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="Parcelas" stackId="a" fill="var(--color-accent)" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="Adicionais" stackId="a" fill="rgba(212,197,176,0.45)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    {hasPrevYear && (
+                      <Line name={String(year - 1)} type="monotone" dataKey="Anterior" stroke="#aab3c0" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 2, fill: "#aab3c0" }} activeDot={{ r: 4 }} />
+                    )}
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>

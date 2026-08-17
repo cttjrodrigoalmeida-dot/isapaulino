@@ -160,6 +160,19 @@ export default function ProposalsList({
   const approvedCount = yearItems.filter(isApproved).length;
   const lostCount = yearItems.length - approvedCount;
 
+  // Agregados por ano (comparação entre anos no resumo).
+  const perYear = useMemo(() => {
+    const map: Record<string, { approvedValue: number; lostValue: number; approvedCount: number; lostCount: number }> = {};
+    for (const p of items) {
+      const y = yearOf(p.number);
+      const e = map[y] ?? { approvedValue: 0, lostValue: 0, approvedCount: 0, lostCount: 0 };
+      if (isApproved(p)) { e.approvedValue += p.value || 0; e.approvedCount += 1; }
+      else { e.lostValue += p.value || 0; e.lostCount += 1; }
+      map[y] = e;
+    }
+    return map;
+  }, [items]);
+
   const counts = {
     todas: yearItems.length,
     aprovada: approvedCount,
@@ -235,7 +248,7 @@ export default function ProposalsList({
                     <td className={styles.rowNumber}>
                       {p.number}
                       {p.status === "cancelled" ? (
-                        <div style={{ fontSize: 10, color: "#dd5c4e", fontFamily: "var(--font-mono)" }}>cancelada</div>
+                        <div style={{ fontSize: 10, color: "#f0506e", fontFamily: "var(--font-mono)" }}>cancelada</div>
                       ) : p.status !== "published" ? (
                         <div style={{ fontSize: 10, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>rascunho</div>
                       ) : null}
@@ -338,6 +351,9 @@ export default function ProposalsList({
               lostValue={lostValue}
               approvedCount={approvedCount}
               lostCount={lostCount}
+              year={year}
+              years={years}
+              perYear={perYear}
             />
           </div>
         </>

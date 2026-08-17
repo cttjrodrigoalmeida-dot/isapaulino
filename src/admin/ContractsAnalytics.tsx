@@ -13,12 +13,14 @@ import { formatBRL, formatBRLShort, formatDate } from "./dashboard/format";
 const yearOf = (number: string | null) =>
   number && /^\d{2}/.test(number) ? `20${number.slice(0, 2)}` : "Outros";
 
-// Paleta padronizada (semântica).
-// `blue` na verdade é ROXO (a pedido) — mantido o nome da chave por simplicidade.
-const C = { green: "#4ade80", red: "#dd5c4e", blue: "#8b5cf6", amber: "#b07a16", slate: "#7c8698" };
+// Paleta padronizada. Verde e vermelho são RESERVADOS para positivo/negativo
+// (verde #4ade80, vermelho/rosa #f0506e — as mesmas cores dos selos de status).
+// O resto dos gráficos usa CINZA (slate), pra usar o mínimo de cor no sistema.
+// `slateSoft` = cinza mais claro (2ª série de comparação entre anos).
+const C = { green: "#4ade80", red: "#f0506e", amber: "#b07a16", slate: "#7c8698", slateSoft: "#aab3c0" };
 const SOFT = {
-  green: "rgba(74, 222, 128, 0.12)", red: "rgba(221, 92, 78, 0.12)",
-  blue: "rgba(139, 92, 246, 0.12)", amber: "rgba(176, 122, 22, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
+  green: "rgba(74, 222, 128, 0.12)", red: "rgba(240, 80, 110, 0.12)",
+  amber: "rgba(176, 122, 22, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -166,7 +168,7 @@ export default function ContractsAnalytics({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 16 }}>
         <KpiValue label="VALOR TOTAL CONTRATOS ATIVOS" value={m.ativos.v} count={m.ativos.n} noun="ativos" color={C.green} soft={SOFT.green} series={m.monthly.ativos} />
         <KpiValue label="VALOR TOTAL CONTRATOS CANCELADOS" value={m.canc.v} count={m.canc.n} noun="cancelados" color={C.red} soft={SOFT.red} series={m.monthly.canc} />
-        <KpiValue label="CONTRATOS CONCLUÍDOS" value={m.concl.v} count={m.concl.n} noun="concluídos" color={C.blue} soft={SOFT.blue} series={m.monthly.concl} />
+        <KpiValue label="CONTRATOS CONCLUÍDOS" value={m.concl.v} count={m.concl.n} noun="concluídos" color={C.slate} soft={SOFT.slate} series={m.monthly.concl} />
         <UltimosAssinados ultimos={m.ultimos} />
       </div>
 
@@ -179,10 +181,10 @@ export default function ContractsAnalytics({
         <MiniCard label="MENOR CONTRATO DO ANO" color={C.slate}
           value={m.menor ? formatBRL(m.menor._v) : "—"}
           sub={m.menor ? `${m.menor.clientName ?? "—"}${m.menor.contractNumber ? ` · Nº ${m.menor.contractNumber}` : ""}` : "sem valores"} />
-        <MiniCard label="MAIOR CLIENTE" color={C.green}
+        <MiniCard label="MAIOR CLIENTE" color={C.slate}
           value={m.maiorCliente?.name ?? "—"} valueSize={20}
           sub={m.maiorCliente ? `${formatBRL(m.maiorCliente.value)} · ${m.maiorCliente.count} contrato${m.maiorCliente.count === 1 ? "" : "s"} no ano` : "—"} />
-        <MiniCard label="TEMPO MÉDIO ATÉ A ASSINATURA" color={C.blue}
+        <MiniCard label="TEMPO MÉDIO ATÉ A ASSINATURA" color={C.slate}
           value={m.tempoMedio != null ? `${m.tempoMedio.toFixed(1).replace(".", ",")} dias` : "—"}
           sub="da criação até a assinatura" />
       </div>
@@ -216,7 +218,7 @@ export default function ContractsAnalytics({
               <BarChart data={m.top5} layout="vertical" margin={{ top: 4, right: 56, bottom: 0, left: 6 }} barCategoryGap="26%">
                 <XAxis type="number" hide />
                 <YAxis type="category" dataKey="name" width={110} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--color-text-secondary)" }} />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22} fill={C.green}>
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22} fill={C.slate}>
                   <LabelList dataKey="value" position="right" formatter={(v) => formatBRLShort(Number(v))} style={{ fontSize: 11, fontWeight: 700, fill: "var(--color-text-primary)" }} />
                 </Bar>
               </BarChart>
@@ -242,19 +244,19 @@ export default function ContractsAnalytics({
                   itemStyle={{ color: "var(--color-text-secondary)" }}
                 />
                 {cy && (
-                  <Line name={cy} type="monotone" dataKey="compare" stroke={C.slate} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 2, fill: C.slate }} activeDot={{ r: 4 }} />
+                  <Line name={cy} type="monotone" dataKey="compare" stroke={C.slateSoft} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 2, fill: C.slateSoft }} activeDot={{ r: 4 }} />
                 )}
-                <Line name={year} type="monotone" dataKey="value" stroke={C.green} strokeWidth={2.5} dot={{ r: 2.5, fill: C.green }} activeDot={{ r: 4 }} />
+                <Line name={year} type="monotone" dataKey="value" stroke={C.slate} strokeWidth={2.5} dot={{ r: 2.5, fill: C.slate }} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
           {cy && (
             <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11.5, color: "var(--color-text-muted)" }}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 14, height: 3, background: C.green, borderRadius: 2 }} /> {year}
+                <span style={{ width: 14, height: 3, background: C.slate, borderRadius: 2 }} /> {year}
               </span>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 14, height: 3, background: C.slate, borderRadius: 2, backgroundImage: "none" }} /> {cy}
+                <span style={{ width: 14, height: 3, background: C.slateSoft, borderRadius: 2, backgroundImage: "none" }} /> {cy}
               </span>
             </div>
           )}
@@ -342,7 +344,7 @@ function UltimosAssinados({ ultimos }: { ultimos: ContractSummary[] }) {
         <div style={{ display: "grid", gap: 10 }}>
           {ultimos.map((c) => (
             <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ width: 30, height: 30, borderRadius: 9, background: SOFT.green, color: C.green, display: "grid", placeItems: "center", flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: SOFT.slate, color: C.slate, display: "grid", placeItems: "center", flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
                 {(c.clientName ?? "?").trim().charAt(0).toUpperCase()}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>

@@ -264,7 +264,7 @@ export default function BriefingsList({
           )}
 
           {/* ── Dashboard analítico do ano selecionado ── */}
-          <BriefingsAnalytics items={yearItems} year={year} onSeeDetails={() => { setTab("awaiting"); setPage(1); }} />
+          <BriefingsAnalytics items={yearItems} year={year} allItems={items} years={years} onSeeDetails={() => { setTab("awaiting"); setPage(1); }} />
         </>
       )}
     </div>

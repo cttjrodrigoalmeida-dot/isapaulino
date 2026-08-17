@@ -21,11 +21,15 @@ export default function RadialGauge({
   max?: number;
 }) {
   const total = max ?? (data.reduce((s, d) => s + d.value, 0) || 1);
+  // Ordem de sobreposição: a MAIOR fatia fica atrás (anel externo) e as menores
+  // à frente (anéis internos). No RadialBarChart, o 1º item é o anel mais interno,
+  // então ordenamos por valor CRESCENTE (menor → interno, maior → externo).
+  const rings = [...data].sort((a, b) => a.value - b.value);
   return (
     <div style={{ width: size, height: size, position: "relative", flexShrink: 0 }}>
       <ResponsiveContainer width="100%" height="100%">
         <RadialBarChart
-          data={data}
+          data={rings}
           innerRadius="52%"
           outerRadius="100%"
           startAngle={270}
@@ -38,7 +42,7 @@ export default function RadialGauge({
             cornerRadius={4}
             background={{ fill: "rgba(128, 128, 128, 0.2)" }}
           >
-            {data.map((d, i) => (
+            {rings.map((d, i) => (
               <Cell key={i} fill={d.color} />
             ))}
           </RadialBar>
