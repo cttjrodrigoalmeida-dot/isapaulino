@@ -13,11 +13,12 @@ import styles from "./Admin.module.css";
 
 // `blue` na verdade é ROXO (a pedido) — mantido o nome da chave por simplicidade.
 // Verde/vermelho reservados p/ positivo/negativo (cores canônicas dos selos).
-// `blue` foi aposentado (roxo) → aponta pro CINZA neutro, pra usar menos cor.
-const C = { green: "#4ade80", amber: "#b07a16", blue: "#7c8698", red: "#f0506e", slate: "#7c8698" };
+// `blue` = roxo #8b5cf6 (a cor de "concluído", mantida a pedido). Barras/linhas
+// neutras usam `slate` (cinza).
+const C = { green: "#4ade80", amber: "#b07a16", blue: "#8b5cf6", red: "#f0506e", slate: "#7c8698" };
 const SOFT = {
   green: "rgba(74,222,128,0.12)", amber: "rgba(176,122,22,0.12)",
-  blue: "rgba(124,134,152,0.14)", red: "rgba(240,80,110,0.12)", slate: "rgba(124,134,152,0.14)",
+  blue: "rgba(139,92,246,0.12)", red: "rgba(240,80,110,0.12)", slate: "rgba(124,134,152,0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -143,7 +144,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
         <div style={card}>
           <PanelTitle title="Resumo financeiro" />
           <MoneyRow label="Total contratado (assinados)" value={m.contratado} color={C.green} strong />
-          <MoneyRow label="Parcelas recebidas" value={data.parcelas.recebido} color={C.blue} />
+          <MoneyRow label="Parcelas recebidas" value={data.parcelas.recebido} color={C.slate} />
           <MoneyRow label="Parcelas a receber" value={data.parcelas.aReceber} color={C.amber} />
           <MoneyRow label="Parcelas em atraso" value={data.parcelas.atraso} color={C.red} />
           <MoneyRow label="Histórico financeiro (pago)" value={data.hf.pago} color={C.slate} />
@@ -233,7 +234,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
                 <BarChart data={m.top} layout="vertical" margin={{ top: 0, right: 56, bottom: 0, left: 6 }} barCategoryGap="26%">
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="name" width={120} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--color-text-secondary)" }} />
-                  <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={20} fill={C.blue}>
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={20} fill={C.slate}>
                     <LabelList dataKey="value" position="right" formatter={(v) => formatBRLShort(Number(v))} style={{ fontSize: 11, fontWeight: 700, fill: "var(--color-text-primary)" }} />
                   </Bar>
                 </BarChart>

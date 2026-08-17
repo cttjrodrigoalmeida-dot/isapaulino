@@ -16,11 +16,12 @@ const yearOf = (number: string | null) =>
 // Paleta padronizada. Verde e vermelho são RESERVADOS para positivo/negativo
 // (verde #4ade80, vermelho/rosa #f0506e — as mesmas cores dos selos de status).
 // O resto dos gráficos usa CINZA (slate), pra usar o mínimo de cor no sistema.
+// EXCEÇÃO: "concluído" mantém o roxo `blue` #8b5cf6 (cor de antes, a pedido).
 // `slateSoft` = cinza mais claro (2ª série de comparação entre anos).
-const C = { green: "#4ade80", red: "#f0506e", amber: "#b07a16", slate: "#7c8698", slateSoft: "#aab3c0" };
+const C = { green: "#4ade80", red: "#f0506e", blue: "#8b5cf6", amber: "#b07a16", slate: "#7c8698", slateSoft: "#aab3c0" };
 const SOFT = {
   green: "rgba(74, 222, 128, 0.12)", red: "rgba(240, 80, 110, 0.12)",
-  amber: "rgba(176, 122, 22, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
+  blue: "rgba(139, 92, 246, 0.12)", amber: "rgba(176, 122, 22, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -168,7 +169,7 @@ export default function ContractsAnalytics({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 16 }}>
         <KpiValue label="VALOR TOTAL CONTRATOS ATIVOS" value={m.ativos.v} count={m.ativos.n} noun="ativos" color={C.green} soft={SOFT.green} series={m.monthly.ativos} />
         <KpiValue label="VALOR TOTAL CONTRATOS CANCELADOS" value={m.canc.v} count={m.canc.n} noun="cancelados" color={C.red} soft={SOFT.red} series={m.monthly.canc} />
-        <KpiValue label="CONTRATOS CONCLUÍDOS" value={m.concl.v} count={m.concl.n} noun="concluídos" color={C.slate} soft={SOFT.slate} series={m.monthly.concl} />
+        <KpiValue label="CONTRATOS CONCLUÍDOS" value={m.concl.v} count={m.concl.n} noun="concluídos" color={C.blue} soft={SOFT.blue} series={m.monthly.concl} />
         <UltimosAssinados ultimos={m.ultimos} />
       </div>
 
