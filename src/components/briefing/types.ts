@@ -23,9 +23,14 @@ export const DEFAULT_QUICKFILLS = ["À DEFINIR", "NÃO SE APLICA"];
 export type QuestionType =
   | "text"
   | "longtext"
+  | "number"
+  | "date"
   | "radio"
-  | "select"
+  | "yesno"
   | "checklist"
+  | "multicheck"
+  | "select"
+  | "scale"
   | "maquete";
 
 export interface BriefingQuestion {
@@ -39,11 +44,16 @@ export interface BriefingQuestion {
   note?: string;
   /** Tipo do controle. Default: "longtext" (caixa de texto). */
   type?: QuestionType;
-  /** Opções para radio/select/maquete. */
+  /** Opções para radio/checklist/multicheck/select/maquete. */
   options?: string[];
   /**
-   * Se true (radio/checklist), inclui uma opção "Outros" — ao selecionar, abre
-   * um campo livre para o cliente digitar. A resposta fica "Outros: <texto>".
+   * Nota máxima da escala (só em `type: "scale"`). Default: 5.
+   */
+  scaleMax?: number;
+  /**
+   * Se true, inclui uma opção "Outros" — ao selecionar, abre um campo livre para
+   * o cliente digitar. A resposta fica "Outros: <texto>". Vale para perguntas de
+   * escolha (radio, sim/não, lista, múltipla escolha e seleção).
    */
   allowOther?: boolean;
   /** Placeholder do select (ex.: "selecione"). */

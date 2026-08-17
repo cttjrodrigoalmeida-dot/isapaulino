@@ -12,6 +12,14 @@ import { DEFAULT_QUICKFILLS } from "./types";
 
 // Prefixo da resposta quando o cliente escolhe "Outros" e digita um valor livre.
 const OUTROS_PREFIX = "Outros: ";
+// Separador interno das respostas de MÚLTIPLA ESCOLHA (várias opções marcadas).
+// Newline é seguro (rótulos de opção não têm quebra de linha) e some quando
+// exibido inline no PDF (ver `printAnswer`).
+const MULTI_SEP = "\n";
+const splitMulti = (v: string) => (v ? v.split(MULTI_SEP).filter(Boolean) : []);
+const joinMulti = (list: string[]) => list.join(MULTI_SEP);
+// Texto “achatado” de uma resposta para o modo impressão/PDF.
+const printAnswer = (v: string) => splitMulti(v).join(" · ") || " ";
 import { getProposalByNumber } from "../proposal/proposalsRegistry";
 import CustomCursor from "../CustomCursor";
 import FadeIn from "../FadeIn";
@@ -265,7 +273,7 @@ function QuestionItem({
 
   const renderControl = () => {
     if (printing) {
-      return <div className={styles.answerPrint}>{answer || " "}</div>;
+      return <div className={styles.answerPrint}>{type === "multicheck" ? printAnswer(answer) : answer || " "}</div>;
     }
     if (locked) {
       return (
@@ -286,6 +294,85 @@ function QuestionItem({
             aria-invalid={pending}
           />
         );
+      case "number":
+        return (
+          <input
+            type="number"
+            inputMode="decimal"
+            className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
+            value={answer}
+            onChange={(e) => onAnswer(e.target.value)}
+            placeholder={question.hint ? `+ ${question.hint}` : "Digite um número…"}
+            aria-invalid={pending}
+            style={{ maxWidth: 240 }}
+          />
+        );
+      case "date":
+        return (
+          <input
+            type="date"
+            className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
+            value={answer}
+            onChange={(e) => onAnswer(e.target.value)}
+            aria-invalid={pending}
+            style={{ maxWidth: 240 }}
+          />
+        );
+      case "yesno": {
+        const otherSel = !!question.allowOther && answer.startsWith(OUTROS_PREFIX);
+        return (
+          <>
+            <div className={styles.options}>
+              {["Sim", "Não"].map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`${styles.optionBtn} ${answer === opt ? styles.optionBtnSel : ""}`}
+                  onClick={() => onAnswer(answer === opt ? "" : opt)}
+                >
+                  {opt}
+                </button>
+              ))}
+              {question.allowOther && (
+                <button
+                  type="button"
+                  className={`${styles.optionBtn} ${otherSel ? styles.optionBtnSel : ""}`}
+                  onClick={() => onAnswer(otherSel ? "" : OUTROS_PREFIX)}
+                >
+                  Outros
+                </button>
+              )}
+            </div>
+            {otherSel && (
+              <input
+                type="text"
+                className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
+                value={answer.slice(OUTROS_PREFIX.length)}
+                onChange={(e) => onAnswer(OUTROS_PREFIX + e.target.value)}
+                placeholder={question.hint ? `+ ${question.hint}` : "Explique ou justifique…"}
+                autoFocus
+              />
+            )}
+          </>
+        );
+      }
+      case "scale": {
+        const max = question.scaleMax && question.scaleMax > 1 ? question.scaleMax : 5;
+        return (
+          <div className={styles.options}>
+            {Array.from({ length: max }, (_, i) => String(i + 1)).map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={`${styles.optionBtn} ${styles.scaleBtn} ${answer === n ? styles.optionBtnSel : ""}`}
+                onClick={() => onAnswer(answer === n ? "" : n)}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        );
+      }
       case "radio": {
         const otherSel = !!question.allowOther && answer.startsWith(OUTROS_PREFIX);
         return (
@@ -407,6 +494,109 @@ function QuestionItem({
                 className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
                 value={answer.slice(OUTROS_PREFIX.length)}
                 onChange={(e) => onAnswer(OUTROS_PREFIX + e.target.value)}
+                placeholder={question.hint ? `+ ${question.hint}` : "Especifique…"}
+                autoFocus
+                style={{ marginTop: 8 }}
+              />
+            )}
+          </div>
+        );
+      }
+      case "select": {
+        const opts = question.options ?? [];
+        const otherSel = !!question.allowOther && answer.startsWith(OUTROS_PREFIX);
+        const OTHER_VALUE = "__outros__";
+        const selectValue = otherSel ? OTHER_VALUE : opts.includes(answer) ? answer : "";
+        return (
+          <>
+            <select
+              className={`${styles.select} ${selectValue === "" ? styles.selectEmpty : ""} ${pending ? styles.answerPending : ""}`}
+              value={selectValue}
+              onChange={(e) => {
+                const v = e.target.value;
+                onAnswer(v === OTHER_VALUE ? OUTROS_PREFIX : v);
+              }}
+              aria-invalid={pending}
+            >
+              <option value="">{question.placeholder ?? "selecione…"}</option>
+              {opts.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+              {question.allowOther && <option value={OTHER_VALUE}>Outros</option>}
+            </select>
+            {otherSel && (
+              <input
+                type="text"
+                className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
+                value={answer.slice(OUTROS_PREFIX.length)}
+                onChange={(e) => onAnswer(OUTROS_PREFIX + e.target.value)}
+                placeholder={question.hint ? `+ ${question.hint}` : "Especifique…"}
+                autoFocus
+                style={{ marginTop: 8 }}
+              />
+            )}
+          </>
+        );
+      }
+      case "multicheck": {
+        const selected = splitMulti(answer);
+        const otherToken = selected.find((v) => v.startsWith(OUTROS_PREFIX));
+        const otherSel = !!question.allowOther && otherToken !== undefined;
+        const toggle = (opt: string) => {
+          const next = selected.includes(opt)
+            ? selected.filter((v) => v !== opt)
+            : [...selected, opt];
+          onAnswer(joinMulti(next));
+        };
+        const toggleOther = () => {
+          const next = otherSel
+            ? selected.filter((v) => !v.startsWith(OUTROS_PREFIX))
+            : [...selected, OUTROS_PREFIX];
+          onAnswer(joinMulti(next));
+        };
+        const setOtherText = (text: string) => {
+          const next = selected.map((v) => (v.startsWith(OUTROS_PREFIX) ? OUTROS_PREFIX + text : v));
+          onAnswer(joinMulti(next));
+        };
+        return (
+          <div className={styles.checklist}>
+            <div className={styles.checklistHead}>
+              <span className={styles.plus}>+</span> {question.placeholder ?? "marque quantas quiser"}
+            </div>
+            {(question.options ?? []).map((opt) => {
+              const sel = selected.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`${styles.checklistRow} ${sel ? styles.checklistRowSel : ""}`}
+                  onClick={() => toggle(opt)}
+                >
+                  <span className={`${styles.checklistMark} ${styles.checklistMarkBox}`}>
+                    {sel ? <IconCheck /> : ""}
+                  </span>
+                  <span>{opt}</span>
+                </button>
+              );
+            })}
+            {question.allowOther && (
+              <button
+                type="button"
+                className={`${styles.checklistRow} ${otherSel ? styles.checklistRowSel : ""}`}
+                onClick={toggleOther}
+              >
+                <span className={`${styles.checklistMark} ${styles.checklistMarkBox}`}>
+                  {otherSel ? <IconCheck /> : ""}
+                </span>
+                <span>Outros</span>
+              </button>
+            )}
+            {otherSel && (
+              <input
+                type="text"
+                className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
+                value={(otherToken ?? OUTROS_PREFIX).slice(OUTROS_PREFIX.length)}
+                onChange={(e) => setOtherText(e.target.value)}
                 placeholder={question.hint ? `+ ${question.hint}` : "Especifique…"}
                 autoFocus
                 style={{ marginTop: 8 }}

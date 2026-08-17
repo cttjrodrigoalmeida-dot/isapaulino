@@ -10,12 +10,20 @@ import styles from "./Admin.module.css";
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "text", label: "Texto curto" },
   { value: "longtext", label: "Texto longo" },
+  { value: "number", label: "Número" },
+  { value: "date", label: "Data" },
   { value: "radio", label: "Escolha única (botões)" },
-  { value: "checklist", label: "Lista selecionável" },
+  { value: "yesno", label: "Sim / Não" },
+  { value: "checklist", label: "Lista selecionável (uma opção)" },
+  { value: "multicheck", label: "Múltipla escolha (checkbox)" },
   { value: "select", label: "Seleção" },
+  { value: "scale", label: "Escala / Avaliação" },
   { value: "maquete", label: "Maquete (e-mail/WhatsApp)" },
 ];
-const HAS_OPTIONS: QuestionType[] = ["radio", "checklist", "select", "maquete"];
+// Tipos que têm lista de opções editável.
+const HAS_OPTIONS: QuestionType[] = ["radio", "checklist", "multicheck", "select", "maquete"];
+// Tipos de "escolha" que aceitam a opção extra "Outros" (campo livre).
+const ALLOWS_OTHER: QuestionType[] = ["radio", "yesno", "checklist", "multicheck", "select"];
 
 function QuestionEditor({
   q,
@@ -123,10 +131,28 @@ function QuestionEditor({
         </div>
       )}
 
-      {(type === "radio" || type === "checklist") && (
+      {type === "yesno" && (
+        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 12 }}>
+          As opções <strong>Sim</strong> e <strong>Não</strong> já aparecem automaticamente. Marque “Outros” abaixo para
+          permitir uma justificativa livre (ex.: Sim / Não / Outros).
+        </p>
+      )}
+
+      {type === "scale" && (
+        <div className={styles.field}>
+          <label className={styles.label}>Nota máxima da escala</label>
+          <select className={styles.input} value={q.scaleMax ?? 5} onChange={(e) => onChange({ scaleMax: Number(e.target.value) })}>
+            {[3, 4, 5, 7, 10].map((n) => (
+              <option key={n} value={n}>1 a {n}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {ALLOWS_OTHER.includes(type) && (
         <label className={styles.comboToggle} style={{ margin: "0 0 12px" }}>
           <input type="checkbox" checked={!!q.allowOther} onChange={(e) => onChange({ allowOther: e.target.checked })} />
-          <span>Incluir opção “Outros” — ao selecionar, abre um campo livre para o cliente digitar.</span>
+          <span>Incluir opção “Outros” — ao selecionar, abre um campo livre para o cliente digitar/justificar.</span>
         </label>
       )}
 

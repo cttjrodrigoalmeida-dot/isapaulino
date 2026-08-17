@@ -900,6 +900,17 @@
 .checklistRowSel .checklistMark {
   color: var(--color-accent);
 }
+/* múltipla escolha (checkbox): quadradinho em vez do traço — deixa claro que dá
+   para marcar VÁRIAS opções (diferente da lista de opção única). */
+.checklistMarkBox {
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 5px;
+  transition: border-color var(--transition), background var(--transition);
+}
+.checklistRowSel .checklistMarkBox {
+  border-color: var(--color-accent);
+  background: var(--ov-08);
+}
 /* opções (radio/maquete) — pílulas selecionáveis */
 .options {
   display: flex;
@@ -924,6 +935,14 @@
 }
 .optionBtn:nth-child(even) {
   border-radius: 0 8px 0 8px;
+}
+/* escala / avaliação: botões quadrados, mesma largura, número centralizado */
+.scaleBtn {
+  min-width: 44px;
+  justify-content: center;
+  padding: 11px 12px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .optionBtn svg {
   color: var(--color-accent);
