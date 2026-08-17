@@ -40,7 +40,13 @@ function computeMetrics(items: ContractSummary[]) {
   const ativos: Agg = { v: 0, n: 0 }, concl: Agg = { v: 0, n: 0 }, canc: Agg = { v: 0, n: 0 };
   const statusCnt: Record<string, number> = { draft: 0, published: 0, signed: 0, cancelled: 0 };
   const byClient = new Map<string, { value: number; count: number }>();
-  const monthly = { ativos: Array(12).fill(0), concl: Array(12).fill(0), canc: Array(12).fill(0), evolucao: Array(12).fill(0) };
+  // `ativos/concl/canc` = VALOR por mês (mês da assinatura) → usado no gráfico de evolução.
+  // `nAtivos/nConcl/nCanc` = QUANTIDADE por mês (mês de criação, que todo contrato tem)
+  //   → usado no mini-gráfico das cards, pra ele SEMPRE aparecer (igual briefings).
+  const monthly = {
+    ativos: Array(12).fill(0), concl: Array(12).fill(0), canc: Array(12).fill(0), evolucao: Array(12).fill(0),
+    nAtivos: Array(12).fill(0), nConcl: Array(12).fill(0), nCanc: Array(12).fill(0),
+  };
   const signedTimes: number[] = [];
   let maior: (ContractSummary & { _v: number }) | null = null;
   let menor: (ContractSummary & { _v: number }) | null = null;
@@ -58,16 +64,17 @@ function computeMetrics(items: ContractSummary[]) {
       if (!menor || v < menor._v) menor = { ...c, _v: v };
     }
     const mi = c.signedAt ? new Date(c.signedAt).getMonth() : null;
+    const ci = c.createdAt ? new Date(c.createdAt).getMonth() : null; // mês de criação (sempre existe)
     if (c.status === "cancelled") {
-      canc.v += v; canc.n += 1; if (mi != null) monthly.canc[mi] += v;
+      canc.v += v; canc.n += 1; if (mi != null) monthly.canc[mi] += v; if (ci != null) monthly.nCanc[ci] += 1;
       continue;
     }
     const venc = vencOf(c);
     if (venc == null) continue; // não assinado (rascunho/aguardando)
     signedList.push(c);
     if (mi != null) monthly.evolucao[mi] += v;
-    if (venc > now) { ativos.v += v; ativos.n += 1; if (mi != null) monthly.ativos[mi] += v; }
-    else { concl.v += v; concl.n += 1; if (mi != null) monthly.concl[mi] += v; }
+    if (venc > now) { ativos.v += v; ativos.n += 1; if (mi != null) monthly.ativos[mi] += v; if (ci != null) monthly.nAtivos[ci] += 1; }
+    else { concl.v += v; concl.n += 1; if (mi != null) monthly.concl[mi] += v; if (ci != null) monthly.nConcl[ci] += 1; }
     if (c.createdAt && c.signedAt) {
       const days = (new Date(c.signedAt).getTime() - new Date(c.createdAt).getTime()) / 86_400_000;
       if (days >= 0) signedTimes.push(days);
@@ -167,9 +174,9 @@ export default function ContractsAnalytics({
 
       {/* ── Linha 1: KPIs de valor + últimos assinados ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 16 }}>
-        <KpiValue label="VALOR TOTAL CONTRATOS ATIVOS" value={m.ativos.v} count={m.ativos.n} noun="ativos" color={C.green} soft={SOFT.green} series={m.monthly.ativos} />
-        <KpiValue label="VALOR TOTAL CONTRATOS CANCELADOS" value={m.canc.v} count={m.canc.n} noun="cancelados" color={C.red} soft={SOFT.red} series={m.monthly.canc} />
-        <KpiValue label="CONTRATOS CONCLUÍDOS" value={m.concl.v} count={m.concl.n} noun="concluídos" color={C.blue} soft={SOFT.blue} series={m.monthly.concl} />
+        <KpiValue label="VALOR TOTAL CONTRATOS ATIVOS" value={m.ativos.v} count={m.ativos.n} noun="ativos" color={C.green} soft={SOFT.green} series={m.monthly.nAtivos} />
+        <KpiValue label="VALOR TOTAL CONTRATOS CANCELADOS" value={m.canc.v} count={m.canc.n} noun="cancelados" color={C.red} soft={SOFT.red} series={m.monthly.nCanc} />
+        <KpiValue label="CONTRATOS CONCLUÍDOS" value={m.concl.v} count={m.concl.n} noun="concluídos" color={C.blue} soft={SOFT.blue} series={m.monthly.nConcl} />
         <UltimosAssinados ultimos={m.ultimos} />
       </div>
 
