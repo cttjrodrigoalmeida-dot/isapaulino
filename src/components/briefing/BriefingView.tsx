@@ -20,6 +20,9 @@ const splitMulti = (v: string) => (v ? v.split(MULTI_SEP).filter(Boolean) : []);
 const joinMulti = (list: string[]) => list.join(MULTI_SEP);
 // Texto “achatado” de uma resposta para o modo impressão/PDF.
 const printAnswer = (v: string) => splitMulti(v).join(" · ") || " ";
+// Normaliza texto para a busca (sem acento, minúsculo) — "Suíte" acha "suite".
+const normSearch = (s: string) =>
+  s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
 import { getProposalByNumber } from "../proposal/proposalsRegistry";
 import CustomCursor from "../CustomCursor";
 import FadeIn from "../FadeIn";
@@ -113,6 +116,12 @@ const IconCheck = () => (
     <path d="M5 12.5l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+  </svg>
+);
 
 // estrela da página BIO (glifo ✦)
 const STAR = "✦";
@@ -195,6 +204,7 @@ function QuestionItem({
   onRemoveRef,
   pending,
   locked,
+  answered,
   flash,
   hasPin,
   onGoToPin,
@@ -214,6 +224,8 @@ function QuestionItem({
   onRemoveRef: () => void;
   pending: boolean;
   locked: boolean;
+  /** já respondida (tem valor) — ganha borda de destaque. */
+  answered: boolean;
   /** destaque temporário quando o cliente clica no pino da imagem */
   flash?: boolean;
   /** esta pergunta tem um pino na imagem (ambiente) — habilita o clique inverso */
@@ -685,7 +697,7 @@ function QuestionItem({
       ref={registerRef}
       className={`${styles.qItem} ${index % 2 === 1 ? styles.qItemMirror : ""} ${
         pending ? styles.qItemPending : ""
-      } ${flash ? styles.qItemFlash : ""}`}
+      } ${answered && !pending ? styles.qItemAnswered : ""} ${flash ? styles.qItemFlash : ""}`}
     >
       <div
         className={`${styles.qHead} ${hasPin && !printing ? styles.qHeadToPin : ""}`}
@@ -1201,6 +1213,33 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
 
   const missingCount = pending.size;
 
+  // ── Busca dentro do briefing (perguntas e ambientes) ──
+  const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  type SearchHit = { key: string; sectionId: string; questionId?: string; label: string; sub: string };
+  const searchResults = useMemo<SearchHit[]>(() => {
+    const q = normSearch(query);
+    if (q.length < 2) return [];
+    const hits: SearchHit[] = [];
+    b.sections.forEach((s) => {
+      if (normSearch(s.title).includes(q)) {
+        hits.push({ key: `s-${s.id}`, sectionId: s.id, label: s.title, sub: s.kind === "ambiente" ? "Ambiente" : "Seção" });
+      }
+      s.questions.forEach((qq) => {
+        if (normSearch(qq.text).includes(q)) {
+          hits.push({ key: `q-${qq.id}`, sectionId: s.id, questionId: qq.id, label: qq.text, sub: s.title });
+        }
+      });
+    });
+    return hits.slice(0, 8);
+  }, [query, b.sections]);
+  const goToResult = (r: SearchHit) => {
+    if (r.questionId) goToQuestion(r.questionId);
+    else goTo(r.sectionId);
+    setQuery("");
+    setSearchOpen(false);
+  };
+
   const renderQuestion = (section: BriefingSection, q: BriefingQuestion, i: number) => (
     <FadeIn key={q.id} delay={i * 0.05}>
       <QuestionItem
@@ -1215,6 +1254,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
         onRemoveRef={() => removeRef(q.id)}
         pending={pending.has(q.id)}
         locked={isLockedQuestion(q, allQuestions, answers)}
+        answered={isAnswered(q, answers)}
         flash={flashId === q.id}
         hasPin={section.kind === "ambiente" && !!q.pin}
         onGoToPin={() => goToPin(q.id)}
@@ -1338,6 +1378,59 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
               </div>
             </div>
           </FadeIn>
+
+          {!printing && (
+            <FadeIn delay={0.1}>
+              <div className={styles.searchBar} data-pdf-ignore>
+                <div className={styles.searchWrap}>
+                  <span className={styles.searchIcon}><IconSearch /></span>
+                  <input
+                    type="search"
+                    className={styles.searchInput}
+                    value={query}
+                    placeholder="Buscar no briefing…"
+                    aria-label="Buscar pergunta ou ambiente no briefing"
+                    onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); }}
+                    onFocus={() => setSearchOpen(true)}
+                    onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && searchResults[0]) { e.preventDefault(); goToResult(searchResults[0]); }
+                      if (e.key === "Escape") { setQuery(""); setSearchOpen(false); }
+                    }}
+                  />
+                  {query && (
+                    <button
+                      type="button"
+                      className={styles.searchClear}
+                      onMouseDown={(e) => { e.preventDefault(); setQuery(""); }}
+                      aria-label="Limpar busca"
+                    >
+                      ×
+                    </button>
+                  )}
+                  {searchOpen && query.trim().length >= 2 && (
+                    <div className={styles.searchResults}>
+                      {searchResults.length === 0 ? (
+                        <div className={styles.searchEmpty}>Nada encontrado para “{query.trim()}”.</div>
+                      ) : (
+                        searchResults.map((r) => (
+                          <button
+                            key={r.key}
+                            type="button"
+                            className={styles.searchHit}
+                            onMouseDown={(e) => { e.preventDefault(); goToResult(r); }}
+                          >
+                            <span className={styles.searchHitLabel}>{r.label}</span>
+                            <span className={styles.searchHitSub}>{r.sub}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </FadeIn>
+          )}
 
           <FadeIn delay={0.2}>
             <div className={styles.heroBody}>
