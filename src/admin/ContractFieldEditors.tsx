@@ -2,7 +2,7 @@
 // Cada um recebe uma fatia do ContractDoc + onChange. Reaproveita as classes
 // do Admin.module.css e o ListEditor. Qualquer campo não coberto aqui continua
 // 100% editável pela aba "JSON avançado".
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ContractParty,
   ContractClause,
@@ -13,55 +13,17 @@ import type {
   CostRow,
   CostFaixa,
 } from "../components/contract/types";
+import { clauseRole, normalizeClauses, plainNumber } from "../components/contract/clauseNumbering";
 import ListEditor from "./ListEditor";
 import CurrencyInput from "./CurrencyInput";
 import { formatBRL, valorPorExtenso, parseBRL as parseBRLNum } from "./proposalCalc";
 import styles from "./Admin.module.css";
 
-// Accordion leve do admin: cabeçalho clicável (título + ações à direita) e
-// corpo colapsável. Usado p/ deixar as cláusulas em botões expansíveis.
-function Accordion({
-  title,
-  right,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  right?: ReactNode;
-  defaultOpen?: boolean;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className={styles.blockCard}>
-      <div
-        className={styles.blockHead}
-        style={{ cursor: "pointer", alignItems: "center", marginBottom: open ? undefined : 0 }}
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setOpen((o) => !o);
-          }
-        }}
-      >
-        <span className={styles.blockTag} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ transition: "transform .2s", transform: open ? "rotate(90deg)" : "none", display: "inline-flex" }}>▸</span>
-          {title}
-        </span>
-        {right && (
-          <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-            {right}
-          </div>
-        )}
-      </div>
-      {open && <div style={{ marginTop: 12 }}>{children}</div>}
-    </div>
-  );
-}
+// Prefixo de subcláusula ("7.1.", "18.2") no início do parágrafo — removido só
+// para EXIBIR o texto no editor (o prefixo é reescrito automaticamente).
+const SUB_PREFIX_RE = /^\s*\d+(?:\.\d+)+\.?\s+/;
+const stripSub = (t: string) => t.replace(SUB_PREFIX_RE, "");
+const CLAUSE_CLIPBOARD_KEY = "ips_clause_clipboard";
 
 // ── Campos primitivos ─────────────────────────────────────────────
 export function Txt({
@@ -305,117 +267,208 @@ export function ParcelasEditor({
   );
 }
 
-// ── Cláusulas jurídicas (01–19) ───────────────────────────────────
+// ── Cláusulas jurídicas — editor com arrastar-e-soltar + numeração automática ──
+// A numeração NUNCA é digitada: é derivada da posição (cláusula) e reescrita nos
+// prefixos das subcláusulas (7.1, 7.2…) a cada mudança, via `normalizeClauses`.
 export function ClausesEditor({
   clauses,
   onChange,
+  kind = "principal",
 }: {
   clauses: ContractClause[];
   onChange: (c: ContractClause[]) => void;
+  /** principal | aditivo — muda o offset da numeração (Seção 06). */
+  kind?: "principal" | "aditivo";
 }) {
-  const setClause = (i: number, patch: Partial<ContractClause>) => {
-    const next = clauses.slice();
-    next[i] = { ...next[i], ...patch };
-    onChange(next);
-  };
-  const setBlock = (ci: number, bi: number, block: ClauseBlock) => {
-    const blocks = clauses[ci].blocks.slice();
-    blocks[bi] = block;
-    setClause(ci, { blocks });
-  };
+  // Sempre trabalha/exibe a lista NORMALIZADA (números + prefixos corretos).
+  const norm = normalizeClauses(clauses, kind);
+  const commit = (next: ContractClause[]) => onChange(normalizeClauses(next, kind));
+
+  // Normaliza uma vez ao abrir (se o salvo estiver "fora do número").
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+    if (JSON.stringify(norm) !== JSON.stringify(clauses)) onChange(norm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const dragIdx = useRef<number | null>(null);
+  const [hasClip, setHasClip] = useState(() => {
+    try { return !!localStorage.getItem(CLAUSE_CLIPBOARD_KEY); } catch { return false; }
+  });
+
+  const setClause = (i: number, patch: Partial<ContractClause>) =>
+    commit(norm.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+  const setBlock = (ci: number, bi: number, block: ClauseBlock) =>
+    setClause(ci, { blocks: norm[ci].blocks.map((b, idx) => (idx === bi ? block : b)) });
   const move = (i: number, dir: -1 | 1) => {
     const j = i + dir;
-    if (j < 0 || j >= clauses.length) return;
-    const next = clauses.slice();
+    if (j < 0 || j >= norm.length) return;
+    const next = norm.slice();
     [next[i], next[j]] = [next[j], next[i]];
-    onChange(next);
+    commit(next);
   };
+  const removeClause = (i: number) => commit(norm.filter((_, idx) => idx !== i));
+  const duplicateClause = (i: number) => {
+    const next = norm.slice();
+    next.splice(i + 1, 0, structuredClone(norm[i]));
+    commit(next);
+  };
+  const copyClause = (i: number) => {
+    try { localStorage.setItem(CLAUSE_CLIPBOARD_KEY, JSON.stringify(norm[i])); setHasClip(true); } catch { /* ignore */ }
+  };
+  const pasteAfter = (i: number) => {
+    try {
+      const raw = localStorage.getItem(CLAUSE_CLIPBOARD_KEY);
+      if (!raw) return;
+      const c = JSON.parse(raw) as ContractClause;
+      const next = norm.slice();
+      next.splice(i + 1, 0, { ...c });
+      commit(next);
+    } catch { /* ignore */ }
+  };
+  const addClause = () =>
+    commit([...norm, { number: "", title: "Nova cláusula", blocks: [{ type: "p", text: "" }] }]);
+
+  // Arrastar-e-soltar: reordena cláusulas.
+  const onDrop = (to: number) => {
+    const from = dragIdx.current;
+    dragIdx.current = null;
+    setDropIdx(null);
+    if (from == null || from === to) return;
+    const next = norm.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(from < to ? to - 1 : to, 0, moved);
+    commit(next);
+  };
+
+  const allOpen = collapsed.size === 0;
+  const toggle = (i: number) =>
+    setCollapsed((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
+
+  const paraCountBefore = (blocks: ClauseBlock[], bi: number) =>
+    blocks.slice(0, bi).filter((b) => b.type === "p").length;
 
   return (
     <div className={styles.lineList}>
-      <div className={styles.placeholderHint} style={{ marginBottom: 4 }}>
-        Cada cláusula fica em um botão expansível — clique no título para abrir e editar.
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+        <span className={styles.placeholderHint} style={{ margin: 0, flex: 1, minWidth: 180 }}>
+          Arraste (⠿) para reordenar. A numeração é 100% automática — cláusulas e subcláusulas (7.1, 7.2…) se ajustam sozinhas.
+        </span>
+        <button type="button" className={styles.btn} onClick={() => setCollapsed(allOpen ? new Set(norm.map((_, i) => i)) : new Set())}>
+          {allOpen ? "▸ Recolher tudo" : "▾ Expandir tudo"}
+        </button>
       </div>
-      {clauses.map((cl, ci) => (
-        <Accordion
-          key={ci}
-          title={`Cláusula ${cl.number || ci + 1}${cl.title ? " · " + cl.title : ""}`}
-          right={
-            <>
-              <button type="button" className={styles.iconBtn} onClick={() => move(ci, -1)} aria-label="Subir">↑</button>
-              <button type="button" className={styles.iconBtn} onClick={() => move(ci, 1)} aria-label="Descer">↓</button>
-              <button
-                type="button"
-                className={styles.iconBtn}
-                onClick={() => onChange(clauses.filter((_, idx) => idx !== ci))}
-                aria-label="Remover"
-              >
-                ×
-              </button>
-            </>
-          }
-        >
-          <div className={styles.row2}>
-            <Txt label="Número" value={cl.number} onChange={(v) => setClause(ci, { number: v })} mono />
-            <Txt label="Rótulo (eyebrow)" value={cl.eyebrow ?? ""} onChange={(v) => setClause(ci, { eyebrow: v || undefined })} />
-          </div>
-          <Txt label="Título" value={cl.title} onChange={(v) => setClause(ci, { title: v })} />
 
-          {cl.blocks.map((b, bi) => (
-            <div key={bi} className={styles.blockCard} style={{ marginTop: 8 }}>
-              <div className={styles.blockHead}>
-                <span className={styles.blockTag}>{b.type === "p" ? "Parágrafo" : "Lista"}</span>
+      {norm.map((cl, ci) => {
+        const isCollapsed = collapsed.has(ci);
+        const isEscopo = clauseRole(cl, kind) === "escopo";
+        const base = plainNumber(cl.number);
+        return (
+          <div
+            key={ci}
+            className={styles.blockCard}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDropIdx(ci); }}
+            onDrop={(e) => { e.preventDefault(); onDrop(ci); }}
+            style={dropIdx === ci ? { boxShadow: "inset 0 3px 0 0 var(--color-accent)" } : undefined}
+          >
+            <div className={styles.blockHead} style={{ alignItems: "center", marginBottom: isCollapsed ? 0 : 12 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span
+                  draggable
+                  onDragStart={() => { dragIdx.current = ci; }}
+                  title="Arraste para reordenar"
+                  style={{ cursor: "grab", userSelect: "none", fontSize: 16, lineHeight: 1, color: "var(--color-text-muted)" }}
+                >
+                  ⠿
+                </span>
                 <button
                   type="button"
-                  className={styles.iconBtn}
-                  onClick={() => setClause(ci, { blocks: cl.blocks.filter((_, idx) => idx !== bi) })}
-                  aria-label="Remover bloco"
+                  onClick={() => toggle(ci)}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit", textAlign: "left", minWidth: 0 }}
                 >
-                  ×
+                  <span style={{ fontSize: 13, color: "var(--color-text-muted)", width: 12 }}>{isCollapsed ? "▸" : "▾"}</span>
+                  <span className={styles.blockTag} style={{ fontVariantNumeric: "tabular-nums" }}>Cláusula {cl.number}</span>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>· {cl.title || "sem título"}</span>
                 </button>
+              </span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button type="button" className={styles.iconBtn} onClick={() => move(ci, -1)} disabled={ci === 0} aria-label="Subir">↑</button>
+                <button type="button" className={styles.iconBtn} onClick={() => move(ci, 1)} disabled={ci === norm.length - 1} aria-label="Descer">↓</button>
+                <button type="button" className={styles.btn} onClick={() => copyClause(ci)} title="Copiar cláusula">⧉ Copiar</button>
+                {hasClip && <button type="button" className={styles.btn} onClick={() => pasteAfter(ci)} title="Colar a cláusula copiada aqui">⤵ Colar</button>}
+                <button type="button" className={styles.btn} onClick={() => duplicateClause(ci)} title="Duplicar cláusula">⧉ Duplicar</button>
+                <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeClause(ci)}>Excluir</button>
               </div>
-              {b.type === "p" ? (
-                <textarea
-                  className={styles.textarea}
-                  rows={3}
-                  value={b.text}
-                  onChange={(e) => setBlock(ci, bi, { type: "p", text: e.target.value })}
-                />
-              ) : (
-                <ListEditor
-                  items={b.items}
-                  onChange={(items) => setBlock(ci, bi, { type: "list", items })}
-                  placeholder="item da lista"
-                />
-              )}
             </div>
-          ))}
 
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnGhost}`}
-              onClick={() => setClause(ci, { blocks: [...cl.blocks, { type: "p", text: "" }] })}
-            >
-              + parágrafo
-            </button>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnGhost}`}
-              onClick={() => setClause(ci, { blocks: [...cl.blocks, { type: "list", items: [""] }] })}
-            >
-              + lista
-            </button>
+            {!isCollapsed && (
+              <>
+                <div className={styles.row2}>
+                  <Txt label="Título" value={cl.title} onChange={(v) => setClause(ci, { title: v })} />
+                  <Txt label="Rótulo (aba)" value={cl.eyebrow ?? ""} onChange={(v) => setClause(ci, { eyebrow: v || undefined })} />
+                </div>
+
+                {cl.blocks.map((b, bi) => {
+                  const subNo = `${base}.${paraCountBefore(cl.blocks, bi) + 1}`;
+                  return (
+                    <div key={bi} className={styles.blockCard} style={{ marginTop: 8 }}>
+                      <div className={styles.blockHead}>
+                        <span className={styles.blockTag} style={{ fontVariantNumeric: "tabular-nums" }}>
+                          {b.type === "p" ? (isEscopo ? "Subcláusula" : `Subcláusula ${subNo}`) : "Lista"}
+                        </span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button type="button" className={styles.iconBtn} onClick={() => {
+                            if (bi === 0) return;
+                            const blocks = cl.blocks.slice(); [blocks[bi - 1], blocks[bi]] = [blocks[bi], blocks[bi - 1]]; setClause(ci, { blocks });
+                          }} disabled={bi === 0} aria-label="Subir">↑</button>
+                          <button type="button" className={styles.iconBtn} onClick={() => {
+                            if (bi === cl.blocks.length - 1) return;
+                            const blocks = cl.blocks.slice(); [blocks[bi + 1], blocks[bi]] = [blocks[bi], blocks[bi + 1]]; setClause(ci, { blocks });
+                          }} disabled={bi === cl.blocks.length - 1} aria-label="Descer">↓</button>
+                          <button type="button" className={styles.iconBtn} onClick={() => setClause(ci, { blocks: cl.blocks.filter((_, idx) => idx !== bi) })} aria-label="Remover">×</button>
+                        </div>
+                      </div>
+                      {b.type === "p" ? (
+                        <textarea
+                          className={styles.textarea}
+                          rows={3}
+                          value={isEscopo ? b.text : stripSub(b.text)}
+                          placeholder={isEscopo ? "texto da subcláusula" : `${subNo}. …`}
+                          onChange={(e) => setBlock(ci, bi, { type: "p", text: e.target.value })}
+                        />
+                      ) : (
+                        <ListEditor items={b.items} onChange={(items) => setBlock(ci, bi, { type: "list", items })} placeholder="item da lista" />
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setClause(ci, { blocks: [...cl.blocks, { type: "p", text: "" }] })}>
+                    + subcláusula
+                  </button>
+                  <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setClause(ci, { blocks: [...cl.blocks, { type: "list", items: [""] }] })}>
+                    + lista
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        </Accordion>
-      ))}
-      <button
-        type="button"
-        className={`${styles.btn} ${styles.btnGhost}`}
-        onClick={() => onChange([...clauses, { number: "", title: "", blocks: [{ type: "p", text: "" }] }])}
+        );
+      })}
+
+      {/* zona de drop no fim */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDropIdx(norm.length); }}
+        onDrop={(e) => { e.preventDefault(); onDrop(norm.length); }}
+        style={{ padding: "6px 0", borderTop: dropIdx === norm.length ? "2px dashed var(--color-accent)" : "2px dashed transparent" }}
       >
-        + adicionar cláusula
-      </button>
+        <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={addClause}>+ adicionar cláusula ao final</button>
+      </div>
     </div>
   );
 }

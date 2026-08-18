@@ -54,12 +54,13 @@ export type ClauseRole =
   | "aditivo-pagamento"; // cláusula do aditivo que embute o pagamento (aditivo 03)
 
 /**
- * Cláusula jurídica. O `number` é DERIVADO da posição (ver `numberClauses`) —
- * fica aqui só para compat/leitura; nunca deve ser editado à mão.
- * Subcláusulas ficam em `children` (numeradas 7.1, 7.2… automaticamente).
+ * Cláusula jurídica. O `number` é DERIVADO da posição (ver `clauseNumbering.ts`) —
+ * fica aqui só para compat/leitura; nunca deve ser editado à mão. As subcláusulas
+ * (7.1, 7.2…) são os parágrafos de `blocks`, cujo prefixo numérico é reescrito
+ * automaticamente pelo editor conforme a ordem.
  */
 export interface ContractClause {
-  /** Número DERIVADO da posição (ex.: "07", "7.1"). Não editar à mão. */
+  /** Número DERIVADO da posição (ex.: "07"). Não editar à mão. */
   number: string;
   /** Papel que comanda o layout especial (independente do número). */
   role?: ClauseRole;
@@ -68,8 +69,6 @@ export interface ContractClause {
   /** Título da cláusula, ex.: "DO OBJETO". */
   title: string;
   blocks: ClauseBlock[];
-  /** Subcláusulas (7.1, 7.2…) — numeração automática pela posição. */
-  children?: ContractClause[];
 }
 
 /** Card de informação (rótulo + valor), usado nos blocos de prazo/arquivos. */

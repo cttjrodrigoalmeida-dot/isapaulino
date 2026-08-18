@@ -37,13 +37,14 @@ export function clauseRole(clause: ContractClause, kind: ContractDoc["kind"]): C
   }
 }
 
-function numberChildren(children: ContractClause[] | undefined, parentPlain: string): ContractClause[] | undefined {
-  if (!children || children.length === 0) return children;
-  return children.map((sc, j) => {
-    const num = `${parentPlain}.${j + 1}`;
-    return { ...sc, number: num, children: numberChildren(sc.children, num) };
-  });
+/** Número "plano" (sem zero à esquerda) usado como base das subcláusulas: "07" → "7". */
+export function plainNumber(num: string): string {
+  const n = parseInt(num, 10);
+  return Number.isFinite(n) ? String(n) : num;
 }
+
+// Prefixo de subcláusula no início do parágrafo (ex.: "7.1.", "18.2", "2.1. ").
+const SUB_PREFIX = /^\s*\d+(?:\.\d+)+\.?\s+/;
 
 /** Índice da cláusula "prazo" (depois dela entra a Seção 06). -1 se não houver. */
 export function prazoIndex(clauses: ContractClause[], kind: ContractDoc["kind"]): number {
@@ -66,7 +67,30 @@ export function renumberClauses(clauses: ContractClause[], kind: ContractDoc["ki
   return clauses.map((c, i) => {
     const role = clauseRole(c, kind);
     const n = i + 1 + (p >= 0 && i > p ? 1 : 0);
-    const plain = String(n);
-    return { ...c, role, number: pad2(n), children: numberChildren(c.children, plain) };
+    return { ...c, role, number: pad2(n) };
   });
+}
+
+/**
+ * Reescreve o prefixo numérico das SUBCLÁUSULAS (parágrafos) conforme a ordem:
+ * cada parágrafo vira "7.1.", "7.2."… usando o número (já derivado) da cláusula.
+ * As listas (bullets) não são numeradas. A cláusula de ESCOPO é pulada porque tem
+ * sub-numeração especial (o "2.2" dos serviços vive num card à parte).
+ */
+export function renumberSubclauses(clause: ContractClause, kind: ContractDoc["kind"]): ContractClause {
+  if (clauseRole(clause, kind) === "escopo") return clause;
+  const base = plainNumber(clause.number);
+  let k = 0;
+  const blocks = clause.blocks.map((b) => {
+    if (b.type !== "p") return b;
+    k += 1;
+    const bare = b.text.replace(SUB_PREFIX, "").trimStart();
+    return { type: "p" as const, text: bare ? `${base}.${k}. ${bare}` : `${base}.${k}.` };
+  });
+  return { ...clause, blocks };
+}
+
+/** Normaliza TODA a lista: renumera cláusulas (posição) e reescreve os prefixos das subcláusulas. */
+export function normalizeClauses(clauses: ContractClause[], kind: ContractDoc["kind"]): ContractClause[] {
+  return renumberClauses(clauses, kind).map((c) => renumberSubclauses(c, kind));
 }

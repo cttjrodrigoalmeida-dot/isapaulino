@@ -1080,7 +1080,7 @@ export default function ContractEditor({
           {/* ── Cláusulas ── */}
           <div className={styles.card}>
             <div className={styles.cardTitle}>Cláusulas jurídicas</div>
-            <ClausesEditor clauses={doc.clauses} onChange={(v) => patch({ clauses: v })} />
+            <ClausesEditor clauses={doc.clauses} kind={doc.kind} onChange={(v) => patch({ clauses: v })} />
           </div>
 
           {/* ── Contato ── */}
