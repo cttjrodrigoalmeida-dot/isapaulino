@@ -299,6 +299,11 @@ export function ClausesEditor({
   const [hasClip, setHasClip] = useState(() => {
     try { return !!localStorage.getItem(CLAUSE_CLIPBOARD_KEY); } catch { return false; }
   });
+  // Seleção em massa (por índice). Ações estruturais limpam a seleção (os índices mudam).
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const clearSel = () => setSelected(new Set());
+  const toggleSel = (i: number) =>
+    setSelected((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
 
   const setClause = (i: number, patch: Partial<ContractClause>) =>
     commit(norm.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
@@ -309,12 +314,14 @@ export function ClausesEditor({
     if (j < 0 || j >= norm.length) return;
     const next = norm.slice();
     [next[i], next[j]] = [next[j], next[i]];
+    clearSel();
     commit(next);
   };
-  const removeClause = (i: number) => commit(norm.filter((_, idx) => idx !== i));
+  const removeClause = (i: number) => { clearSel(); commit(norm.filter((_, idx) => idx !== i)); };
   const duplicateClause = (i: number) => {
     const next = norm.slice();
     next.splice(i + 1, 0, structuredClone(norm[i]));
+    clearSel();
     commit(next);
   };
   const copyClause = (i: number) => {
@@ -327,11 +334,25 @@ export function ClausesEditor({
       const c = JSON.parse(raw) as ContractClause;
       const next = norm.slice();
       next.splice(i + 1, 0, { ...c });
+      clearSel();
       commit(next);
     } catch { /* ignore */ }
   };
-  const addClause = () =>
-    commit([...norm, { number: "", title: "Nova cláusula", blocks: [{ type: "p", text: "" }] }]);
+  const addClause = () => { clearSel(); commit([...norm, { number: "", title: "Nova cláusula", blocks: [{ type: "p", text: "" }] }]); };
+
+  // Ações em massa (sobre as cláusulas marcadas).
+  const deleteSelected = () => {
+    if (!selected.size) return;
+    clearSel();
+    commit(norm.filter((_, i) => !selected.has(i)));
+  };
+  const duplicateSelected = () => {
+    if (!selected.size) return;
+    const next: ContractClause[] = [];
+    norm.forEach((c, i) => { next.push(c); if (selected.has(i)) next.push(structuredClone(c)); });
+    clearSel();
+    commit(next);
+  };
 
   // Arrastar-e-soltar: reordena cláusulas.
   const onDrop = (to: number) => {
@@ -342,6 +363,7 @@ export function ClausesEditor({
     const next = norm.slice();
     const [moved] = next.splice(from, 1);
     next.splice(from < to ? to - 1 : to, 0, moved);
+    clearSel();
     commit(next);
   };
 
@@ -363,20 +385,38 @@ export function ClausesEditor({
         </button>
       </div>
 
+      {/* Barra de seleção em massa (aparece quando há cláusulas marcadas). */}
+      {selected.size > 0 && (
+        <div className={styles.selectionBar}>
+          <span className={styles.selectionCount}>{selected.size} selecionada{selected.size === 1 ? "" : "s"}</span>
+          <button type="button" className={styles.btn} onClick={duplicateSelected} title="Duplicar as cláusulas marcadas">⧉ Duplicar selecionadas</button>
+          <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={deleteSelected} title="Excluir as cláusulas marcadas">🗑 Excluir selecionadas</button>
+          <button type="button" className={styles.btn} onClick={clearSel} style={{ marginLeft: "auto" }}>Limpar seleção</button>
+        </div>
+      )}
+
       {norm.map((cl, ci) => {
         const isCollapsed = collapsed.has(ci);
         const isEscopo = clauseRole(cl, kind) === "escopo";
         const base = plainNumber(cl.number);
+        const isSel = selected.has(ci);
         return (
           <div
             key={ci}
-            className={styles.blockCard}
+            className={`${styles.blockCard} ${isSel ? styles.blockCardSelected : ""}`}
             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDropIdx(ci); }}
             onDrop={(e) => { e.preventDefault(); onDrop(ci); }}
             style={dropIdx === ci ? { boxShadow: "inset 0 3px 0 0 var(--color-accent)" } : undefined}
           >
             <div className={styles.blockHead} style={{ alignItems: "center", marginBottom: isCollapsed ? 0 : 12 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <input
+                  type="checkbox"
+                  className={styles.selectCheckbox}
+                  checked={isSel}
+                  onChange={() => toggleSel(ci)}
+                  title="Selecionar esta cláusula (para excluir/duplicar em massa)"
+                />
                 <span
                   draggable
                   onDragStart={() => { dragIdx.current = ci; }}

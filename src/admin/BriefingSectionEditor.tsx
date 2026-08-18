@@ -29,6 +29,8 @@ function QuestionEditor({
   q,
   index,
   isAmbiente,
+  selected,
+  onToggleSelect,
   onChange,
   onRemove,
   onMove,
@@ -48,6 +50,9 @@ function QuestionEditor({
   q: BriefingQuestion;
   index: number;
   isAmbiente: boolean;
+  /** pergunta marcada na seleção em massa (destaque rosa) */
+  selected: boolean;
+  onToggleSelect: () => void;
   onChange: (patch: Partial<BriefingQuestion>) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
@@ -70,13 +75,20 @@ function QuestionEditor({
   return (
     <div
       ref={cardRef}
-      className={`${styles.blockCard} ${moved ? styles.questionMoved : ""}`}
+      className={`${styles.blockCard} ${selected ? styles.blockCardSelected : ""} ${moved ? styles.questionMoved : ""}`}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDndOver(); }}
       onDrop={(e) => { e.preventDefault(); onDndDrop(); }}
       style={showDropLine ? { boxShadow: "inset 0 3px 0 0 var(--color-accent)" } : undefined}
     >
       <div className={styles.blockHead}>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            className={styles.selectCheckbox}
+            checked={selected}
+            onChange={onToggleSelect}
+            title="Selecionar esta pergunta (para excluir/duplicar em massa)"
+          />
           <span
             draggable
             onDragStart={(e) => {
@@ -217,6 +229,10 @@ export default function BriefingSectionEditor({
   collapsed,
   onToggleCollapse,
   continuationInfo,
+  selectedIds,
+  sectionSelect,
+  onToggleSectionSelect,
+  onToggleQuestionSelect,
   hasClipboard,
   onCopyQuestion,
   onPasteQuestion,
@@ -240,6 +256,14 @@ export default function BriefingSectionEditor({
   onToggleCollapse: () => void;
   /** se esta seção (ambiente) é continuação e qual "parte" — só p/ rotular no editor */
   continuationInfo?: { isCont: boolean; part: number };
+  /** ids das perguntas selecionadas (seleção em massa) */
+  selectedIds: Set<string>;
+  /** estado da seleção do ambiente: nenhuma / algumas / todas */
+  sectionSelect: "none" | "some" | "all";
+  /** marca/desmarca todas as perguntas deste ambiente */
+  onToggleSectionSelect: () => void;
+  /** marca/desmarca uma pergunta (por índice) */
+  onToggleQuestionSelect: (qi: number) => void;
   /** há uma pergunta no clipboard (para exibir "Colar pergunta") */
   hasClipboard: boolean;
   onCopyQuestion: (qi: number) => void;
@@ -344,6 +368,16 @@ export default function BriefingSectionEditor({
       style={isCont ? { marginLeft: 20, borderLeft: "3px solid var(--color-accent)" } : undefined}
     >
       <div className={styles.blockHead}>
+        <input
+          type="checkbox"
+          className={styles.selectCheckbox}
+          style={{ marginRight: 4 }}
+          ref={(el) => { if (el) el.indeterminate = sectionSelect === "some"; }}
+          checked={sectionSelect === "all"}
+          onChange={onToggleSectionSelect}
+          disabled={section.questions.length === 0}
+          title="Selecionar todas as perguntas deste ambiente"
+        />
         <button
           type="button"
           onClick={onToggleCollapse}
@@ -472,6 +506,8 @@ export default function BriefingSectionEditor({
           q={q}
           index={qi}
           isAmbiente={isAmbiente}
+          selected={selectedIds.has(q.id)}
+          onToggleSelect={() => onToggleQuestionSelect(qi)}
           onChange={(patch) => setQuestion(qi, patch)}
           onRemove={() => removeQuestion(qi)}
           onMove={(dir) => moveQuestion(qi, dir)}

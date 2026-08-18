@@ -52,6 +52,44 @@ export default function BriefingEditor({
   const toggleDone = (id: string) =>
     setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
+  // ── Seleção em massa de perguntas (global entre seções; por id da pergunta) ──
+  const [selectedQ, setSelectedQ] = useState<Set<string>>(new Set());
+  const clearSelQ = () => setSelectedQ(new Set());
+  const toggleQ = (id: string) =>
+    setSelectedQ((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  // Marca/desmarca TODAS as perguntas de um ambiente (nível 1 da seleção).
+  const toggleSectionSelect = (si: number) => {
+    const ids = (briefing?.sections[si]?.questions ?? []).map((q) => q.id).filter(Boolean) as string[];
+    if (!ids.length) return;
+    setSelectedQ((s) => {
+      const n = new Set(s);
+      const allSel = ids.every((id) => n.has(id));
+      ids.forEach((id) => (allSel ? n.delete(id) : n.add(id)));
+      return n;
+    });
+  };
+  const deleteSelectedQ = () => {
+    if (!selectedQ.size) return;
+    setBriefing((prev) => prev ? { ...prev, sections: prev.sections.map((s) => ({ ...s, questions: s.questions.filter((q) => !selectedQ.has(q.id)) })) } : prev);
+    clearSelQ();
+  };
+  const duplicateSelectedQ = () => {
+    if (!selectedQ.size) return;
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const sections = prev.sections.map((s, si) => {
+        const out: BriefingQuestion[] = [];
+        s.questions.forEach((q, qi) => {
+          out.push(q);
+          if (selectedQ.has(q.id)) out.push({ ...structuredClone(q), id: `q-${Date.now()}-${si}-${qi}` });
+        });
+        return { ...s, questions: out };
+      });
+      return { ...prev, sections };
+    });
+    clearSelQ();
+  };
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -505,6 +543,16 @@ export default function BriefingEditor({
           </div>
         </div>
 
+        {/* Barra de seleção em massa (aparece quando há perguntas marcadas). */}
+        {selectedQ.size > 0 && (
+          <div className={styles.selectionBar} style={{ position: "sticky", top: 178, zIndex: 7 }}>
+            <span className={styles.selectionCount}>{selectedQ.size} pergunta{selectedQ.size === 1 ? "" : "s"} selecionada{selectedQ.size === 1 ? "" : "s"}</span>
+            <button type="button" className={styles.btn} onClick={duplicateSelectedQ} title="Duplicar as perguntas marcadas (cada uma logo abaixo dela).">⧉ Duplicar selecionadas</button>
+            <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={deleteSelectedQ} title="Excluir as perguntas marcadas.">🗑 Excluir selecionadas</button>
+            <button type="button" className={styles.btn} onClick={clearSelQ} style={{ marginLeft: "auto" }}>Limpar seleção</button>
+          </div>
+        )}
+
         <div className={styles.editorWorkspace}>
           {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
           <aside className={styles.editorRail}>
@@ -596,7 +644,12 @@ export default function BriefingEditor({
             </div>
           )}
 
-          {briefing.sections.map((s, i) => (
+          {briefing.sections.map((s, i) => {
+            const secIds = s.questions.map((q) => q.id);
+            const selCount = secIds.filter((id) => selectedQ.has(id)).length;
+            const sectionSelect: "none" | "some" | "all" =
+              selCount === 0 ? "none" : selCount === secIds.length ? "all" : "some";
+            return (
             <BriefingSectionEditor
               key={s.id || i}
               section={s}
@@ -604,6 +657,10 @@ export default function BriefingEditor({
               collapsed={collapsed.has(s.id)}
               onToggleCollapse={() => toggleCollapse(s.id)}
               continuationInfo={contInfo[i]}
+              selectedIds={selectedQ}
+              sectionSelect={sectionSelect}
+              onToggleSectionSelect={() => toggleSectionSelect(i)}
+              onToggleQuestionSelect={(qi) => { const id = s.questions[qi]?.id; if (id) toggleQ(id); }}
               hasClipboard={hasClip}
               onCopyQuestion={(qi) => copyQuestion(i, qi)}
               onPasteQuestion={(at) => pasteQuestion(i, at)}
@@ -620,7 +677,8 @@ export default function BriefingEditor({
               isFirst={i === 0}
               isLast={i === briefing.sections.length - 1}
             />
-          ))}
+            );
+          })}
 
           {pickerFor !== null && (
             <QuestionLibraryPicker

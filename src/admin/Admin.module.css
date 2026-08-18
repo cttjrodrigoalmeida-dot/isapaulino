@@ -1215,6 +1215,39 @@
   text-transform: uppercase;
   color: var(--color-accent);
 }
+
+/* ── Seleção em massa (perguntas do briefing / cláusulas do contrato) ──
+   Item marcado ganha um tom de rosa sutil (o rosa da marca, #f0506e). */
+.blockCardSelected {
+  border-color: rgba(240, 80, 110, 0.55);
+  background: color-mix(in srgb, #f0506e 8%, var(--color-surface-2));
+  box-shadow: inset 3px 0 0 0 #f0506e;
+}
+.selectCheckbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #f0506e;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.selectionBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 13px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(240, 80, 110, 0.45);
+  border-radius: 10px 0 10px 0;
+  background: color-mix(in srgb, #f0506e 7%, var(--color-surface));
+}
+.selectionCount {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: #f0506e;
+}
 .lineList {
   display: flex;
   flex-direction: column;
