@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { Proposal } from "../components/proposal/types";
 import { SAMPLE_PROPOSAL } from "../components/proposal/sampleProposal";
 import ProposalView from "../components/proposal/ProposalView";
@@ -20,6 +20,7 @@ import PaymentEditor from "./PaymentEditor";
 import ProcessEditor from "./ProcessEditor";
 import SectionsEditor from "./SectionsEditor";
 import BackToTop from "./BackToTop";
+import { useAutosavePref, AutosaveToggle } from "./autosave";
 import styles from "./Admin.module.css";
 
 type Status = "draft" | "published";
@@ -87,6 +88,15 @@ export default function ProposalEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // ── Salvamento automático (salva as edições sem sair da página) ──
+  const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [autosaveOn, setAutosaveOn] = useAutosavePref();
+  const hydratedRef = useRef(false); // evita marcar "dirty" no carregamento
+  const savingRef = useRef(false);   // evita autosave sobreposto
+  const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
   // Clientes cadastrados — para "puxar" o cliente no seletor (evita erro de nome no Ranking/Dashboard).
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
@@ -150,7 +160,7 @@ export default function ProposalEditor({
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
       } finally {
-        if (alive) setLoading(false);
+        if (alive) { setLoading(false); requestAnimationFrame(() => { hydratedRef.current = true; }); }
       }
     })();
     return () => {
@@ -204,6 +214,15 @@ export default function ProposalEditor({
     }
   };
 
+  // Monta a proposta "limpa" para persistir (usada no Salvar manual e no autosave).
+  const buildClean = (p: Proposal): Proposal => ({
+    ...p,
+    // Mantém o contador regressivo coerente com a validade/data informadas.
+    validUntil: computeValidUntil(p.validity, p.date) ?? p.validUntil,
+    serviceTags: (p.serviceTags ?? []).map((s) => (s ?? "").trim()).filter(Boolean),
+    ambientes: (p.ambientes ?? []).map((s) => (s ?? "").trim()).filter(Boolean),
+  });
+
   const save = async (publish?: boolean) => {
     if (!proposal) return;
     setError(null);
@@ -213,13 +232,8 @@ export default function ProposalEditor({
       setError("Informe o número da proposta.");
       return;
     }
-    const clean: Proposal = {
-      ...proposal,
-      // Mantém o contador regressivo coerente com a validade/data informadas.
-      validUntil: computeValidUntil(proposal.validity, proposal.date) ?? proposal.validUntil,
-      serviceTags: (proposal.serviceTags ?? []).map((s) => s.trim()).filter(Boolean),
-      ambientes: (proposal.ambientes ?? []).map((s) => s.trim()).filter(Boolean),
-    };
+    const clean = buildClean(proposal);
+    savingRef.current = true;
     setSaving(true);
     try {
       if (isNew) await api.createProposal(clean, finalStatus, accessPassword);
@@ -228,9 +242,37 @@ export default function ProposalEditor({
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
+
+  // Marca alterações pendentes (após o carregamento inicial).
+  useEffect(() => {
+    if (hydratedRef.current) setDirty(true);
+  }, [proposal, status, accessPassword, comboEnabled, comboPercent, pixDiscount, maxInstallments]);
+
+  // Autosave silencioso (só proposta JÁ criada): debounce ~2,5s de ociosidade.
+  const latestRef = useRef({ proposal, status, accessPassword });
+  latestRef.current = { proposal, status, accessPassword };
+  useEffect(() => {
+    if (!dirty || isNew || !autosaveOn) return;
+    const cur = latestRef.current;
+    if (!cur.proposal?.number?.trim()) return;
+    const t = window.setTimeout(async () => {
+      if (savingRef.current) return;
+      const c = latestRef.current;
+      if (!c.proposal) return;
+      savingRef.current = true; setSaving(true);
+      try {
+        await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword);
+        setLastSavedAt(Date.now()); setDirty(false);
+      } catch { /* mantém dirty; tenta na próxima */ }
+      finally { savingRef.current = false; setSaving(false); }
+    }, 2500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword]);
 
   if (loading || !proposal) {
     return <div className={styles.loading}>Carregando proposta…</div>;
@@ -286,6 +328,18 @@ export default function ProposalEditor({
         <button className={`${styles.tab} ${tab === "json" ? styles.tabActive : ""}`} onClick={goJsonTab}>
           JSON avançado
         </button>
+      </div>
+
+      {/* Barra de estado do salvamento + interruptor do automático */}
+      <div className={styles.editorToolbar}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          <span className={styles.saveBadge}>
+            <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
+            {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : isNew ? "Ainda não salva" : "Tudo salvo"}
+          </span>
+          <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+        </div>
+        {isNew && <span className={styles.pageHint} style={{ margin: 0 }}>O automático começa após o 1º “Salvar”.</span>}
       </div>
 
       {tab === "campos" ? (

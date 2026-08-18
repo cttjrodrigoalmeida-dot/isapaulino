@@ -7,6 +7,7 @@ import QuestionLibraryPicker from "./QuestionLibraryPicker";
 import BackToTop from "./BackToTop";
 import BriefingView from "../components/briefing/BriefingView";
 import RelatedDocs from "./RelatedDocs";
+import { useAutosavePref, AutosaveToggle } from "./autosave";
 import styles from "./Admin.module.css";
 
 // Pergunta reutilizável (clipboard/biblioteca): sem id/pin (posição é do ambiente).
@@ -47,6 +48,7 @@ export default function BriefingEditor({
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [activeSectionId, setActiveSectionId] = useState("");
   const [apoioOpen, setApoioOpen] = useState(true);
+  const [autosaveOn, setAutosaveOn] = useAutosavePref();
   const hydratedRef = useRef(false);   // evita marcar "dirty" no carregamento
   const savingRef = useRef(false);     // evita autosave sobreposto
   const toggleDone = (id: string) =>
@@ -429,7 +431,7 @@ export default function BriefingEditor({
   const latestRef = useRef({ briefing, status, notes, doneSet });
   latestRef.current = { briefing, status, notes, doneSet };
   useEffect(() => {
-    if (!dirty || isNew) return;
+    if (!dirty || isNew || !autosaveOn) return;
     const t = window.setTimeout(async () => {
       if (savingRef.current) return;
       const cur = latestRef.current;
@@ -442,7 +444,7 @@ export default function BriefingEditor({
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
-  }, [dirty, briefing, status, notes, doneSet, isNew, number]);
+  }, [dirty, briefing, status, notes, doneSet, isNew, number, autosaveOn]);
 
   // Scroll-spy: acende a seção visível durante a rolagem.
   useEffect(() => {
@@ -542,10 +544,13 @@ export default function BriefingEditor({
        <>
         {/* Barra de ações fixa — Salvar/Pré-visualizar sempre à mão + selo */}
         <div className={styles.editorToolbar}>
-          <span className={styles.saveBadge}>
-            <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
-            {saving ? "Salvando…" : dirty ? "Alterações não salvas" : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : "Tudo salvo"}
-          </span>
+          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <span className={styles.saveBadge}>
+              <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
+              {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : "Tudo salvo"}
+            </span>
+            <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+          </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 150 }}>
               <option value="draft">Rascunho (oculto)</option>

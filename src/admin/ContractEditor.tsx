@@ -22,6 +22,7 @@ import {
 } from "./ContractFieldEditors";
 import styles from "./Admin.module.css";
 import BackToTop from "./BackToTop";
+import { useAutosavePref, AutosaveToggle } from "./autosave";
 
 type Tab = "campos" | "json";
 
@@ -145,6 +146,7 @@ export default function ContractEditor({
   const [apoioOpen, setApoioOpen] = useState(true);
   // Recolher/expandir cada card (ids em `sectionsMeta`).
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [autosaveOn, setAutosaveOn] = useAutosavePref();
   const hydratedRef = useRef(false); // evita marcar "dirty" no carregamento
   const savingRef = useRef(false);   // evita autosave sobreposto
   const toggleDone = (sid: string) =>
@@ -571,20 +573,34 @@ export default function ContractEditor({
 
   // Autosave silencioso (só contrato JÁ salvo e válido): debounce ~2,5s de ociosidade.
   // Não envia `status` (mantém o salvo) — trocar status é sempre ação explícita.
+  // Usa uma ref sempre atual (evita closure velha do `doc` dentro do setTimeout).
+  const latestRef = useRef({ doc, status, clientId, title, legacyContent, notes, doneSet });
+  latestRef.current = { doc, status, clientId, title, legacyContent, notes, doneSet };
   useEffect(() => {
-    if (!dirty || !contractId || !clientId || !(title.trim() || doc?.documentTitle)) return;
+    if (!dirty || !autosaveOn || !contractId) return;
+    const cur = latestRef.current;
+    if (!cur.clientId || !(cur.title.trim() || cur.doc?.documentTitle)) return;
     const t = window.setTimeout(async () => {
       if (savingRef.current) return;
+      const c = latestRef.current;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateContract(contractId, { ...buildInput(), status: undefined }, { editorNotes: notes, editorDone: [...doneSet] });
+        await api.updateContract(contractId, {
+          client_id: c.clientId,
+          title: c.title.trim() || c.doc?.documentTitle || "Contrato",
+          content: c.legacyContent,
+          data: c.doc ? JSON.stringify(c.doc) : null,
+          value: contractValue(c.doc),
+          deadline: null,
+          autentique_url: c.doc?.autentiqueUrl?.trim() || null,
+          // status omitido de propósito → o servidor mantém o status salvo
+        }, { editorNotes: c.notes, editorDone: [...c.doneSet] });
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, contractId, clientId, title, doc, legacyContent, notes, doneSet]);
+  }, [dirty, autosaveOn, contractId, doc, clientId, title, legacyContent, notes, doneSet]);
 
   // Scroll-spy: acende a seção visível durante a rolagem.
   useEffect(() => {
@@ -763,10 +779,13 @@ export default function ContractEditor({
        <>
         {/* Barra fixa — estado do salvamento + recolher/expandir tudo */}
         <div className={styles.editorToolbar}>
-          <span className={styles.saveBadge}>
-            <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
-            {saving ? "Salvando…" : dirty ? "Alterações não salvas" : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : contractId ? "Tudo salvo" : "Ainda não salvo"}
-          </span>
+          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <span className={styles.saveBadge}>
+              <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
+              {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : contractId ? "Tudo salvo" : "Ainda não salvo"}
+            </span>
+            <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+          </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
             <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
