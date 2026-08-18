@@ -51,6 +51,7 @@ export default function BriefingEditor({
   const [autosaveOn, setAutosaveOn] = useAutosavePref();
   const hydratedRef = useRef(false);   // evita marcar "dirty" no carregamento
   const savingRef = useRef(false);     // evita autosave sobreposto
+  const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
   const toggleDone = (id: string) =>
     setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -498,6 +499,28 @@ export default function BriefingEditor({
     activeRunId = ai >= 0 ? briefing.sections[ai]?.id ?? "" : "";
   }
   const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  // A prévia acompanha automaticamente a seção que está sendo editada: ao rolar
+  // o editor (scroll-spy define activeRunId), a prévia desce para o mesmo
+  // ambiente. Rolagem manual do container (não scrollIntoView) para não mexer na
+  // página; getBoundingClientRect funciona mesmo com o `zoom` da prévia.
+  useEffect(() => {
+    if (!showPreview) return;
+    const id = activeRunId || activeSectionId;
+    if (!id) return;
+    const cont = previewScrollRef.current;
+    if (!cont) return;
+    const t = window.setTimeout(() => {
+      const sel = (typeof CSS !== "undefined" && CSS.escape) ? CSS.escape(id) : id;
+      const target = cont.querySelector<HTMLElement>(`[data-spy="${sel}"]`);
+      if (!target) return;
+      const delta = target.getBoundingClientRect().top - cont.getBoundingClientRect().top - 12;
+      if (Math.abs(delta) < 2) return;
+      cont.scrollTo({ top: cont.scrollTop + delta, behavior: "smooth" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [activeRunId, activeSectionId, showPreview]);
+
   // A prévia acompanha o tema do painel (evita "escuro no escuro" no modo claro).
   const adminTheme: "light" | "dark" =
     (typeof window !== "undefined" && window.localStorage.getItem("ips_admin_theme") === "dark") ? "dark" : "light";
@@ -803,7 +826,7 @@ export default function BriefingEditor({
             <strong style={{ fontSize: 13 }}>Prévia ao vivo · {briefing.title || "Briefing"}</strong>
             <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
           </div>
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div ref={previewScrollRef} style={{ flex: 1, overflow: "auto" }}>
             {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}
             <div style={{ zoom: 0.64 }}>
               <BriefingView briefing={briefing} preview forceTheme={adminTheme} />
