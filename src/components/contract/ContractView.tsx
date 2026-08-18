@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import CustomCursor from "../CustomCursor";
 import { DEFAULT_VALIDADE_CARDS } from "./contractDefaults";
+import { clauseRole, renumberClauses, paymentNumber } from "./clauseNumbering";
 import { exportElementToPdf, waitForRenderReady } from "../../lib/pdfExport";
 import styles from "./ContractView.module.css";
 
@@ -588,11 +589,11 @@ function SixTabelaCustos({ doc }: { doc: ContractDoc }) {
   );
 }
 
-function Section06({ doc }: { doc: ContractDoc }) {
+function Section06({ doc, number = "06" }: { doc: ContractDoc; number?: string }) {
   const isCustos = doc.sixVariant === "tabela-custos";
   return (
     <SectionCard tab={isCustos ? "TABELA DE CUSTOS DOS SERVIÇOS" : "VALOR E PAGAMENTO"}>
-      <ClauseHead number="06" title={isCustos ? "TABELA DE CUSTOS DOS SERVIÇOS" : "DO VALOR E DA FORMA DE PAGAMENTO"} />
+      <ClauseHead number={number} title={isCustos ? "TABELA DE CUSTOS DOS SERVIÇOS" : "DO VALOR E DA FORMA DE PAGAMENTO"} />
       {isCustos ? <SixTabelaCustos doc={doc} /> : <SixPagamento doc={doc} />}
     </SectionCard>
   );
@@ -916,15 +917,16 @@ function ForoAssinaturaCard({
   );
 }
 
-// ── Cláusula do TERMO ADITIVO (texto simples; a cláusula 03 embute o pagamento). ──
+// ── Cláusula do TERMO ADITIVO (texto simples; a cláusula de pagamento embute o pagamento). ──
 function AditivoClauseCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc }) {
-  // Cláusula de escopo (02): reusa o EscopoCard do principal (ambientes/serviços).
-  if (clause.number === "02") return <EscopoCard clause={clause} doc={doc} />;
+  const role = clauseRole(clause, "aditivo");
+  // Cláusula de escopo: reusa o EscopoCard do principal (ambientes/serviços).
+  if (role === "escopo") return <EscopoCard clause={clause} doc={doc} />;
   return (
     <SectionCard tab={clause.eyebrow ?? clause.title}>
       <ClauseHead number={clause.number} title={clause.title} />
       {clause.blocks.map((b, i) => <Block key={i} block={b} />)}
-      {clause.number === "03" && doc.sixPagamento && <SixPagamento doc={doc} />}
+      {role === "aditivo-pagamento" && doc.sixPagamento && <SixPagamento doc={doc} />}
     </SectionCard>
   );
 }
@@ -941,16 +943,16 @@ function ClauseCard({
   onPrint: () => void;
   waLink: string;
 }) {
-  switch (clause.number) {
-    case "02": return <EscopoCard clause={clause} doc={doc} />;
-    case "05": return <PrazoCard clause={clause} doc={doc} />;
-    case "07": return <PagamentoCard clause={clause} doc={doc} />;
-    case "11": return <ArquivosCard clause={clause} doc={doc} />;
-    case "17": return <IncapacidadeCard clause={clause} />;
-    case "18": return <ValidadeCard clause={clause} doc={doc} />;
-    case "19": return <ForoAssinaturaCard clause={clause} doc={doc} onPrint={onPrint} waLink={waLink} />;
+  switch (clauseRole(clause, doc.kind)) {
+    case "escopo": return <EscopoCard clause={clause} doc={doc} />;
+    case "prazo": return <PrazoCard clause={clause} doc={doc} />;
+    case "pagamento": return <PagamentoCard clause={clause} doc={doc} />;
+    case "arquivos": return <ArquivosCard clause={clause} doc={doc} />;
+    case "incapacidade": return <IncapacidadeCard clause={clause} />;
+    case "validade": return <ValidadeCard clause={clause} doc={doc} />;
+    case "foro": return <ForoAssinaturaCard clause={clause} doc={doc} onPrint={onPrint} waLink={waLink} />;
     default: {
-      const pink = clause.number === "12" || clause.number === "15";
+      const pink = clauseRole(clause, doc.kind) === "alerta";
       return (
         <SectionCard
           tab={clause.eyebrow ?? clause.title}
@@ -1009,6 +1011,9 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
 
   const waLink = `https://wa.me/${doc.contact.whatsapp}`;
   const signed = doc.signature.status === "assinado";
+  // Numeração automática: recalcula os números pela posição (e carimba o role).
+  const clauses = renumberClauses(doc.clauses, doc.kind);
+  const payNum = paymentNumber(doc.clauses, doc.kind);
 
   return (
     <PrintContext.Provider value={printing || preview}>
@@ -1073,10 +1078,10 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
           </Reveal>
 
           {doc.kind === "aditivo" ? (
-            /* ── TERMO ADITIVO: 6 cláusulas (pagamento na 03) + assinatura ── */
+            /* ── TERMO ADITIVO: cláusulas (pagamento embutido) + assinatura ── */
             <>
-              {doc.clauses.map((clause) => (
-                <Reveal className={styles.section} key={clause.number}>
+              {clauses.map((clause, i) => (
+                <Reveal className={styles.section} key={i}>
                   <AditivoClauseCard clause={clause} doc={doc} />
                 </Reveal>
               ))}
@@ -1088,15 +1093,15 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
               {!printing && <FooterActions onPrint={exportPdf} waLink={waLink} />}
             </>
           ) : (
-            /* ── Contrato principal (+ Seção 06 após a 05; assinatura na 19) ── */
-            doc.clauses.map((clause) => (
-              <Fragment key={clause.number}>
+            /* ── Contrato principal (+ Seção 06 após a "prazo"; assinatura na foro) ── */
+            clauses.map((clause, i) => (
+              <Fragment key={i}>
                 <Reveal className={styles.section}>
                   <ClauseCard clause={clause} doc={doc} onPrint={exportPdf} waLink={waLink} />
                 </Reveal>
-                {clause.number === "05" && (
+                {clauseRole(clause, doc.kind) === "prazo" && (
                   <Reveal className={styles.section}>
-                    <Section06 doc={doc} />
+                    <Section06 doc={doc} number={payNum} />
                   </Reveal>
                 )}
               </Fragment>

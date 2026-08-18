@@ -35,15 +35,41 @@ export type ClauseBlock =
   | { type: "p"; text: string }
   | { type: "list"; items: string[] };
 
-/** Cláusula jurídica (01–18). */
+/**
+ * Papel da cláusula — comanda o LAYOUT especial e a posição da Seção 06
+ * (pagamento), de forma INDEPENDENTE do número. O número passou a ser
+ * calculado automaticamente pela posição, então não pode mais ser a chave que
+ * escolhe o layout (antes era `switch (clause.number)`). Cláusulas comuns não
+ * têm role. Para contratos legados (sem role), o role é inferido do número.
+ */
+export type ClauseRole =
+  | "escopo" // card de ambientes/serviços (principal 02)
+  | "prazo" // card de prazo — a Seção 06 (pagamento) entra logo depois (principal 05)
+  | "pagamento" // card de pagamento/PIX (principal 07)
+  | "arquivos" // card de disponibilidade de arquivos (principal 11)
+  | "incapacidade" // card rosa de incapacidade (principal 17)
+  | "validade" // card verde de validade/vigência (principal 18)
+  | "foro" // card de foro + assinatura (principal 19)
+  | "alerta" // aba/borda rosa (principal 12, 15)
+  | "aditivo-pagamento"; // cláusula do aditivo que embute o pagamento (aditivo 03)
+
+/**
+ * Cláusula jurídica. O `number` é DERIVADO da posição (ver `numberClauses`) —
+ * fica aqui só para compat/leitura; nunca deve ser editado à mão.
+ * Subcláusulas ficam em `children` (numeradas 7.1, 7.2… automaticamente).
+ */
 export interface ContractClause {
-  /** "01".."18" */
+  /** Número DERIVADO da posição (ex.: "07", "7.1"). Não editar à mão. */
   number: string;
+  /** Papel que comanda o layout especial (independente do número). */
+  role?: ClauseRole;
   /** Rótulo curto exibido acima do título, ex.: "OBJETO". */
   eyebrow?: string;
   /** Título da cláusula, ex.: "DO OBJETO". */
   title: string;
   blocks: ClauseBlock[];
+  /** Subcláusulas (7.1, 7.2…) — numeração automática pela posição. */
+  children?: ContractClause[];
 }
 
 /** Card de informação (rótulo + valor), usado nos blocos de prazo/arquivos. */
