@@ -324,19 +324,31 @@ export function ClausesEditor({
     clearSel();
     commit(next);
   };
-  const copyClause = (i: number) => {
-    try { localStorage.setItem(CLAUSE_CLIPBOARD_KEY, JSON.stringify(norm[i])); setHasClip(true); } catch { /* ignore */ }
-  };
-  const pasteAfter = (i: number) => {
+  // Clipboard guarda SEMPRE uma LISTA (1 ou várias) — copiar/colar de seleção.
+  const readClauseClip = (): ContractClause[] => {
     try {
       const raw = localStorage.getItem(CLAUSE_CLIPBOARD_KEY);
-      if (!raw) return;
-      const c = JSON.parse(raw) as ContractClause;
-      const next = norm.slice();
-      next.splice(i + 1, 0, { ...c });
-      clearSel();
-      commit(next);
-    } catch { /* ignore */ }
+      if (!raw) return [];
+      const v = JSON.parse(raw);
+      return Array.isArray(v) ? (v as ContractClause[]) : [v as ContractClause];
+    } catch { return []; }
+  };
+  const writeClauseClip = (items: ContractClause[]) => {
+    try { localStorage.setItem(CLAUSE_CLIPBOARD_KEY, JSON.stringify(items)); setHasClip(items.length > 0); } catch { /* ignore */ }
+  };
+  const copyClause = (i: number) => writeClauseClip([norm[i]]);
+  // Copia TODAS as cláusulas marcadas (em ordem).
+  const copySelected = () => {
+    if (!selected.size) return;
+    writeClauseClip(norm.filter((_, i) => selected.has(i)));
+  };
+  const pasteAfter = (i: number) => {
+    const items = readClauseClip();
+    if (!items.length) return;
+    const next = norm.slice();
+    next.splice(i + 1, 0, ...items.map((c) => structuredClone(c)));
+    clearSel();
+    commit(next);
   };
   const addClause = () => { clearSel(); commit([...norm, { number: "", title: "Nova cláusula", blocks: [{ type: "p", text: "" }] }]); };
 
@@ -389,6 +401,7 @@ export function ClausesEditor({
       {selected.size > 0 && (
         <div className={styles.selectionBar}>
           <span className={styles.selectionCount}>{selected.size} selecionada{selected.size === 1 ? "" : "s"}</span>
+          <button type="button" className={styles.btn} onClick={copySelected} title="Copiar as cláusulas marcadas — depois use “⤵ Colar” em qualquer cláusula (inclusive em outro contrato).">⧉ Copiar selecionadas</button>
           <button type="button" className={styles.btn} onClick={duplicateSelected} title="Duplicar as cláusulas marcadas">⧉ Duplicar selecionadas</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={deleteSelected} title="Excluir as cláusulas marcadas">🗑 Excluir selecionadas</button>
           <button type="button" className={styles.btn} onClick={clearSel} style={{ marginLeft: "auto" }}>Limpar seleção</button>

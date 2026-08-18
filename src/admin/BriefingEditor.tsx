@@ -260,37 +260,53 @@ export default function BriefingEditor({
   };
 
   // ── Copiar/colar perguntas (clipboard em localStorage, funciona entre briefings) ──
-  const [hasClip, setHasClip] = useState<boolean>(() => {
-    try { return !!window.localStorage.getItem(CLIP_KEY); } catch { return false; }
-  });
+  // O clipboard guarda SEMPRE uma LISTA de perguntas (1 ou várias), então copiar/
+  // colar funciona tanto para uma pergunta quanto para uma seleção.
+  const readClip = (): BriefingQuestion[] => {
+    try {
+      const raw = window.localStorage.getItem(CLIP_KEY);
+      if (!raw) return [];
+      const v = JSON.parse(raw);
+      return Array.isArray(v) ? (v as BriefingQuestion[]) : [v as BriefingQuestion];
+    } catch { return []; }
+  };
+  const [hasClip, setHasClip] = useState<boolean>(() => readClip().length > 0);
+  const writeClip = (items: BriefingQuestion[]) => {
+    try { window.localStorage.setItem(CLIP_KEY, JSON.stringify(items)); setHasClip(items.length > 0); } catch { /* localStorage indisponível */ }
+  };
   const copyQuestion = (si: number, qi: number) => {
     const q = briefing?.sections[si]?.questions[qi];
     if (!q) return;
-    try {
-      window.localStorage.setItem(CLIP_KEY, JSON.stringify(stripQuestion(q)));
-      setHasClip(true);
-      setNotice("Pergunta copiada. Use “Colar pergunta” na seção desejada (inclusive em outro briefing).");
-    } catch { /* localStorage indisponível */ }
+    writeClip([stripQuestion(q)]);
+    setNotice("Pergunta copiada. Use “Colar pergunta” na seção desejada (inclusive em outro briefing).");
   };
-  // Cola a pergunta copiada na seção `si`, na posição `at` (ou no fim se ausente).
+  // Copia TODAS as perguntas marcadas (em ordem do documento).
+  const copySelectedQ = () => {
+    if (!selectedQ.size || !briefing) return;
+    const items: BriefingQuestion[] = [];
+    briefing.sections.forEach((s) => s.questions.forEach((q) => { if (selectedQ.has(q.id)) items.push(stripQuestion(q)); }));
+    if (!items.length) return;
+    writeClip(items);
+    setNotice(`${items.length} pergunta${items.length === 1 ? "" : "s"} copiada${items.length === 1 ? "" : "s"}. Use “Colar pergunta” na seção desejada (inclusive em outro briefing).`);
+  };
+  // Cola a(s) pergunta(s) copiada(s) na seção `si`, na posição `at` (ou no fim).
   const pasteQuestion = (si: number, at?: number) => {
-    let q: BriefingQuestion | null = null;
-    try { const raw = window.localStorage.getItem(CLIP_KEY); if (raw) q = JSON.parse(raw) as BriefingQuestion; } catch { /* ignore */ }
-    if (!q) return;
-    const item = q;
-    const newId = `q-${Date.now()}`;
+    const items = readClip();
+    if (!items.length) return;
+    const stamp = Date.now();
+    const withIds = items.map((q, k) => ({ ...q, id: `q-${stamp}-${k}` }));
     setBriefing((prev) => {
       if (!prev) return prev;
       const sections = prev.sections.map((s, idx) => {
         if (idx !== si) return s;
         const qs = s.questions.slice();
         const pos = at == null ? qs.length : Math.max(0, Math.min(at, qs.length));
-        qs.splice(pos, 0, { ...item, id: newId });
+        qs.splice(pos, 0, ...withIds);
         return { ...s, questions: qs };
       });
       return { ...prev, sections };
     });
-    flashQuestion(newId); // destaca a cópia recém-colada
+    flashQuestion(withIds[0].id); // destaca a primeira cópia recém-colada
   };
 
   // ── Biblioteca de perguntas (D1) ──
@@ -547,6 +563,7 @@ export default function BriefingEditor({
         {selectedQ.size > 0 && (
           <div className={styles.selectionBar} style={{ position: "sticky", top: 178, zIndex: 7 }}>
             <span className={styles.selectionCount}>{selectedQ.size} pergunta{selectedQ.size === 1 ? "" : "s"} selecionada{selectedQ.size === 1 ? "" : "s"}</span>
+            <button type="button" className={styles.btn} onClick={copySelectedQ} title="Copiar as perguntas marcadas — depois use “Colar pergunta” na seção desejada (inclusive em outro briefing).">⧉ Copiar selecionadas</button>
             <button type="button" className={styles.btn} onClick={duplicateSelectedQ} title="Duplicar as perguntas marcadas (cada uma logo abaixo dela).">⧉ Duplicar selecionadas</button>
             <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={deleteSelectedQ} title="Excluir as perguntas marcadas.">🗑 Excluir selecionadas</button>
             <button type="button" className={styles.btn} onClick={clearSelQ} style={{ marginLeft: "auto" }}>Limpar seleção</button>
