@@ -230,6 +230,9 @@ export interface Contract extends ContractSummary {
   /** Data/hora da assinatura (preenchida pelo webhook da Autentique). */
   signedAt: string | null;
   createdAt: string;
+  /** Apoio pessoal do admin no editor (nunca exposto na página pública). */
+  editorNotes?: string;
+  editorDone?: string[];
 }
 
 /** Campos enviados ao criar/atualizar um contrato. */
@@ -653,10 +656,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify(contract),
     }),
-  updateContract: (id: string, contract: ContractInput) =>
+  updateContract: (
+    id: string,
+    contract: ContractInput,
+    aid?: { editorNotes?: string; editorDone?: string[] }
+  ) =>
     req<{ ok: true; id: string; status: ContractStatus }>(`/api/contracts/${encodeURIComponent(id)}`, {
       method: "PUT",
-      body: JSON.stringify(contract),
+      body: JSON.stringify({ ...contract, ...(aid ?? {}) }),
     }),
   deleteContract: (id: string) =>
     req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}`, { method: "DELETE" }),

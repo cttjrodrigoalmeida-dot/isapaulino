@@ -149,6 +149,9 @@ CREATE TABLE IF NOT EXISTS contracts (
   autentique_document_id TEXT,                  -- id do documento na Autentique (quando enviado)
   signed_at      TEXT,                          -- data/hora da assinatura (preenchida pelo webhook)
   deleted_at     TEXT,                          -- soft-delete (lixeira); NULL = ativo
+  -- Apoio PESSOAL do admin ao editar (não vai para o cliente / página pública):
+  editor_notes   TEXT,                          -- bloco de notas do editor
+  editor_done    TEXT,                          -- JSON array de ids de seção marcadas "revisadas"
   created_at     TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at     TEXT NOT NULL DEFAULT (datetime('now')),
   published_at   TEXT,
@@ -157,6 +160,8 @@ CREATE TABLE IF NOT EXISTS contracts (
 -- NOTA (migração de bancos já criados): rodar UMA vez em bancos existentes:
 --   ALTER TABLE contracts ADD COLUMN autentique_document_id TEXT;
 --   ALTER TABLE contracts ADD COLUMN signed_at TEXT;
+--   ALTER TABLE contracts ADD COLUMN editor_notes TEXT;
+--   ALTER TABLE contracts ADD COLUMN editor_done TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts(status);
 CREATE INDEX IF NOT EXISTS idx_contracts_updated ON contracts(updated_at DESC);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ContractSummary, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus, SixTabelaCustos } from "../components/contract/types";
 import { blankContractDoc, blankAditivoDoc } from "../components/contract/newContractDoc";
@@ -39,6 +39,42 @@ const SIGN_STATUS: { value: SignatureStatus; label: string }[] = [
 function todayBR(): string {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+// Card de seção recolhível (mesmo padrão do editor de briefing): cabeçalho com
+// seta ▸/▾ + título (recolhe ao clicar) e, opcionalmente, ações à direita.
+function Section({
+  id,
+  label,
+  collapsed,
+  onToggle,
+  right,
+  children,
+}: {
+  id: string;
+  label: ReactNode;
+  collapsed: boolean;
+  onToggle: () => void;
+  right?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className={styles.card} id={`sec-card-${id}`}>
+      <div className={styles.blockHead} style={{ marginBottom: collapsed ? 0 : 14 }}>
+        <button
+          type="button"
+          onClick={onToggle}
+          title={collapsed ? "Expandir" : "Recolher"}
+          style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", flex: 1, minWidth: 0 }}
+        >
+          <span style={{ fontSize: 13, color: "var(--color-text-muted)", width: 12, flexShrink: 0 }}>{collapsed ? "▸" : "▾"}</span>
+          <span className={styles.cardTitle} style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        </button>
+        {right && <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>{right}</div>}
+      </div>
+      {!collapsed && children}
+    </div>
+  );
 }
 
 // Ícone da "caneta" usado nos botões de enviar para assinatura (topo e barra inferior).
@@ -100,6 +136,26 @@ export default function ContractEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // ── Apoio pessoal (D1): notas + checklist "revisado" + salvamento ──
+  const [notes, setNotes] = useState("");
+  const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
+  const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState("");
+  const [apoioOpen, setApoioOpen] = useState(true);
+  // Recolher/expandir cada card (ids em `sectionsMeta`).
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const hydratedRef = useRef(false); // evita marcar "dirty" no carregamento
+  const savingRef = useRef(false);   // evita autosave sobreposto
+  const toggleDone = (sid: string) =>
+    setDoneSet((prev) => { const n = new Set(prev); if (n.has(sid)) n.delete(sid); else n.add(sid); return n; });
+  const toggleCollapse = (sid: string) =>
+    setCollapsed((prev) => { const n = new Set(prev); if (n.has(sid)) n.delete(sid); else n.add(sid); return n; });
+  const jumpTo = (sid: string) => {
+    setCollapsed((prev) => { const n = new Set(prev); n.delete(sid); return n; });
+    requestAnimationFrame(() => document.getElementById(`sec-card-${sid}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -138,6 +194,8 @@ export default function ContractEditor({
             parsed.autentiqueUrl = c.autentiqueUrl ?? "";
           }
           setDoc(parsed);
+          setNotes(c.editorNotes ?? "");
+          setDoneSet(new Set(c.editorDone ?? []));
         } else {
           const fresh = kind === "aditivo" ? blankAditivoDoc() : blankContractDoc();
           setDoc(fresh);
@@ -147,7 +205,7 @@ export default function ContractEditor({
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
       } finally {
-        if (alive) setLoading(false);
+        if (alive) { setLoading(false); requestAnimationFrame(() => { hydratedRef.current = true; }); }
       }
     })();
     return () => {
@@ -381,9 +439,10 @@ export default function ContractEditor({
     return null;
   };
 
+  const aidPayload = () => ({ editorNotes: notes, editorDone: [...doneSet] });
   const persist = async (input: ContractInput): Promise<string> => {
     if (contractId) {
-      await api.updateContract(contractId, input);
+      await api.updateContract(contractId, input, aidPayload());
       return contractId;
     }
     const { id: newId } = await api.createContract(input);
@@ -396,6 +455,7 @@ export default function ContractEditor({
     if (v) return setError(v);
     setError(null);
     setNotice(null);
+    savingRef.current = true;
     setSaving(true);
     try {
       await persist(buildInput());
@@ -403,6 +463,7 @@ export default function ContractEditor({
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -418,6 +479,8 @@ export default function ContractEditor({
       const { slug: newSlug } = await api.publishContract(persistedId);
       setSlug(newSlug);
       setStatus("published");
+      setLastSavedAt(Date.now());
+      setDirty(false);
       setNotice("Contrato publicado! Copie o link abaixo para enviar ao cliente.");
       scrollToTop();
     } catch (err) {
@@ -477,6 +540,68 @@ export default function ContractEditor({
     }
   };
 
+  // Seções visíveis do editor (para navegação, checklist e recolher/expandir).
+  const isAditivoDoc = doc?.kind === "aditivo";
+  const sectionsMeta = useMemo(() => {
+    const s: { id: string; label: string }[] = [
+      { id: "vinculo", label: "Vínculo & publicação" },
+      { id: "identificacao", label: "Identificação" },
+      { id: "contratante", label: "Contratante" },
+      { id: "contratada", label: "Contratada" },
+      { id: "escopo", label: "Objeto & escopo" },
+    ];
+    if (!isAditivoDoc) s.push({ id: "prazo", label: "Prazo de entrega" }, { id: "arquivos", label: "Arquivos" }, { id: "validade", label: "Validade / vigência" });
+    s.push({ id: "pagamento", label: isAditivoDoc ? "Valor e pagamento" : "Pagamento / tabela" });
+    if (!isAditivoDoc) s.push({ id: "pix", label: "PIX" });
+    s.push(
+      { id: "assinatura", label: "Assinatura / status" },
+      { id: "autentique", label: "Assinatura digital" },
+      { id: "clausulas", label: "Cláusulas jurídicas" },
+      { id: "contato", label: "Contato" },
+      { id: "exibicao", label: "Exibição" },
+    );
+    return s;
+  }, [isAditivoDoc]);
+
+  // Marca alterações pendentes (após o carregamento inicial). Status NÃO entra —
+  // mudança de status só é aplicada no Salvar/Republicar (evita cascata silenciosa).
+  useEffect(() => {
+    if (hydratedRef.current) setDirty(true);
+  }, [doc, notes, doneSet, title, clientId, legacyContent]);
+
+  // Autosave silencioso (só contrato JÁ salvo e válido): debounce ~2,5s de ociosidade.
+  // Não envia `status` (mantém o salvo) — trocar status é sempre ação explícita.
+  useEffect(() => {
+    if (!dirty || !contractId || !clientId || !(title.trim() || doc?.documentTitle)) return;
+    const t = window.setTimeout(async () => {
+      if (savingRef.current) return;
+      savingRef.current = true; setSaving(true);
+      try {
+        await api.updateContract(contractId, { ...buildInput(), status: undefined }, { editorNotes: notes, editorDone: [...doneSet] });
+        setLastSavedAt(Date.now()); setDirty(false);
+      } catch { /* mantém dirty; tenta na próxima */ }
+      finally { savingRef.current = false; setSaving(false); }
+    }, 2500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, contractId, clientId, title, doc, legacyContent, notes, doneSet]);
+
+  // Scroll-spy: acende a seção visível durante a rolagem.
+  useEffect(() => {
+    if (loading) return;
+    const els = Array.from(document.querySelectorAll<HTMLElement>('[id^="sec-card-"]'));
+    if (!els.length) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const vis = entries.filter((e) => e.isIntersecting).sort((a, c) => c.intersectionRatio - a.intersectionRatio)[0];
+        if (vis) setActiveSectionId(vis.target.id.replace("sec-card-", ""));
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 1] }
+    );
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [loading, tab, showPreview, collapsed, doc?.kind, doc?.sixVariant]);
+
   if (loading || !doc) return <div className={styles.loading}>Carregando contrato…</div>;
 
   const isAditivo = doc.kind === "aditivo";
@@ -512,6 +637,13 @@ export default function ContractEditor({
   };
   const publicUrl = slug ? `${window.location.origin}/contrato/${slug}` : null;
 
+  // Derivados do apoio (navegação/progresso/recolher).
+  const collapseAll = () => setCollapsed(new Set(sectionsMeta.map((s) => s.id)));
+  const expandAll = () => setCollapsed(new Set());
+  const doneCount = sectionsMeta.filter((s) => doneSet.has(s.id)).length;
+  const pct = sectionsMeta.length ? Math.round((doneCount / sectionsMeta.length) * 100) : 0;
+  const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
   return (
     <div
       className={styles.container}
@@ -525,7 +657,7 @@ export default function ContractEditor({
               marginRight: `calc(${PREVIEW_W} + 20px)`,
               transition: "margin-right .22s ease",
             }
-          : { transition: "margin-right .22s ease" }
+          : { maxWidth: "none", transition: "margin-right .22s ease" }
       }
     >
       <div ref={topRef} />
@@ -628,10 +760,51 @@ export default function ContractEditor({
           </div>
         </div>
       ) : (
-        <div className={styles.editorGrid}>
+       <>
+        {/* Barra fixa — estado do salvamento + recolher/expandir tudo */}
+        <div className={styles.editorToolbar}>
+          <span className={styles.saveBadge}>
+            <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
+            {saving ? "Salvando…" : dirty ? "Alterações não salvas" : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : contractId ? "Tudo salvo" : "Ainda não salvo"}
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
+            <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
+          </div>
+        </div>
+
+        <div className={styles.editorWorkspace} style={showPreview ? { display: "block" } : undefined}>
+          {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
+          {!showPreview && (
+          <aside className={styles.editorRail}>
+            <div className={styles.railTitle}>Seções</div>
+            {sectionsMeta.map((s) => {
+              const done = doneSet.has(s.id);
+              const active = s.id === activeSectionId;
+              return (
+                <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
+                  <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                </button>
+              );
+            })}
+            <div style={{ marginTop: 14 }}>
+              <div className={styles.railTitle} style={{ marginBottom: 6 }}>Progresso · {pct}%</div>
+              <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Revisado</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Onde você está</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={styles.statusDot} />Pendente</span>
+              </div>
+            </div>
+            <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
+          </aside>
+          )}
+
+          {/* MAIN — cards do editor */}
+          <div className={styles.editorGrid}>
           {/* ── Vínculo & publicação ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Vínculo & publicação</div>
+          <Section id="vinculo" label="Vínculo & publicação" collapsed={collapsed.has("vinculo")} onToggle={() => toggleCollapse("vinculo")}>
             <div className={styles.row2}>
               {isAditivo ? (
                 <div className={styles.field}>
@@ -682,11 +855,10 @@ export default function ContractEditor({
                 <>Ao selecionar o cliente, os dados da <strong>CONTRATANTE</strong>, Cliente, Projeto, Data e os nº do contrato/proposta são preenchidos automaticamente (tudo editável).</>
               )}
             </div>
-          </div>
+          </Section>
 
           {/* ── Identificação ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Identificação / cabeçalho</div>
+          <Section id="identificacao" label="Identificação / cabeçalho" collapsed={collapsed.has("identificacao")} onToggle={() => toggleCollapse("identificacao")}>
             <div className={styles.row2}>
               <Txt label="Nº do contrato" value={doc.contractNumber} onChange={(v) => patch({ contractNumber: v })} mono />
               <div className={styles.field}>
@@ -743,44 +915,44 @@ export default function ContractEditor({
               <label className={styles.label}>Tags</label>
               <ListEditor items={doc.tags ?? []} onChange={(v) => patch({ tags: v })} placeholder="ex.: APARTAMENTO" />
             </div>
-          </div>
+          </Section>
 
           {/* ── Partes ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>
-              CONTRATANTE
-              {isAditivo ? (
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  style={{ marginLeft: 12, fontSize: 12 }}
-                  onClick={() => doc.parentContractId && applyParentContract(doc.parentContractId, true)}
-                  disabled={!doc.parentContractId}
-                >
-                  Atualizar do contrato principal
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  style={{ marginLeft: 12, fontSize: 12 }}
-                  onClick={fillFromClient}
-                  disabled={!clientId}
-                >
-                  Preencher do cliente
-                </button>
-              )}
-            </div>
+          <Section
+            id="contratante"
+            label="CONTRATANTE"
+            collapsed={collapsed.has("contratante")}
+            onToggle={() => toggleCollapse("contratante")}
+            right={isAditivo ? (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                style={{ fontSize: 12 }}
+                onClick={() => doc.parentContractId && applyParentContract(doc.parentContractId, true)}
+                disabled={!doc.parentContractId}
+              >
+                Atualizar do contrato principal
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                style={{ fontSize: 12 }}
+                onClick={fillFromClient}
+                disabled={!clientId}
+              >
+                Preencher do cliente
+              </button>
+            )}
+          >
             <PartyFields party={doc.contratante} onChange={(p) => patch({ contratante: p })} />
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>CONTRATADA</div>
+          </Section>
+          <Section id="contratada" label="CONTRATADA" collapsed={collapsed.has("contratada")} onToggle={() => toggleCollapse("contratada")}>
             <PartyFields party={doc.contratada} onChange={(p) => patch({ contratada: p })} />
-          </div>
+          </Section>
 
           {/* ── Objeto & escopo ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Objeto & escopo</div>
+          <Section id="escopo" label="Objeto & escopo" collapsed={collapsed.has("escopo")} onToggle={() => toggleCollapse("escopo")}>
             <div className={styles.field}>
               <label className={styles.label}>Parágrafos de introdução (objeto)</label>
               <ParagraphList items={doc.objetoIntro} onChange={(v) => patch({ objetoIntro: v })} rows={3} />
@@ -794,14 +966,13 @@ export default function ContractEditor({
               <label className={styles.label}>Serviços incluídos</label>
               <ParagraphList items={doc.escopoServicos} onChange={(v) => patch({ escopoServicos: v })} rows={2} placeholder="ex.: Planta Layout" />
             </div>
-          </div>
+          </Section>
 
           {/* Prazo / Arquivos / Validade — só no contrato principal (não no aditivo). */}
           {!isAditivo && (
           <>
           {/* ── Prazo de entrega (cláusula 05) ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Prazo de entrega (serviços e prazos)</div>
+          <Section id="prazo" label="Prazo de entrega (serviços e prazos)" collapsed={collapsed.has("prazo")} onToggle={() => toggleCollapse("prazo")}>
             <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
               Cada card é um <strong>serviço + prazo</strong> exibido no bloco "PRAZO DE ENTREGA" (cláusula 05).
               Adicione só os serviços deste contrato — o <strong>último</strong> card é o "DISPONÍVEL PARA INICIAR" (destaque vermelho).
@@ -812,22 +983,20 @@ export default function ContractEditor({
               valueLabel="Prazo (destaque)"
               labelLabel="Serviço (legenda)"
             />
-          </div>
+          </Section>
 
           {/* ── Arquivos (cláusula 11) ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Arquivos — cards (cláusula 11)</div>
+          <Section id="arquivos" label="Arquivos — cards (cláusula 11)" collapsed={collapsed.has("arquivos")} onToggle={() => toggleCollapse("arquivos")}>
             <InfoCardsEditor
               cards={doc.arquivosCards}
               onChange={(v) => patch({ arquivosCards: v })}
               valueLabel="Texto"
               labelLabel="Título"
             />
-          </div>
+          </Section>
 
           {/* ── Validade / vigência (cláusula 18) ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Validade / vigência — cards (cláusula 18)</div>
+          <Section id="validade" label="Validade / vigência — cards (cláusula 18)" collapsed={collapsed.has("validade")} onToggle={() => toggleCollapse("validade")}>
             <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
               Cards do bloco <strong>VIGÊNCIA / INÍCIO / TÉRMINO</strong>. O <strong>rótulo</strong> é o texto pequeno
               (ex.: "VIGÊNCIA") e o <strong>destaque</strong> é o texto grande (ex.: "3 meses"). O <strong>último</strong> card
@@ -839,13 +1008,12 @@ export default function ContractEditor({
               valueLabel="Destaque"
               labelLabel="Rótulo"
             />
-          </div>
+          </Section>
           </>
           )}
 
           {/* ── Seção 06 (aditivo: sempre pagamento, cláusula 03) ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>{isAditivo ? "Valor e pagamento (cláusula 03)" : "Seção 06 — pagamento ⟷ tabela de custos"}</div>
+          <Section id="pagamento" label={isAditivo ? "Valor e pagamento (cláusula 03)" : "Seção 06 — pagamento ⟷ tabela de custos"} collapsed={collapsed.has("pagamento")} onToggle={() => toggleCollapse("pagamento")}>
             {isAditivo && (
               <div className={styles.placeholderHint} style={{ marginBottom: 8 }}>
                 É <strong>aqui</strong> que você define o <strong>valor total</strong> e as <strong>parcelas</strong> do aditivo (mesmo formato do contrato principal) — não no texto da cláusula 03.
@@ -946,24 +1114,22 @@ export default function ContractEditor({
                 </div>
               </>
             )}
-          </div>
+          </Section>
 
           {/* ── PIX (cláusula 07) — só no contrato principal ── */}
           {!isAditivo && (
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>PIX</div>
+          <Section id="pix" label="PIX" collapsed={collapsed.has("pix")} onToggle={() => toggleCollapse("pix")}>
             <div className={styles.row2}>
               <Txt label="Chave PIX" value={doc.pix.chave} onChange={(v) => patch({ pix: { ...doc.pix, chave: v } })} mono />
               <Txt label="Rótulo da chave" value={doc.pix.chaveLabel} onChange={(v) => patch({ pix: { ...doc.pix, chaveLabel: v } })} />
             </div>
             <Txt label="Titular" value={doc.pix.titular} onChange={(v) => patch({ pix: { ...doc.pix, titular: v } })} />
             <Area label="Lembrete (opcional)" value={doc.pix.lembrete ?? ""} onChange={(v) => patch({ pix: { ...doc.pix, lembrete: v || undefined } })} rows={2} />
-          </div>
+          </Section>
           )}
 
           {/* ── Assinatura ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Assinatura / status (exibido na página)</div>
+          <Section id="assinatura" label="Assinatura / status (exibido na página)" collapsed={collapsed.has("assinatura")} onToggle={() => toggleCollapse("assinatura")}>
             <div className={styles.row2}>
               <div className={styles.field}>
                 <label className={styles.label}>Status da assinatura</label>
@@ -1022,11 +1188,10 @@ export default function ContractEditor({
                 onChange={(v) => patch({ signature: { ...doc.signature, contratada: { ...doc.signature.contratada, role: v } } })}
               />
             </div>
-          </div>
+          </Section>
 
           {/* ── Assinatura digital (Autentique) ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Assinatura digital (Autentique)</div>
+          <Section id="autentique" label="Assinatura digital (Autentique)" collapsed={collapsed.has("autentique")} onToggle={() => toggleCollapse("autentique")}>
             <div className={styles.placeholderHint} style={{ marginBottom: 10 }}>
               Para enviar, use o botão <strong>“Enviar p/ assinatura”</strong> na <strong>barra inferior</strong> — o sistema
               gera o PDF automaticamente e envia para as partes assinarem (o contrato precisa estar <strong>publicado</strong>).
@@ -1075,17 +1240,15 @@ export default function ContractEditor({
                 {sending && <span className={styles.pageHint}>Enviando…</span>}
               </div>
             )}
-          </div>
+          </Section>
 
           {/* ── Cláusulas ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Cláusulas jurídicas</div>
+          <Section id="clausulas" label="Cláusulas jurídicas" collapsed={collapsed.has("clausulas")} onToggle={() => toggleCollapse("clausulas")}>
             <ClausesEditor clauses={doc.clauses} kind={doc.kind} onChange={(v) => patch({ clauses: v })} />
-          </div>
+          </Section>
 
           {/* ── Contato ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Contato (rodapé)</div>
+          <Section id="contato" label="Contato (rodapé)" collapsed={collapsed.has("contato")} onToggle={() => toggleCollapse("contato")}>
             <div className={styles.row2}>
               <Txt label="WhatsApp (número)" value={doc.contact.whatsapp} onChange={(v) => patch({ contact: { ...doc.contact, whatsapp: v } })} mono />
               <Txt label="WhatsApp (exibido)" value={doc.contact.whatsappLabel} onChange={(v) => patch({ contact: { ...doc.contact, whatsappLabel: v } })} />
@@ -1099,11 +1262,10 @@ export default function ContractEditor({
               <Txt label="Threads" value={doc.contact.threads ?? ""} onChange={(v) => patch({ contact: { ...doc.contact, threads: v || undefined } })} />
             </div>
             <Txt label="Pinterest" value={doc.contact.pinterest ?? ""} onChange={(v) => patch({ contact: { ...doc.contact, pinterest: v || undefined } })} />
-          </div>
+          </Section>
 
           {/* ── Exibição ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Exibição</div>
+          <Section id="exibicao" label="Exibição" collapsed={collapsed.has("exibicao")} onToggle={() => toggleCollapse("exibicao")}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input
                 type="checkbox"
@@ -1112,8 +1274,42 @@ export default function ContractEditor({
               />
               <span className={styles.label} style={{ margin: 0 }}>Mostrar contadores regressivos das parcelas</span>
             </label>
-          </div>
-        </div>
+          </Section>
+          </div>{/* fim da coluna principal (editorGrid) */}
+
+          {/* RAIL DIREITO — Meu apoio (checklist de revisão + bloco de notas) */}
+          {!showPreview && (
+          <aside className={styles.editorRail}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
+              <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setApoioOpen((v) => !v)}>{apoioOpen ? "Recolher" : "Abrir"}</button>
+            </div>
+            {apoioOpen && (
+              <>
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Checklist de revisão</div>
+                {sectionsMeta.map((s) => (
+                  <label key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 2px", fontSize: 12.5, cursor: "pointer" }}>
+                    <input type="checkbox" checked={doneSet.has(s.id)} onChange={() => toggleDone(s.id)} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                  </label>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, marginBottom: 6 }}>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Bloco de notas</div>
+                  <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setNotes("")} disabled={!notes}>Limpar</button>
+                </div>
+                <textarea className={styles.textarea} rows={6} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anotações, pendências, o que confirmar com o cliente…" />
+                <div className={styles.railTitle} style={{ marginTop: 14, marginBottom: 6 }}>Dicas rápidas</div>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
+                  <li>Salva sozinho enquanto você edita (contrato já salvo).</li>
+                  <li>Marque as seções revisadas no checklist.</li>
+                  <li>Use “Recolher tudo” para navegar mais rápido.</li>
+                </ul>
+              </>
+            )}
+          </aside>
+          )}
+        </div>{/* fim do editorWorkspace */}
+       </>
       )}
 
       <div className={styles.editorBar}>
