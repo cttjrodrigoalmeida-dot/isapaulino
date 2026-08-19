@@ -82,6 +82,8 @@ export default function ProposalEditor({
   // Senha de acesso da proposta (vazio = link público). Fica fora do JSON da
   // proposta (nunca vai para a página pública) — é uma coluna própria no banco.
   const [accessPassword, setAccessPassword] = useState("");
+  // URL personalizada (alias). Vazio = só o número. Coluna própria no banco.
+  const [customSlug, setCustomSlug] = useState("");
   const [comboEnabled, setComboEnabled] = useState(false);
   const [comboPercent, setComboPercent] = useState(10);
   const [pixDiscount, setPixDiscount] = useState(5);
@@ -162,7 +164,7 @@ export default function ProposalEditor({
           );
           setStatus("draft");
         } else {
-          const { proposal: p, status: s, accessPassword: pw } = await api.getProposal(number!);
+          const { proposal: p, status: s, accessPassword: pw, customSlug: slug } = await api.getProposal(number!);
           if (!alive) return;
           setComboEnabled(readComboFromNote(p.comboNote).enabled);
           setComboPercent(readComboFromNote(p.comboNote).percent);
@@ -171,6 +173,7 @@ export default function ProposalEditor({
           setProposal(p);
           setStatus(s);
           setAccessPassword(pw ?? "");
+          setCustomSlug(slug ?? "");
         }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -252,6 +255,11 @@ export default function ProposalEditor({
       setError(`O número ${proposal.number.trim()} já está em uso. Escolha outro (ex.: ${duplicateNumber(proposal.number, existingNumbers)}).`);
       return;
     }
+    const slug = customSlug.trim();
+    if (slug && !/^[A-Za-z0-9_-]+$/.test(slug)) {
+      setError("URL personalizada inválida: use apenas letras, números, hífen (-) e underscore (_), sem espaços.");
+      return;
+    }
     const num = proposal.number.trim();
     const clean = buildClean(proposal);
     // "Salvar e publicar" abre a página pública em nova aba. Abrimos AGORA (ainda
@@ -262,12 +270,12 @@ export default function ProposalEditor({
     setSaving(true);
     try {
       if (isNew) await api.createProposal(clean, finalStatus, accessPassword);
-      else await api.updateProposal(number!, clean, finalStatus, accessPassword);
+      else await api.updateProposal(number!, clean, finalStatus, accessPassword, slug);
       if (publish) setStatus("published");
       setLastSavedAt(Date.now());
       setDirty(false);
-      // Publicou → leva a aba já aberta para o link público da proposta.
-      if (pubWin) pubWin.location.href = `/proposta/${encodeURIComponent(num)}`;
+      // Publicou → leva a aba já aberta para o link público (usa o slug se houver).
+      if (pubWin) pubWin.location.href = `/proposta/${encodeURIComponent(slug || num)}`;
       // Criou uma nova → o pai reabre no modo edição (fica na mesma página).
       if (isNew) onCreated(num);
     } catch (err) {
@@ -282,11 +290,11 @@ export default function ProposalEditor({
   // Marca alterações pendentes (após o carregamento inicial).
   useEffect(() => {
     if (hydratedRef.current) setDirty(true);
-  }, [proposal, status, accessPassword, comboEnabled, comboPercent, pixDiscount, maxInstallments]);
+  }, [proposal, status, accessPassword, customSlug, comboEnabled, comboPercent, pixDiscount, maxInstallments]);
 
   // Autosave silencioso (só proposta JÁ criada): debounce ~2,5s de ociosidade.
-  const latestRef = useRef({ proposal, status, accessPassword });
-  latestRef.current = { proposal, status, accessPassword };
+  const latestRef = useRef({ proposal, status, accessPassword, customSlug });
+  latestRef.current = { proposal, status, accessPassword, customSlug };
   useEffect(() => {
     if (!dirty || isNew || !autosaveOn) return;
     const cur = latestRef.current;
@@ -295,16 +303,20 @@ export default function ProposalEditor({
       if (savingRef.current) return;
       const c = latestRef.current;
       if (!c.proposal) return;
+      // Slug inválido não vai no autosave (undefined = mantém o atual), assim um
+      // formato errado não impede de salvar o resto do conteúdo.
+      const s = c.customSlug.trim();
+      const slugArg = s === "" ? "" : /^[A-Za-z0-9_-]+$/.test(s) ? s : undefined;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword);
+        await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword, slugArg);
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword]);
+  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword, customSlug]);
 
   if (loading || !proposal) {
     return <div className={styles.loading}>Carregando proposta…</div>;
@@ -545,8 +557,18 @@ export default function ProposalEditor({
           </select>
         </div>
         <div className={styles.field} style={{ margin: 0 }}>
-          <label className={styles.label} style={{ marginBottom: 4 }}>
-            Senha de acesso {accessPassword ? "🔒" : "(link público)"}
+          <label className={styles.label} style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Senha de acesso {accessPassword ? "🔒" : "(link público)"}</span>
+            {accessPassword && (
+              <button
+                type="button"
+                onClick={() => setAccessPassword("")}
+                title="Remover a senha e liberar o acesso — o MESMO link enviado ao cliente passa a abrir direto. Depois é só Salvar."
+                style={{ border: "none", background: "none", color: "#f0506e", cursor: "pointer", fontSize: 11, textDecoration: "underline", padding: 0 }}
+              >
+                remover senha
+              </button>
+            )}
           </label>
           <input
             className={styles.input}
@@ -557,6 +579,24 @@ export default function ProposalEditor({
             title="Se preenchida, o cliente precisa digitar esta senha para ver a proposta. Deixe em branco para deixar o link público."
             style={{ width: 210 }}
           />
+        </div>
+        <div className={styles.field} style={{ margin: 0 }}>
+          <label className={styles.label} style={{ marginBottom: 4 }}>URL personalizada (opcional)</label>
+          <input
+            className={`${styles.input} ${styles.mono}`}
+            type="text"
+            value={customSlug}
+            onChange={(e) => setCustomSlug(e.target.value)}
+            placeholder={number ?? proposal.number}
+            title="Deixa o link mais amigável, ex.: 2650-DaniloFerreira. Vale como um apelido: o número original também continua funcionando. Só letras, números, hífen e underscore."
+            style={{ width: 230 }}
+          />
+          {(() => {
+            const s = customSlug.trim();
+            const invalid = s !== "" && !/^[A-Za-z0-9_-]+$/.test(s);
+            if (invalid) return <span className={styles.fieldWarn}>⚠ Use só letras, números, hífen (-) e underscore (_), sem espaços.</span>;
+            return <span className={styles.pageHint} style={{ margin: "4px 0 0", fontSize: 11 }}>Link: isabelapaulino.com.br/proposta/{s || number || proposal.number}</span>;
+          })()}
         </div>
         <div className={styles.editorBarRight}>
           <button className={styles.btn} onClick={() => save(false)} disabled={saving}>

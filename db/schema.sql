@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS proposals (
   -- Senha de acesso opcional. Se preenchida, a página pública exige essa senha
   -- (o admin cria e envia ao cliente). NULL/vazio = proposta com link público.
   access_password TEXT,
+  -- URL personalizada opcional (ex.: "2650-DaniloFerreira"). É um ALIAS: a
+  -- proposta continua resolvendo por `number` E por este slug. NULL = só o número.
+  custom_slug   TEXT,
   data          TEXT NOT NULL,              -- JSON do tipo Proposal
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
@@ -39,9 +42,11 @@ CREATE TABLE IF NOT EXISTS proposals (
 -- Migração p/ bancos já existentes (rodar uma vez, local e remoto):
 --   ALTER TABLE proposals ADD COLUMN outcome TEXT NOT NULL DEFAULT 'nao-aprovada';
 --   ALTER TABLE proposals ADD COLUMN access_password TEXT;
+--   ALTER TABLE proposals ADD COLUMN custom_slug TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
 CREATE INDEX IF NOT EXISTS idx_proposals_updated ON proposals(updated_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_slug ON proposals(custom_slug) WHERE custom_slug IS NOT NULL;
 
 -- Briefings. Mesmo padrão das propostas: colunas de listagem + objeto
 -- Briefing inteiro em JSON. Linkado a uma proposta (proposal_number).
