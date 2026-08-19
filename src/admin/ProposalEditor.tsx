@@ -370,8 +370,13 @@ export default function ProposalEditor({
             {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : isNew ? "Ainda não salva" : "Tudo salvo"}
           </span>
           <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+          {isNew && <span className={styles.pageHint} style={{ margin: 0 }}>O automático começa após o 1º “Salvar”.</span>}
         </div>
-        {isNew && <span className={styles.pageHint} style={{ margin: 0 }}>O automático começa após o 1º “Salvar”.</span>}
+        {/* Identificador da proposta em edição — fica fixo na rolagem, para não
+            confundir quando há várias janelas de propostas abertas. */}
+        <span className={styles.editorDocId} title="Proposta que você está editando agora">
+          ✎ Nº&nbsp;{(number ?? proposal.number) || "—"}{proposal.client ? ` · ${proposal.client}` : ""}
+        </span>
       </div>
 
       {tab === "campos" ? (

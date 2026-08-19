@@ -1307,6 +1307,20 @@
   gap: 7px;
   margin: 8px 0 4px;
 }
+/* Identificador da proposta em edição (fixo na toolbar) — sutil e discreto,
+   só para não confundir entre várias janelas de propostas abertas. */
+.editorDocId {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 46%;
+}
+
 /* Sub-seção de brindes (cortesia) dentro do bloco — tracejado rosa da marca. */
 .brindeBox {
   margin: 12px 0 4px;

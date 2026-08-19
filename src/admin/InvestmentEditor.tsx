@@ -1,6 +1,27 @@
+import { useEffect, useState } from "react";
 import type { Proposal, InvestmentBlock, PriceLine } from "../components/proposal/types";
 import { parseBRL, formatBRL } from "./proposalCalc";
 import styles from "./Admin.module.css";
+
+// Área de transferência de BLOCO no localStorage — compartilhada entre as abas/
+// janelas de propostas (mesma origem), para copiar um bloco de uma proposta e
+// colar em outra sem preencher item por item.
+const BLOCK_CLIP = "ips_block_clip";
+function readBlockClip(): InvestmentBlock | null {
+  try {
+    const raw = window.localStorage.getItem(BLOCK_CLIP);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    return v && typeof v === "object" && Array.isArray(v.lines) ? (v as InvestmentBlock) : null;
+  } catch {
+    return null;
+  }
+}
+function writeBlockClip(b: InvestmentBlock) {
+  try {
+    window.localStorage.setItem(BLOCK_CLIP, JSON.stringify(b));
+  } catch { /* quota/indisponível — ignora */ }
+}
 
 export default function InvestmentEditor({
   proposal,
@@ -18,9 +39,38 @@ export default function InvestmentEditor({
 }) {
   const blocks = proposal.investmentBlocks ?? [];
 
+  // "Tem bloco copiado?" — reavalia ao focar a janela e quando outra aba grava
+  // (evento storage), para o "Colar/Substituir" ligar mesmo vindo de outra janela.
+  const [hasBlockClip, setHasBlockClip] = useState(false);
+  const [copiedBlock, setCopiedBlock] = useState<number | null>(null);
+  useEffect(() => {
+    const check = () => setHasBlockClip(!!readBlockClip());
+    check();
+    window.addEventListener("focus", check);
+    window.addEventListener("storage", check);
+    return () => { window.removeEventListener("focus", check); window.removeEventListener("storage", check); };
+  }, []);
+
   const apply = (nextBlocks: InvestmentBlock[]) => {
     onChange({ ...proposal, investmentBlocks: nextBlocks });
   };
+
+  const copyBlock = (bi: number) => {
+    writeBlockClip(blocks[bi]);
+    setHasBlockClip(true);
+    setCopiedBlock(bi);
+    window.setTimeout(() => setCopiedBlock((c) => (c === bi ? null : c)), 1600);
+  };
+  const pasteBlock = () => {
+    const b = readBlockClip();
+    if (b) apply([...blocks, structuredClone(b)]);
+  };
+  const substituteBlock = (bi: number) => {
+    const b = readBlockClip();
+    if (b) apply(blocks.map((x, idx) => (idx === bi ? structuredClone(b) : x)));
+  };
+  const duplicateBlock = (bi: number) =>
+    apply([...blocks.slice(0, bi + 1), structuredClone(blocks[bi]), ...blocks.slice(bi + 1)]);
 
   const setBlock = (i: number, patch: Partial<InvestmentBlock>) => {
     const next = blocks.map((b, idx) => (idx === i ? { ...b, ...patch } : b));
@@ -62,9 +112,20 @@ export default function InvestmentEditor({
         <div key={bi} className={styles.blockCard}>
           <div className={styles.blockHead}>
             <span className={styles.blockTag}>Bloco {bi + 1}</span>
-            <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeBlock(bi)}>
-              Remover bloco
-            </button>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto", alignItems: "center" }}>
+              <button type="button" className={styles.btn} onClick={() => copyBlock(bi)} title="Copiar este bloco inteiro — depois use “Colar bloco” em qualquer proposta (inclusive em outra janela).">
+                {copiedBlock === bi ? "✓ Copiado" : "⧉ Copiar"}
+              </button>
+              <button type="button" className={styles.btn} onClick={() => duplicateBlock(bi)} title="Duplicar este bloco aqui mesmo (uma cópia logo abaixo).">
+                ⧉ Duplicar
+              </button>
+              <button type="button" className={styles.btn} onClick={() => substituteBlock(bi)} disabled={!hasBlockClip} title="Substituir este bloco pelo bloco que está copiado.">
+                ⇄ Substituir
+              </button>
+              <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeBlock(bi)}>
+                Remover
+              </button>
+            </div>
           </div>
           <div className={styles.row2}>
             <div className={styles.field}>
@@ -151,9 +212,14 @@ export default function InvestmentEditor({
         </div>
       ))}
 
-      <button type="button" className={styles.btn} onClick={addBlock} style={{ marginTop: 6 }}>
-        + adicionar bloco
-      </button>
+      <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+        <button type="button" className={styles.btn} onClick={addBlock}>
+          + adicionar bloco
+        </button>
+        <button type="button" className={styles.btn} onClick={pasteBlock} disabled={!hasBlockClip} title="Colar o bloco copiado (de qualquer proposta) como um novo bloco aqui.">
+          📋 Colar bloco{hasBlockClip ? " copiado" : ""}
+        </button>
+      </div>
 
       {/* Combo / Total */}
       <div className={styles.totalBox}>
