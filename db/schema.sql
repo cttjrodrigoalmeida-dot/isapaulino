@@ -90,6 +90,18 @@ CREATE TABLE IF NOT EXISTS question_library (
 );
 CREATE INDEX IF NOT EXISTS idx_qlib_updated ON question_library(updated_at DESC);
 
+-- Biblioteca de PORTFÓLIO reutilizável (sobe 1x, reusa em qualquer proposta).
+-- Guarda só a URL da imagem (mesmo objeto no R2) + legenda → não duplica
+-- armazenamento: várias propostas apontam para o mesmo arquivo.
+CREATE TABLE IF NOT EXISTS portfolio_library (
+  id         TEXT PRIMARY KEY,               -- uuid
+  image      TEXT NOT NULL,                  -- caminho /api/files/uploads/... (R2)
+  caption    TEXT,                           -- legenda opcional
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_plib_created ON portfolio_library(created_at DESC);
+
 -- Clientes do estúdio. Campos planos (sem JSON aninhado), CRUD pelo painel.
 -- cpf_cnpj e email são opcionais, mas validados quando preenchidos.
 CREATE TABLE IF NOT EXISTS clients (

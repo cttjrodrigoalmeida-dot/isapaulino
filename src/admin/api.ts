@@ -12,6 +12,13 @@ export interface LibraryQuestion {
   question: BriefingQuestion;
 }
 
+// Imagem de portfólio salva na biblioteca (reutilizável entre propostas).
+export interface LibraryPortfolioItem {
+  id: string;
+  image: string;   // /api/files/uploads/... (mesmo objeto no R2)
+  caption: string;
+}
+
 export interface ProposalSummary {
   number: string;
   client: string | null;
@@ -553,6 +560,21 @@ export const api = {
     }),
   deleteLibraryQuestion: (id: string) =>
     req<{ ok: true }>(`/api/question-library/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // ── Biblioteca de portfólio (imagens reutilizáveis entre propostas) ──
+  listPortfolioLibrary: () => req<{ items: LibraryPortfolioItem[] }>("/api/portfolio-library"),
+  addToPortfolioLibrary: (image: string, caption?: string) =>
+    req<{ ok: true; id: string }>("/api/portfolio-library", {
+      method: "POST",
+      body: JSON.stringify({ image, caption: caption ?? "" }),
+    }),
+  updatePortfolioLibraryItem: (id: string, caption: string) =>
+    req<{ ok: true }>(`/api/portfolio-library/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ caption }),
+    }),
+  deletePortfolioLibraryItem: (id: string) =>
+    req<{ ok: true }>(`/api/portfolio-library/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   // ── clientes ──
   listClients: (q?: string) =>
