@@ -19,6 +19,13 @@ export interface LibraryPortfolioItem {
   caption: string;
 }
 
+// Bloco de investimento salvo na biblioteca (reutilizável entre propostas).
+export interface LibraryBlock {
+  id: string;
+  label: string;
+  block: import("../components/proposal/types").InvestmentBlock;
+}
+
 export interface ProposalSummary {
   number: string;
   client: string | null;
@@ -575,6 +582,21 @@ export const api = {
     }),
   deletePortfolioLibraryItem: (id: string) =>
     req<{ ok: true }>(`/api/portfolio-library/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // ── Biblioteca de blocos de investimento (reutilizáveis entre propostas) ──
+  listBlockLibrary: () => req<{ items: LibraryBlock[] }>("/api/block-library"),
+  saveBlockToLibrary: (label: string, block: LibraryBlock["block"]) =>
+    req<{ ok: true; id: string }>("/api/block-library", {
+      method: "POST",
+      body: JSON.stringify({ label, block }),
+    }),
+  renameLibraryBlock: (id: string, label: string) =>
+    req<{ ok: true }>(`/api/block-library/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ label }),
+    }),
+  deleteLibraryBlock: (id: string) =>
+    req<{ ok: true }>(`/api/block-library/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   // ── clientes ──
   listClients: (q?: string) =>

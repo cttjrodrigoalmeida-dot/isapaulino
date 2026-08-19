@@ -102,6 +102,17 @@ CREATE TABLE IF NOT EXISTS portfolio_library (
 );
 CREATE INDEX IF NOT EXISTS idx_plib_created ON portfolio_library(created_at DESC);
 
+-- Biblioteca de BLOCOS de investimento reutilizáveis (salva 1x, reusa em
+-- qualquer proposta). `data` = JSON de um InvestmentBlock.
+CREATE TABLE IF NOT EXISTS block_library (
+  id         TEXT PRIMARY KEY,               -- uuid
+  label      TEXT NOT NULL,                  -- nome amigável na biblioteca
+  data       TEXT NOT NULL,                  -- JSON do InvestmentBlock
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_blib_updated ON block_library(updated_at DESC);
+
 -- Clientes do estúdio. Campos planos (sem JSON aninhado), CRUD pelo painel.
 -- cpf_cnpj e email são opcionais, mas validados quando preenchidos.
 CREATE TABLE IF NOT EXISTS clients (

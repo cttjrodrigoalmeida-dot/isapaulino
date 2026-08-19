@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Proposal, InvestmentBlock, PriceLine } from "../components/proposal/types";
 import { parseBRL, formatBRL } from "./proposalCalc";
+import { api, type LibraryBlock } from "./api";
+import BlockLibraryPicker from "./BlockLibraryPicker";
 import styles from "./Admin.module.css";
 
 // Área de transferência de BLOCO no localStorage — compartilhada entre as abas/
@@ -74,6 +76,13 @@ export default function InvestmentEditor({
     return () => { window.removeEventListener("focus", check); window.removeEventListener("storage", check); };
   }, []);
   const clearSel = () => setSelected(new Set());
+
+  // Biblioteca de blocos (D1) — salvar 1x e reusar em qualquer proposta.
+  const [library, setLibrary] = useState<LibraryBlock[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingSaveBlock, setPendingSaveBlock] = useState<InvestmentBlock | null>(null);
+  const refreshLib = () => api.listBlockLibrary().then(({ items }) => setLibrary(items)).catch(() => {});
+  useEffect(() => { refreshLib(); }, []);
 
   const apply = (nextBlocks: InvestmentBlock[]) => {
     onChange({ ...proposal, investmentBlocks: nextBlocks });
@@ -244,6 +253,9 @@ export default function InvestmentEditor({
               <button type="button" className={styles.btn} onClick={() => substituteBlock(bi)} disabled={!hasBlockClip} title="Substituir este bloco pelo bloco que está copiado.">
                 ⇄ Substituir
               </button>
+              <button type="button" className={styles.btn} onClick={() => { setPendingSaveBlock(blocks[bi]); setPickerOpen(true); }} title="Salvar este bloco na biblioteca (para reusar em outras propostas).">
+                ☆ Salvar
+              </button>
               <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeBlock(bi)}>
                 Remover
               </button>
@@ -374,6 +386,9 @@ export default function InvestmentEditor({
         <button type="button" className={styles.btn} onClick={pasteBlock} disabled={!hasBlockClip} title="Colar o bloco copiado (de qualquer proposta) como um novo bloco aqui.">
           📋 Colar bloco{hasBlockClip ? " copiado" : ""}
         </button>
+        <button type="button" className={styles.btn} onClick={() => { setPendingSaveBlock(null); setPickerOpen(true); }} title="Reutilizar blocos que você já salvou na biblioteca.">
+          📚 Biblioteca de blocos{library.length ? ` (${library.length})` : ""}
+        </button>
       </div>
 
       {/* Combo / Total */}
@@ -413,6 +428,18 @@ export default function InvestmentEditor({
         </div>
         <div className={styles.extenso}>{proposal.totalExtenso}</div>
       </div>
+
+      {pickerOpen && (
+        <BlockLibraryPicker
+          items={library}
+          pendingSave={pendingSaveBlock}
+          onInsert={(block) => { clearSel(); apply([...blocks, structuredClone(block)]); }}
+          onSaveNew={async (label, block) => { await api.saveBlockToLibrary(label, block).catch(() => {}); refreshLib(); }}
+          onRename={async (id, label) => { await api.renameLibraryBlock(id, label).catch(() => {}); refreshLib(); }}
+          onDelete={async (id) => { await api.deleteLibraryBlock(id).catch(() => {}); refreshLib(); }}
+          onClose={() => { setPickerOpen(false); setPendingSaveBlock(null); }}
+        />
+      )}
     </div>
   );
 }
