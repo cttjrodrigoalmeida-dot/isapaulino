@@ -21,16 +21,20 @@ type Status = "draft" | "published";
 
 export default function BriefingEditor({
   number,
+  duplicateFrom = null,
   onBack,
   onSaved,
 }: {
   number: string | null;
+  duplicateFrom?: string | null;
   onBack: () => void;
   onSaved: () => void;
 }) {
   const isNew = number === null;
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
+  // Briefings já existentes — para avisar se a proposta escolhida já tem um.
+  const [existingNumbers, setExistingNumbers] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>("draft");
   const [tab, setTab] = useState<"campos" | "json">("campos");
   const [showPreview, setShowPreview] = useState(false);
@@ -99,12 +103,18 @@ export default function BriefingEditor({
       try {
         if (isNew) {
           const { briefings } = await api.listBriefings();
+          if (alive) setExistingNumbers(briefings.map((b) => b.number));
           let template: Briefing = SAMPLE_BRIEFING;
-          if (briefings.length > 0) {
+          if (duplicateFrom) {
+            // Cópia: parte do briefing original (mantém as perguntas/ambientes).
+            template = (await api.getBriefing(duplicateFrom)).briefing;
+          } else if (briefings.length > 0) {
             const latest = [...briefings].sort((a, b) => Number(b.number) - Number(a.number))[0];
             template = (await api.getBriefing(latest.number)).briefing;
           }
           const draft = structuredClone(template);
+          // Novo/cópia começa sem vínculo: a proposta é escolhida no seletor
+          // (o número = número da proposta, e a URL é /briefing/<número>).
           draft.number = "";
           draft.proposalNumber = "";
           if (!alive) return;
@@ -127,7 +137,7 @@ export default function BriefingEditor({
     return () => {
       alive = false;
     };
-  }, [isNew, number]);
+  }, [isNew, number, duplicateFrom]);
 
   // Lista de propostas (para o seletor "Proposta vinculada").
   useEffect(() => {
@@ -473,6 +483,11 @@ export default function BriefingEditor({
       setError("Informe o número da proposta vinculada.");
       return;
     }
+    // A URL é /briefing/<número> — só pode haver um briefing por proposta.
+    if (isNew && existingNumbers.includes(briefing.number.trim())) {
+      setError(`A proposta Nº ${briefing.number.trim()} já tem um briefing. Escolha outra proposta.`);
+      return;
+    }
     savingRef.current = true; setSaving(true);
     try {
       if (isNew) { await api.createBriefing(briefing, finalStatus); onSaved(); return; }
@@ -654,6 +669,11 @@ export default function BriefingEditor({
                       Atualizar dados
                     </button>
                   </div>
+                )}
+                {isNew && briefing.number.trim() !== "" && existingNumbers.includes(briefing.number.trim()) && (
+                  <span className={styles.fieldWarn}>
+                    ⚠ Atenção: a proposta Nº {briefing.number.trim()} já tem um briefing. Escolha outra proposta (cada briefing usa a URL /briefing/{briefing.number.trim()}).
+                  </span>
                 )}
               </div>
               <div className={styles.field}>

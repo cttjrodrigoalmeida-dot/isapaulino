@@ -753,6 +753,15 @@
   color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
+/* Aviso sutil sob um campo (ex.: numeração já usada). Não bloqueia — só orienta. */
+.fieldWarn {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b07a16;
+}
+:global([data-theme="dark"]) .fieldWarn { color: #e0b155; }
 .input,
 .textarea {
   width: 100%;

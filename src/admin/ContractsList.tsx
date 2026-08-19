@@ -57,11 +57,13 @@ export default function ContractsList({
   onNewAditivo,
   onEdit,
   onPayments,
+  onDuplicate,
 }: {
   onNew: () => void;
   onNewAditivo: (parentId?: string) => void;
   onEdit: (id: string) => void;
   onPayments: (id: string, title: string) => void;
+  onDuplicate: (id: string) => void;
 }) {
   const [items, setItems] = useState<ContractSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,19 +151,6 @@ export default function ContractsList({
     } finally { setBusy(null); }
   };
 
-  const duplicate = async (c: ContractSummary) => {
-    setBusy(c.id);
-    try {
-      const { contract } = await api.getContract(c.id);
-      await api.createContract({
-        client_id: contract.clientId, title: `${contract.title} (cópia)`, content: contract.content,
-        data: contract.data, value: contract.value, deadline: contract.deadline, autentique_url: null,
-      });
-      await load();
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao duplicar.");
-    } finally { setBusy(null); }
-  };
 
   const cancelC = async (c: ContractSummary) => {
     if (c.status === "cancelled") return;
@@ -285,7 +274,7 @@ export default function ContractsList({
                             { label: "Editar", onSelect: () => onEdit(c.id) },
                             { label: "Pagamentos", onSelect: () => onPayments(c.id, c.title) },
                             { label: "Verificar assinatura", onSelect: () => checkSignature(c), disabled: busy === c.id, hidden: !(c.autentiqueDocumentId && c.status !== "signed" && c.status !== "cancelled") },
-                            { label: "Duplicar", onSelect: () => duplicate(c), disabled: busy === c.id },
+                            { label: "Duplicar", onSelect: () => onDuplicate(c.id), disabled: busy === c.id },
                             { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !isPublic },
                             { label: "Baixar PDF", href: isPublic ? `/contrato/${c.slug}` : undefined, hidden: !isPublic },
                             { label: "Gerar contrato aditivo", onSelect: () => onNewAditivo(c.id), hidden: c.kind === "aditivo" },

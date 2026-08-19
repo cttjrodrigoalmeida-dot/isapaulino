@@ -28,3 +28,16 @@ export function nextProposalNumber(
   const next = (seqs.length ? Math.max(...seqs) : 0) + 1;
   return buildProposalNumber(next, date);
 }
+
+/**
+ * Número para uma cópia, no estilo "2624-1" (como o Windows faz "arquivo (1)").
+ * Evita colidir com os já existentes e mantém a URL limpa (hífen é seguro em link).
+ * Ex.: base "2624" (ou "2624-1") + existentes → "2624-1", "2624-2"…
+ */
+export function duplicateNumber(base: string, existing: string[]): string {
+  const root = (base || "").replace(/-\d+$/, ""); // "2624-1" → "2624"
+  const taken = new Set(existing);
+  let n = 1;
+  while (taken.has(`${root}-${n}`)) n++;
+  return `${root}-${n}`;
+}

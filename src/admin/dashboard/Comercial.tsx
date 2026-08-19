@@ -13,7 +13,7 @@ import admin from "../Admin.module.css";
 type Area = "proposals" | "briefings" | "contracts";
 type View =
   | { name: "list" }
-  | { name: "editor"; number: string | null }
+  | { name: "editor"; number: string | null; duplicateFrom?: string | null }
   | { name: "responses"; number: string };
 
 export default function Comercial({ requestNew }: { requestNew?: { area: Area; n: number } | null }) {
@@ -54,10 +54,12 @@ export default function Comercial({ requestNew }: { requestNew?: { area: Area; n
           <ProposalsList
             onNew={() => setView({ name: "editor", number: null })}
             onEdit={(number) => setView({ name: "editor", number })}
+            onDuplicate={(number) => setView({ name: "editor", number: null, duplicateFrom: number })}
           />
         ) : (
           <ProposalEditor
             number={view.name === "editor" ? view.number : null}
+            duplicateFrom={view.name === "editor" ? view.duplicateFrom ?? null : null}
             onBack={() => setView({ name: "list" })}
             onSaved={() => setView({ name: "list" })}
           />
@@ -67,12 +69,14 @@ export default function Comercial({ requestNew }: { requestNew?: { area: Area; n
           onNew={() => setView({ name: "editor", number: null })}
           onEdit={(number) => setView({ name: "editor", number })}
           onResponses={(number) => setView({ name: "responses", number })}
+          onDuplicate={(number) => setView({ name: "editor", number: null, duplicateFrom: number })}
         />
       ) : view.name === "responses" ? (
         <BriefingResponses number={view.number} onBack={() => setView({ name: "list" })} />
       ) : (
         <BriefingEditor
           number={view.name === "editor" ? view.number : null}
+          duplicateFrom={view.name === "editor" ? view.duplicateFrom ?? null : null}
           onBack={() => setView({ name: "list" })}
           onSaved={() => setView({ name: "list" })}
         />

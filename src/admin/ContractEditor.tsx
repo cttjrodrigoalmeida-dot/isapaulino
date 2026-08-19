@@ -10,6 +10,7 @@ import { formatBRL, valorPorExtenso, parseBRL as parseBRLNum } from "./proposalC
 import { buildParcelas, buildResumo } from "./contractCalc";
 import RelatedDocs from "./RelatedDocs";
 import { contractValue } from "./contractValue";
+import { duplicateNumber } from "../components/proposal/proposalNumber";
 import {
   Txt,
   Area,
@@ -92,6 +93,7 @@ export default function ContractEditor({
   id,
   kind = "principal",
   parentId = null,
+  duplicateFrom = null,
   onBack,
   onSaved,
 }: {
@@ -100,6 +102,8 @@ export default function ContractEditor({
   kind?: "principal" | "aditivo";
   /** (Novo aditivo) contrato principal a pré-selecionar/copiar automaticamente. */
   parentId?: string | null;
+  /** (Cópia) contrato de origem — abre um NOVO pré-preenchido a partir dele. */
+  duplicateFrom?: string | null;
   onBack: () => void;
   onSaved: () => void;
 }) {
@@ -109,6 +113,8 @@ export default function ContractEditor({
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
   // Contratos principais existentes — base para vincular um termo aditivo.
   const [principals, setPrincipals] = useState<ContractSummary[]>([]);
+  // Números de contrato já usados — para avisar se a numeração colidir.
+  const [existingNumbers, setExistingNumbers] = useState<string[]>([]);
 
   const [doc, setDoc] = useState<ContractDoc | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -173,6 +179,8 @@ export default function ContractEditor({
         setProposals(proposals);
         // Só contratos principais (exclui aditivos e o próprio, se estiver editando).
         setPrincipals(contracts.filter((c) => c.kind !== "aditivo" && c.id !== id));
+        const existingNums = contracts.map((c) => c.contractNumber ?? "").filter(Boolean);
+        setExistingNumbers(existingNums);
         if (loaded) {
           const c = loaded.contract;
           setClientId(c.clientId);
@@ -198,6 +206,21 @@ export default function ContractEditor({
           setDoc(parsed);
           setNotes(c.editorNotes ?? "");
           setDoneSet(new Set(c.editorDone ?? []));
+        } else if (duplicateFrom) {
+          // Cópia: abre um NOVO já preenchido a partir do contrato de origem.
+          const src = (await api.getContract(duplicateFrom)).contract;
+          setClientId(src.clientId);
+          setTitle(`${src.title} (cópia)`);
+          setLegacyContent(src.content ?? "");
+          setStatus("draft");
+          let parsed: ContractDoc | null = null;
+          if (src.data) { try { parsed = JSON.parse(src.data) as ContractDoc; } catch { /* cai no branco */ } }
+          if (!parsed) { parsed = blankContractDoc(); parsed.clientName = src.clientName ?? ""; }
+          // Sugere um número de cópia estilo "2624-1" a partir do Nº que está no
+          // próprio documento (o Nº do contrato é editável). O número fica em
+          // parsed.contractNumber (data), não no topo do objeto Contract.
+          parsed.contractNumber = duplicateNumber(parsed.contractNumber || "", existingNums);
+          setDoc(parsed);
         } else {
           const fresh = kind === "aditivo" ? blankAditivoDoc() : blankContractDoc();
           setDoc(fresh);
@@ -213,7 +236,7 @@ export default function ContractEditor({
     return () => {
       alive = false;
     };
-  }, [id, isNew, kind]);
+  }, [id, isNew, kind, duplicateFrom]);
 
   const patch = useCallback((partial: Partial<ContractDoc>) => {
     setDoc((prev) => (prev ? { ...prev, ...partial } : prev));
@@ -879,7 +902,14 @@ export default function ContractEditor({
           {/* ── Identificação ── */}
           <Section id="identificacao" label="Identificação / cabeçalho" collapsed={collapsed.has("identificacao")} onToggle={() => toggleCollapse("identificacao")}>
             <div className={styles.row2}>
-              <Txt label="Nº do contrato" value={doc.contractNumber} onChange={(v) => patch({ contractNumber: v })} mono />
+              <div>
+                <Txt label="Nº do contrato" value={doc.contractNumber} onChange={(v) => patch({ contractNumber: v })} mono />
+                {isNew && (doc.contractNumber ?? "").trim() !== "" && existingNumbers.includes((doc.contractNumber ?? "").trim()) && (
+                  <span className={styles.fieldWarn}>
+                    ⚠ Atenção: já existe um contrato com o Nº {(doc.contractNumber ?? "").trim()}. Sugestão: {duplicateNumber(doc.contractNumber ?? "", existingNumbers)}.
+                  </span>
+                )}
+              </div>
               <div className={styles.field}>
                 <label className={styles.label}>Nº da proposta</label>
                 <div style={{ display: "flex", gap: 6 }}>

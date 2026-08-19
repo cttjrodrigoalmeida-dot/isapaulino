@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type BriefingSummary } from "./api";
-import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import BriefingsAnalytics from "./BriefingsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
@@ -52,9 +51,9 @@ function briefingSortVal(b: BriefingSummary, key: string): SortValue {
 }
 
 export default function BriefingsList({
-  onNew, onEdit, onResponses,
+  onNew, onEdit, onResponses, onDuplicate,
 }: {
-  onNew: () => void; onEdit: (number: string) => void; onResponses: (number: string) => void;
+  onNew: () => void; onEdit: (number: string) => void; onResponses: (number: string) => void; onDuplicate: (number: string) => void;
 }) {
   const [items, setItems] = useState<BriefingSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,17 +114,6 @@ export default function BriefingsList({
     finally { setBusy(null); }
   };
 
-  const duplicate = async (number: string) => {
-    setBusy(number);
-    try {
-      const { briefing } = await api.getBriefing(number);
-      const clone = structuredClone(briefing);
-      clone.number = nextProposalNumber(items.map((b) => b.number));
-      await api.createBriefing(clone, "draft");
-      await load();
-    } catch (err) { alert(err instanceof ApiError ? err.message : "Erro ao duplicar."); }
-    finally { setBusy(null); }
-  };
 
   const cancelB = async (b: BriefingSummary) => {
     if (getStatus(b) === "cancelled") return;
@@ -226,7 +214,7 @@ export default function BriefingsList({
                             { label: "Ver", href: pub ? `/briefing/${b.number}` : undefined, hidden: !pub },
                             { label: "Editar", onSelect: () => onEdit(b.number) },
                             { label: `Respostas (${b.responseCount || 0})`, onSelect: () => onResponses(b.number) },
-                            { label: "Duplicar", onSelect: () => duplicate(b.number), disabled: busy === b.number },
+                            { label: "Duplicar", onSelect: () => onDuplicate(b.number), disabled: busy === b.number },
                             { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
                             { label: "Baixar PDF", href: pub ? `/briefing/${b.number}` : undefined, hidden: !pub },
                             { label: "Cancelar", onSelect: () => cancelB(b), disabled: busy === b.number, hidden: s === "cancelled" },

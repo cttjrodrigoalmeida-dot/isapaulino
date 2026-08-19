@@ -4,7 +4,7 @@ import { SAMPLE_PROPOSAL } from "../components/proposal/sampleProposal";
 import ProposalView from "../components/proposal/ProposalView";
 import { api, ApiError } from "./api";
 // Numeração com prefixo de ano (AANN): os 2 primeiros dígitos são sempre o ano.
-import { nextProposalNumber } from "../components/proposal/proposalNumber";
+import { nextProposalNumber, duplicateNumber } from "../components/proposal/proposalNumber";
 import RelatedDocs from "./RelatedDocs";
 import {
   recomputeInvestment,
@@ -63,15 +63,19 @@ function todayBR(): string {
 
 export default function ProposalEditor({
   number,
+  duplicateFrom = null,
   onBack,
   onSaved,
 }: {
   number: string | null;
+  duplicateFrom?: string | null;
   onBack: () => void;
   onSaved: () => void;
 }) {
   const isNew = number === null;
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  // Números já usados — para avisar se a numeração colidir (a URL é o número).
+  const [existingNumbers, setExistingNumbers] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>("draft");
   // Senha de acesso da proposta (vazio = link público). Fica fora do JSON da
   // proposta (nunca vai para a página pública) — é uma coluna própria no banco.
@@ -121,18 +125,27 @@ export default function ProposalEditor({
       try {
         if (isNew) {
           const { proposals } = await api.listProposals();
-          const nextNum = nextProposalNumber(proposals.map((p) => p.number));
-          let template: Proposal = SAMPLE_PROPOSAL;
-          if (proposals.length > 0) {
-            const latest = [...proposals].sort((a, b) => Number(b.number) - Number(a.number))[0];
-            template = (await api.getProposal(latest.number)).proposal;
+          const existing = proposals.map((p) => p.number);
+          if (alive) setExistingNumbers(existing);
+          const draft = structuredClone(
+            duplicateFrom
+              ? (await api.getProposal(duplicateFrom)).proposal   // cópia: parte do original
+              : proposals.length > 0
+                ? (await api.getProposal(
+                    [...proposals].sort((a, b) => Number(b.number) - Number(a.number))[0].number
+                  )).proposal                                     // nova: parte da mais recente
+                : SAMPLE_PROPOSAL
+          );
+          if (duplicateFrom) {
+            // Cópia: mantém cliente/dados; só sugere um número novo estilo "2624-1".
+            draft.number = duplicateNumber(duplicateFrom, existing);
+          } else {
+            draft.number = nextProposalNumber(existing);
+            draft.client = "";
+            draft.clientFirstName = "";
+            // Proposta nova começa com a data de hoje (editável).
+            draft.date = todayBR();
           }
-          const draft = structuredClone(template);
-          draft.number = nextNum;
-          draft.client = "";
-          draft.clientFirstName = "";
-          // Proposta nova começa com a data de hoje (editável).
-          draft.date = todayBR();
           draft.validUntil = computeValidUntil(draft.validity, draft.date) ?? draft.validUntil;
           const combo = readComboFromNote(draft.comboNote);
           const pixD = readPixDiscount(draft.pixPlan?.discountLabel);
@@ -166,7 +179,7 @@ export default function ProposalEditor({
     return () => {
       alive = false;
     };
-  }, [isNew, number]);
+  }, [isNew, number, duplicateFrom]);
 
   // Campo simples (não financeiro): apenas substitui o valor.
   const set = useCallback(<K extends keyof Proposal>(key: K, value: Proposal[K]) => {
@@ -230,6 +243,11 @@ export default function ProposalEditor({
     const finalStatus: Status = publish ? "published" : status;
     if (!proposal.number.trim()) {
       setError("Informe o número da proposta.");
+      return;
+    }
+    // A URL é o próprio número — não dá para ter duas propostas iguais.
+    if (isNew && existingNumbers.includes(proposal.number.trim())) {
+      setError(`O número ${proposal.number.trim()} já está em uso. Escolha outro (ex.: ${duplicateNumber(proposal.number, existingNumbers)}).`);
       return;
     }
     const clean = buildClean(proposal);
@@ -354,9 +372,13 @@ export default function ProposalEditor({
                   value={proposal.number}
                   onChange={(e) => set("number", e.target.value.trim())}
                   readOnly={!isNew}
-                  inputMode="numeric"
                   placeholder="Ex.: 2624"
                 />
+                {isNew && proposal.number.trim() !== "" && existingNumbers.includes(proposal.number.trim()) && (
+                  <span className={styles.fieldWarn}>
+                    ⚠ Atenção: este número já está vinculado a outro projeto. Use outro (ex.: {duplicateNumber(proposal.number, existingNumbers)}) para não repetir a URL.
+                  </span>
+                )}
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>Data</label>

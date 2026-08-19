@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type ProposalSummary, type ProposalOutcome } from "./api";
 import { formatBRL } from "./dashboard/format";
 import ProposalsSummary from "./ProposalsSummary";
-import { nextProposalNumber } from "../components/proposal/proposalNumber";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
 import { useSort, SortTh, dateKey, norm, type SortValue } from "./listSort";
@@ -43,9 +42,11 @@ function proposalSortVal(p: ProposalSummary, key: string): SortValue {
 export default function ProposalsList({
   onNew,
   onEdit,
+  onDuplicate,
 }: {
   onNew: () => void;
   onEdit: (number: string) => void;
+  onDuplicate: (number: string) => void;
 }) {
   const [items, setItems] = useState<ProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,20 +99,6 @@ export default function ProposalsList({
     }
   };
 
-  const duplicate = async (number: string) => {
-    setBusy(number);
-    try {
-      const { proposal } = await api.getProposal(number);
-      const clone = structuredClone(proposal);
-      clone.number = nextProposalNumber(items.map((p) => p.number));
-      await api.createProposal(clone, "draft");
-      await load();
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao duplicar.");
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const cancelP = async (p: ProposalSummary) => {
     if (p.status === "cancelled") return;
@@ -307,7 +294,7 @@ export default function ProposalsList({
                         const acts: MenuAction[] = [
                           { label: "Ver", href: pub ? `/proposta/${p.number}` : undefined, hidden: !pub },
                           { label: "Editar", onSelect: () => onEdit(p.number) },
-                          { label: "Duplicar", onSelect: () => duplicate(p.number) },
+                          { label: "Duplicar", onSelect: () => onDuplicate(p.number) },
                           { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
                           { label: "Baixar PDF", href: pub ? `/proposta/${p.number}` : undefined, hidden: !pub },
                           { label: "Cancelar", onSelect: () => cancelP(p), hidden: p.status === "cancelled" },
