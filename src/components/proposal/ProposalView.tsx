@@ -32,19 +32,23 @@ function Reveal({
   children,
   delay = 0,
   className,
+  dataSpy,
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
+  /** Âncora para o scroll-spy da prévia (data-spy no DOM). */
+  dataSpy?: string;
 }) {
   const printing = useContext(PrintContext);
   // Na impressão: sem motion, totalmente visível (evita PDF em branco).
   if (printing) {
-    return <div className={className}>{children}</div>;
+    return <div className={className} data-spy={dataSpy}>{children}</div>;
   }
   return (
     <motion.div
       className={className}
+      data-spy={dataSpy}
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
@@ -441,7 +445,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
       <main className={styles.container}>
         {/* ───────────── SOBRE O ESTÚDIO ───────────── */}
         {show.about && (
-          <section className={styles.section}>
+          <section className={styles.section} data-spy="identificacao">
             <Reveal>
               <SectionLabel>{about.eyebrow}</SectionLabel>
             </Reveal>
@@ -509,7 +513,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
         )}
 
         {/* ───────────── CARTA / ESCOPO ───────────── */}
-        <section className={styles.section}>
+        <section className={styles.section} data-spy="escopo">
           <Reveal className={styles.letterCard}>
             <span className={styles.letterHey}>
               Hey {p.clientFirstName}, tudo bem?
@@ -534,7 +538,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
 
         {/* ───────────── PORTFÓLIO / TRABALHOS ANTERIORES ───────────── */}
         {gallery.length > 0 && (
-          <section className={styles.section}>
+          <section className={styles.section} data-spy="portfolio">
             <Reveal>
               <SectionLabel>PORTFÓLIO</SectionLabel>
               {(() => {
@@ -585,7 +589,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
 
         {/* ───────────── PROCESSO ───────────── */}
         {show.process && (
-          <section className={styles.section}>
+          <section className={styles.section} data-spy="processo">
             <MobileCollapsible
               isDesktop={isDesktop}
               header={
@@ -625,7 +629,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
         )}
 
         {/* ───────────── INVESTIMENTO ───────────── */}
-        <section className={styles.section}>
+        <section className={styles.section} data-spy="investimento">
           <Reveal>
             <SectionLabel>INVESTIMENTO</SectionLabel>
             <h2 className={styles.h2}>
@@ -709,7 +713,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
           })()}
 
           {/* forma de pagamento — abaixo do total */}
-          <Reveal delay={0.1} className={styles.payWrap}>
+          <Reveal delay={0.1} className={styles.payWrap} dataSpy="pagamento">
             <MobileCollapsible
               isDesktop={isDesktop}
               compactHeader
@@ -840,7 +844,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
         </section>
 
         {/* ───────────── PRAZO ───────────── */}
-        <section className={`${styles.section} ${styles.sectionTight}`}>
+        <section className={`${styles.section} ${styles.sectionTight}`} data-spy="condicoes">
           <Reveal className={styles.prazoCard}>
             <MobileCollapsible
               isDesktop={isDesktop}

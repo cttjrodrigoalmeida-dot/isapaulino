@@ -3,6 +3,7 @@ import type { Proposal, InvestmentBlock, PriceLine } from "../components/proposa
 import { parseBRL, formatBRL } from "./proposalCalc";
 import { api, type LibraryBlock } from "./api";
 import BlockLibraryPicker from "./BlockLibraryPicker";
+import EditorSection from "./EditorSection";
 import styles from "./Admin.module.css";
 
 // Área de transferência de BLOCO no localStorage — compartilhada entre as abas/
@@ -50,6 +51,9 @@ export default function InvestmentEditor({
   comboPercent,
   onChange,
   onComboChange,
+  sectionId,
+  collapsed,
+  onToggle,
 }: {
   proposal: Proposal;
   comboEnabled: boolean;
@@ -57,6 +61,9 @@ export default function InvestmentEditor({
   // recebe a proposta com os blocos "crus"; o pai recalcula tudo.
   onChange: (next: Proposal) => void;
   onComboChange: (enabled: boolean, percent: number) => void;
+  sectionId?: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }) {
   const blocks = proposal.investmentBlocks ?? [];
 
@@ -216,8 +223,7 @@ export default function InvestmentEditor({
   const removeBlock = (bi: number) => { clearSel(); apply(blocks.filter((_, idx) => idx !== bi)); };
 
   return (
-    <div className={styles.card}>
-      <div className={styles.cardTitle}>Investimento</div>
+    <EditorSection id={sectionId} label="Investimento" collapsed={collapsed} onToggle={onToggle}>
       {/* Barra de seleção de itens — some quando nada está marcado. */}
       {selected.size > 0 && (
         <div className={styles.selectionBar} style={{ position: "sticky", top: 176, zIndex: 7, marginBottom: 12 }}>
@@ -440,6 +446,6 @@ export default function InvestmentEditor({
           onClose={() => { setPickerOpen(false); setPendingSaveBlock(null); }}
         />
       )}
-    </div>
+    </EditorSection>
   );
 }

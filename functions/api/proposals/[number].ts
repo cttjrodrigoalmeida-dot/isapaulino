@@ -17,14 +17,19 @@ interface ProposalLike {
   [k: string]: unknown;
 }
 
-type Row = { data: string; status: string; access_password: string | null; custom_slug: string | null };
+type Row = { data: string; status: string; access_password: string | null; custom_slug: string | null; editor_notes: string | null; editor_done: string | null };
+
+function safeParseArr(s: string | null): string[] {
+  if (!s) return [];
+  try { const v = JSON.parse(s); return Array.isArray(v) ? v.map(String) : []; } catch { return []; }
+}
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
     // O parâmetro da URL pode ser o número OU a URL personalizada (custom_slug).
     const key = String(params.number);
     const row = await env.DB.prepare(
-      "SELECT data, status, access_password, custom_slug FROM proposals WHERE number = ? OR custom_slug = ?"
+      "SELECT data, status, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE number = ? OR custom_slug = ?"
     ).bind(key, key).first<Row>();
     if (!row) return error(404, "Proposta não encontrada.");
 
@@ -36,9 +41,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       return error(404, "Proposta não encontrada.");
     }
 
-    // Admin enxerga tudo (inclusive a senha e a URL personalizada, para reenviar).
+    // Admin enxerga tudo (senha, URL personalizada e o apoio pessoal), para editar.
     if (isAdmin) {
-      return json({ proposal: JSON.parse(row.data), status: row.status, accessPassword: row.access_password ?? "", customSlug: row.custom_slug ?? "" });
+      return json({
+        proposal: JSON.parse(row.data), status: row.status,
+        accessPassword: row.access_password ?? "", customSlug: row.custom_slug ?? "",
+        editorNotes: row.editor_notes ?? "", editorDone: safeParseArr(row.editor_done),
+      });
     }
 
     // Proposta protegida por senha: sem token válido, não devolve o conteúdo.
@@ -58,14 +67,18 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   try {
     await requireAuth(request, env);
     const number = String(params.number);
-    const body = await readJson<{ proposal?: ProposalLike; status?: string; accessPassword?: string | null; customSlug?: string | null }>(request);
+    const body = await readJson<{ proposal?: ProposalLike; status?: string; accessPassword?: string | null; customSlug?: string | null; editorNotes?: string; editorDone?: string[] }>(request);
     const proposal = body.proposal;
     if (!proposal) return error(400, "Proposta inválida.");
 
-    const existing = await env.DB.prepare("SELECT status, access_password, custom_slug FROM proposals WHERE number = ?")
+    const existing = await env.DB.prepare("SELECT status, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE number = ?")
       .bind(number)
-      .first<{ status: string; access_password: string | null; custom_slug: string | null }>();
+      .first<{ status: string; access_password: string | null; custom_slug: string | null; editor_notes: string | null; editor_done: string | null }>();
     if (!existing) return error(404, "Proposta não encontrada.");
+
+    // Apoio pessoal: se veio no corpo, atualiza; senão mantém o atual.
+    const editorNotes = "editorNotes" in body ? String(body.editorNotes ?? "") : existing.editor_notes;
+    const editorDone = "editorDone" in body ? JSON.stringify(body.editorDone ?? []) : existing.editor_done;
 
     const status = body.status === "published" || body.status === "draft" || body.status === "cancelled" ? body.status : existing.status;
     // Se `accessPassword` veio no corpo, atualiza (vazio → NULL = pública);
@@ -95,7 +108,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
 
     await env.DB.prepare(
       `UPDATE proposals
-       SET client = ?, service_title = ?, date = ?, status = ?, access_password = ?, custom_slug = ?, data = ?, updated_at = datetime('now')
+       SET client = ?, service_title = ?, date = ?, status = ?, access_password = ?, custom_slug = ?, editor_notes = ?, editor_done = ?, data = ?, updated_at = datetime('now')
        WHERE number = ?`
     )
       .bind(
@@ -105,6 +118,8 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
         status,
         accessPassword,
         customSlug,
+        editorNotes,
+        editorDone,
         JSON.stringify(proposal),
         number
       )

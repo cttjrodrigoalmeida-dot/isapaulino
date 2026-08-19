@@ -3,6 +3,7 @@ import type { Proposal, GalleryItem } from "../components/proposal/types";
 import { api, ApiError, type LibraryPortfolioItem } from "./api";
 import PortfolioLibraryPicker from "./PortfolioLibraryPicker";
 import UploadHint from "./UploadHint";
+import EditorSection from "./EditorSection";
 import styles from "./Admin.module.css";
 
 // Editor do PORTFÓLIO / "Projetos anteriores" da proposta.
@@ -13,9 +14,15 @@ import styles from "./Admin.module.css";
 export default function GalleryEditor({
   proposal,
   onChange,
+  sectionId,
+  collapsed,
+  onToggle,
 }: {
   proposal: Proposal;
   onChange: (p: Proposal) => void;
+  sectionId?: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }) {
   const gallery = proposal.gallery ?? [];
   const [uploading, setUploading] = useState(false);
@@ -92,8 +99,7 @@ export default function GalleryEditor({
   };
 
   return (
-    <div className={styles.card}>
-      <div className={styles.cardTitle}>Portfólio · Projetos anteriores</div>
+    <EditorSection id={sectionId} label="Portfólio · Projetos anteriores" collapsed={collapsed} onToggle={onToggle}>
       <div className={styles.pageHint} style={{ marginTop: -4, marginBottom: 12 }}>
         As imagens abaixo aparecem na seção “Portfólio” da proposta. Arraste para
         reordenar. Se ficar vazia, a seção não é exibida.
@@ -231,6 +237,6 @@ export default function GalleryEditor({
           onClose={() => setPickerOpen(false)}
         />
       )}
-    </div>
+    </EditorSection>
   );
 }

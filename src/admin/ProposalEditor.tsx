@@ -20,6 +20,7 @@ import PaymentEditor from "./PaymentEditor";
 import ProcessEditor from "./ProcessEditor";
 import SectionsEditor from "./SectionsEditor";
 import BackToTop from "./BackToTop";
+import Section from "./EditorSection";
 import { useAutosavePref, AutosaveToggle } from "./autosave";
 import styles from "./Admin.module.css";
 
@@ -27,6 +28,17 @@ type Status = "draft" | "published";
 
 // Largura do painel de prévia (usada no drawer e para "encolher" o editor à esquerda).
 const PREVIEW_W = "min(48vw, 760px)";
+
+// Seções da proposta (apoio: navegação, progresso e checklist).
+const PROPOSAL_SECTIONS: { id: string; label: string }[] = [
+  { id: "identificacao", label: "Identificação" },
+  { id: "escopo", label: "Capa / Escopo" },
+  { id: "portfolio", label: "Portfólio" },
+  { id: "processo", label: "Processo" },
+  { id: "investimento", label: "Investimento" },
+  { id: "pagamento", label: "Pagamento" },
+  { id: "condicoes", label: "Prazo & condições" },
+];
 
 // Extrai a quantidade de dias do texto de validade (ex.: "7 dias úteis" → 7).
 function daysFromValidity(validity: string): number | null {
@@ -84,6 +96,21 @@ export default function ProposalEditor({
   const [accessPassword, setAccessPassword] = useState("");
   // URL personalizada (alias). Vazio = só o número. Coluna própria no banco.
   const [customSlug, setCustomSlug] = useState("");
+  // ── Apoio pessoal (D1): notas + checklist "revisado" + navegação/recolher ──
+  const [notes, setNotes] = useState("");
+  const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
+  const [activeSectionId, setActiveSectionId] = useState("");
+  const [apoioOpen, setApoioOpen] = useState(true);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleDone = (id: string) =>
+    setDoneSet((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const jumpTo = (id: string) => {
+    setCollapsed((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    requestAnimationFrame(() => document.getElementById(`sec-card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
   const [comboEnabled, setComboEnabled] = useState(false);
   const [comboPercent, setComboPercent] = useState(10);
   const [pixDiscount, setPixDiscount] = useState(5);
@@ -164,7 +191,7 @@ export default function ProposalEditor({
           );
           setStatus("draft");
         } else {
-          const { proposal: p, status: s, accessPassword: pw, customSlug: slug } = await api.getProposal(number!);
+          const { proposal: p, status: s, accessPassword: pw, customSlug: slug, editorNotes, editorDone } = await api.getProposal(number!);
           if (!alive) return;
           setComboEnabled(readComboFromNote(p.comboNote).enabled);
           setComboPercent(readComboFromNote(p.comboNote).percent);
@@ -174,6 +201,8 @@ export default function ProposalEditor({
           setStatus(s);
           setAccessPassword(pw ?? "");
           setCustomSlug(slug ?? "");
+          setNotes(editorNotes ?? "");
+          setDoneSet(new Set(editorDone ?? []));
         }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -270,7 +299,7 @@ export default function ProposalEditor({
     setSaving(true);
     try {
       if (isNew) await api.createProposal(clean, finalStatus, accessPassword);
-      else await api.updateProposal(number!, clean, finalStatus, accessPassword, slug);
+      else await api.updateProposal(number!, clean, finalStatus, accessPassword, slug, { editorNotes: notes, editorDone: [...doneSet] });
       if (publish) setStatus("published");
       setLastSavedAt(Date.now());
       setDirty(false);
@@ -290,11 +319,11 @@ export default function ProposalEditor({
   // Marca alterações pendentes (após o carregamento inicial).
   useEffect(() => {
     if (hydratedRef.current) setDirty(true);
-  }, [proposal, status, accessPassword, customSlug, comboEnabled, comboPercent, pixDiscount, maxInstallments]);
+  }, [proposal, status, accessPassword, customSlug, notes, doneSet, comboEnabled, comboPercent, pixDiscount, maxInstallments]);
 
   // Autosave silencioso (só proposta JÁ criada): debounce ~2,5s de ociosidade.
-  const latestRef = useRef({ proposal, status, accessPassword, customSlug });
-  latestRef.current = { proposal, status, accessPassword, customSlug };
+  const latestRef = useRef({ proposal, status, accessPassword, customSlug, notes, doneSet });
+  latestRef.current = { proposal, status, accessPassword, customSlug, notes, doneSet };
   useEffect(() => {
     if (!dirty || isNew || !autosaveOn) return;
     const cur = latestRef.current;
@@ -309,14 +338,53 @@ export default function ProposalEditor({
       const slugArg = s === "" ? "" : /^[A-Za-z0-9_-]+$/.test(s) ? s : undefined;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword, slugArg);
+        await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword, slugArg, { editorNotes: c.notes, editorDone: [...c.doneSet] });
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword, customSlug]);
+  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword, customSlug, notes, doneSet]);
+
+  // Scroll-spy: acende a seção visível durante a rolagem (alimenta rail + prévia).
+  useEffect(() => {
+    if (loading) return;
+    const els = Array.from(document.querySelectorAll<HTMLElement>('[id^="sec-card-"]'));
+    if (!els.length) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const vis = entries.filter((e) => e.isIntersecting).sort((a, c) => c.intersectionRatio - a.intersectionRatio)[0];
+        if (vis) setActiveSectionId(vis.target.id.replace("sec-card-", ""));
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 1] }
+    );
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [loading, tab, showPreview, collapsed]);
+
+  // A prévia acompanha a seção em edição: ao rolar o editor (scroll-spy define
+  // activeSectionId), a prévia rola para o mesmo trecho (data-spy). Rolagem
+  // manual do container (getBoundingClientRect funciona apesar do zoom).
+  useEffect(() => {
+    if (!showPreview || !activeSectionId) return;
+    const cont = previewScrollRef.current;
+    if (!cont) return;
+    const t = window.setTimeout(() => {
+      const sel = (typeof CSS !== "undefined" && CSS.escape) ? CSS.escape(activeSectionId) : activeSectionId;
+      const target = cont.querySelector<HTMLElement>(`[data-spy="${sel}"]`);
+      if (!target) return;
+      const delta = target.getBoundingClientRect().top - cont.getBoundingClientRect().top - 12;
+      if (Math.abs(delta) < 2) return;
+      cont.scrollTo({ top: cont.scrollTop + delta, behavior: "smooth" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [activeSectionId, showPreview]);
+
+  const doneCount = PROPOSAL_SECTIONS.filter((s) => doneSet.has(s.id)).length;
+  const pct = PROPOSAL_SECTIONS.length ? Math.round((doneCount / PROPOSAL_SECTIONS.length) * 100) : 0;
+  const collapseAll = () => setCollapsed(new Set(PROPOSAL_SECTIONS.map((s) => s.id)));
+  const expandAll = () => setCollapsed(new Set());
 
   if (loading || !proposal) {
     return <div className={styles.loading}>Carregando proposta…</div>;
@@ -382,6 +450,12 @@ export default function ProposalEditor({
             {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : isNew ? "Ainda não salva" : "Tudo salvo"}
           </span>
           <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+          {tab === "campos" && (
+            <button type="button" className={styles.btn} style={{ fontSize: 11 }}
+              onClick={() => (collapsed.size >= PROPOSAL_SECTIONS.length - 1 ? expandAll() : collapseAll())}>
+              {collapsed.size >= PROPOSAL_SECTIONS.length - 1 ? "Expandir tudo" : "Recolher tudo"}
+            </button>
+          )}
           {isNew && <span className={styles.pageHint} style={{ margin: 0 }}>O automático começa após o 1º “Salvar”.</span>}
         </div>
         {/* Identificador da proposta em edição — fica fixo na rolagem, para não
@@ -392,9 +466,37 @@ export default function ProposalEditor({
       </div>
 
       {tab === "campos" ? (
-        <div className={styles.editorGrid}>
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Identificação</div>
+        <div className={styles.editorWorkspace} style={showPreview ? { display: "block" } : undefined}>
+          {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
+          {!showPreview && (
+          <aside className={styles.editorRail}>
+            <div className={styles.railTitle}>Seções</div>
+            {PROPOSAL_SECTIONS.map((s) => {
+              const done = doneSet.has(s.id);
+              const active = s.id === activeSectionId;
+              return (
+                <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
+                  <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                </button>
+              );
+            })}
+            <div style={{ marginTop: 14 }}>
+              <div className={styles.railTitle} style={{ marginBottom: 6 }}>Progresso · {pct}%</div>
+              <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Revisado</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Onde você está</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={styles.statusDot} />Pendente</span>
+              </div>
+            </div>
+            <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
+          </aside>
+          )}
+
+          {/* MAIN — cards do editor */}
+          <div className={styles.editorGrid}>
+          <Section id="identificacao" label="Identificação" collapsed={collapsed.has("identificacao")} onToggle={() => toggleCollapse("identificacao")}>
             <div className={styles.row2}>
               <div className={styles.field}>
                 <label className={styles.label}>Número {isNew ? "(sugerido — edite se quiser)" : "(fixo)"}</label>
@@ -473,10 +575,9 @@ export default function ProposalEditor({
                   : "Inclua um número de dias (ex.: “7 dias”) para ativar o contador regressivo."}
               </div>
             </div>
-          </div>
+          </Section>
 
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>Capa / Escopo</div>
+          <Section id="escopo" label="Capa / Escopo" collapsed={collapsed.has("escopo")} onToggle={() => toggleCollapse("escopo")}>
             <div className={styles.field}>
               <label className={styles.label}>Título do serviço</label>
               <input className={styles.input} value={proposal.serviceTitle} onChange={(e) => set("serviceTitle", e.target.value)} />
@@ -497,12 +598,12 @@ export default function ProposalEditor({
               <label className={styles.label}>Ambientes</label>
               <ListEditor items={proposal.ambientes ?? []} onChange={(v) => set("ambientes", v)} placeholder="ex.: Sala de TV" />
             </div>
-          </div>
+          </Section>
 
           {/* ordem igual à da página: Portfólio → Processo → Investimento */}
-          <GalleryEditor proposal={proposal} onChange={(p) => setProposal(p)} />
+          <GalleryEditor proposal={proposal} onChange={(p) => setProposal(p)} sectionId="portfolio" collapsed={collapsed.has("portfolio")} onToggle={() => toggleCollapse("portfolio")} />
 
-          <ProcessEditor proposal={proposal} onChange={(p) => setProposal(p)} />
+          <ProcessEditor proposal={proposal} onChange={(p) => setProposal(p)} sectionId="processo" collapsed={collapsed.has("processo")} onToggle={() => toggleCollapse("processo")} />
 
           <InvestmentEditor
             proposal={proposal}
@@ -510,6 +611,9 @@ export default function ProposalEditor({
             comboPercent={comboPercent}
             onChange={update}
             onComboChange={onComboChange}
+            sectionId="investimento"
+            collapsed={collapsed.has("investimento")}
+            onToggle={() => toggleCollapse("investimento")}
           />
 
           <PaymentEditor
@@ -518,9 +622,47 @@ export default function ProposalEditor({
             maxInstallments={maxInstallments}
             onChange={update}
             onPayChange={onPayChange}
+            sectionId="pagamento"
+            collapsed={collapsed.has("pagamento")}
+            onToggle={() => toggleCollapse("pagamento")}
           />
 
-          <SectionsEditor proposal={proposal} onChange={(p) => setProposal(p)} />
+          <div id="sec-card-condicoes">
+            <SectionsEditor proposal={proposal} onChange={(p) => setProposal(p)} />
+          </div>
+          </div>{/* fim do editorGrid (main) */}
+
+          {/* RAIL DIREITO — Meu apoio (checklist + notas) */}
+          {!showPreview && (
+          <aside className={styles.editorRail}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
+              <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setApoioOpen((v) => !v)}>{apoioOpen ? "Recolher" : "Abrir"}</button>
+            </div>
+            {apoioOpen && (
+              <>
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Checklist de revisão</div>
+                {PROPOSAL_SECTIONS.map((s) => (
+                  <label key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 2px", fontSize: 12.5, cursor: "pointer" }}>
+                    <input type="checkbox" checked={doneSet.has(s.id)} onChange={() => toggleDone(s.id)} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                  </label>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, marginBottom: 6 }}>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Bloco de notas</div>
+                  <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setNotes("")} disabled={!notes}>Limpar</button>
+                </div>
+                <textarea className={styles.textarea} rows={6} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anotações, pendências, o que confirmar com o cliente…" />
+                <div className={styles.railTitle} style={{ marginTop: 14, marginBottom: 6 }}>Dicas rápidas</div>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
+                  <li>Salva sozinho enquanto você edita (proposta já salva).</li>
+                  <li>Marque as seções revisadas no checklist.</li>
+                  <li>Use “Recolher tudo” e o índice à esquerda para navegar.</li>
+                </ul>
+              </>
+            )}
+          </aside>
+          )}
         </div>
       ) : (
         <div className={styles.card}>
@@ -626,7 +768,7 @@ export default function ProposalEditor({
             <strong style={{ fontSize: 13 }}>Prévia ao vivo · Nº {proposal.number}</strong>
             <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
           </div>
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div ref={previewScrollRef} style={{ flex: 1, overflow: "auto" }}>
             {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}
             <div style={{ zoom: 0.62 }}>
               <ProposalView proposal={proposal} preview />

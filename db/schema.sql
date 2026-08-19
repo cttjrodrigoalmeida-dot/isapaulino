@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS proposals (
   -- URL personalizada opcional (ex.: "2650-DaniloFerreira"). É um ALIAS: a
   -- proposta continua resolvendo por `number` E por este slug. NULL = só o número.
   custom_slug   TEXT,
+  -- Apoio PESSOAL do admin ao montar a proposta (não vai para o cliente):
+  editor_notes  TEXT,                       -- bloco de notas do editor
+  editor_done   TEXT,                       -- JSON array de ids de seção "revisadas"
   data          TEXT NOT NULL,              -- JSON do tipo Proposal
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
@@ -43,6 +46,8 @@ CREATE TABLE IF NOT EXISTS proposals (
 --   ALTER TABLE proposals ADD COLUMN outcome TEXT NOT NULL DEFAULT 'nao-aprovada';
 --   ALTER TABLE proposals ADD COLUMN access_password TEXT;
 --   ALTER TABLE proposals ADD COLUMN custom_slug TEXT;
+--   ALTER TABLE proposals ADD COLUMN editor_notes TEXT;
+--   ALTER TABLE proposals ADD COLUMN editor_done TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
 CREATE INDEX IF NOT EXISTS idx_proposals_updated ON proposals(updated_at DESC);

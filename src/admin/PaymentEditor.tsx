@@ -1,5 +1,6 @@
 import type { Proposal } from "../components/proposal/types";
 import ListEditor from "./ListEditor";
+import EditorSection from "./EditorSection";
 import styles from "./Admin.module.css";
 
 // Editor de pagamento. Os valores numéricos (PIX à vista e parcelas) são
@@ -11,20 +12,24 @@ export default function PaymentEditor({
   maxInstallments,
   onChange,
   onPayChange,
+  sectionId,
+  collapsed,
+  onToggle,
 }: {
   proposal: Proposal;
   pixDiscount: number;
   maxInstallments: number;
   onChange: (next: Proposal) => void;
   onPayChange: (pixDiscount: number, maxInstallments: number) => void;
+  sectionId?: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }) {
   const pix = proposal.pixPlan;
   const inst = proposal.installmentPlan;
 
   return (
-    <div className={styles.card}>
-      <div className={styles.cardTitle}>Forma de pagamento</div>
-
+    <EditorSection id={sectionId} label="Forma de pagamento" collapsed={collapsed} onToggle={onToggle}>
       {/* Card 01 — PIX à vista */}
       <div className={styles.blockCard}>
         <div className={styles.blockTag}>Card 01 · PIX à vista</div>
@@ -113,6 +118,6 @@ export default function PaymentEditor({
         <label className={styles.label}>Observação geral de pagamento (opcional)</label>
         <textarea className={styles.textarea} rows={2} value={proposal.paymentNote ?? ""} onChange={(e) => onChange({ ...proposal, paymentNote: e.target.value })} />
       </div>
-    </div>
+    </EditorSection>
   );
 }

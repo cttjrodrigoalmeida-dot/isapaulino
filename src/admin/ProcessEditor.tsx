@@ -1,6 +1,7 @@
 import type { Proposal, ProcessStep } from "../components/proposal/types";
 import { DEFAULT_PROCESS_STEPS } from "../components/proposal/proposalDefaults";
 import ListEditor from "./ListEditor";
+import EditorSection from "./EditorSection";
 import styles from "./Admin.module.css";
 
 // Editor da seção "Como funciona" (processo). Materializa os passos padrão
@@ -8,9 +9,15 @@ import styles from "./Admin.module.css";
 export default function ProcessEditor({
   proposal,
   onChange,
+  sectionId,
+  collapsed,
+  onToggle,
 }: {
   proposal: Proposal;
   onChange: (next: Proposal) => void;
+  sectionId?: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }) {
   const steps: ProcessStep[] = proposal.processSteps ?? structuredClone(DEFAULT_PROCESS_STEPS);
   const show = proposal.show?.process !== false;
@@ -34,9 +41,7 @@ export default function ProcessEditor({
   };
 
   return (
-    <div className={styles.card}>
-      <div className={styles.cardTitle}>Como funciona (processo)</div>
-
+    <EditorSection id={sectionId} label="Como funciona (processo)" collapsed={collapsed} onToggle={onToggle}>
       <label className={styles.comboToggle} style={{ marginBottom: 14 }}>
         <input
           type="checkbox"
@@ -72,6 +77,6 @@ export default function ProcessEditor({
       ))}
 
       <button type="button" className={styles.btn} onClick={addStep}>+ adicionar etapa</button>
-    </div>
+    </EditorSection>
   );
 }
