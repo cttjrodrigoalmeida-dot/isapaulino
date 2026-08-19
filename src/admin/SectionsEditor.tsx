@@ -133,6 +133,7 @@ export default function SectionsEditor({
           Editável por proposta — o processo é diferente dependendo do projeto. Cada linha é um item da lista.
         </p>
         <ListEditor
+          advanced
           items={proposal.notIncluded ?? DEFAULT_NOT_INCLUDED}
           onChange={(v) => set("notIncluded", v)}
           placeholder="ex.: Plantas Técnicas além das mencionadas na cláusula 02."
