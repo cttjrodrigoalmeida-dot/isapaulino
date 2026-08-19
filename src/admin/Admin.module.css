@@ -1307,6 +1307,14 @@
   gap: 7px;
   margin: 8px 0 4px;
 }
+/* Sub-seção de brindes (cortesia) dentro do bloco — tracejado rosa da marca. */
+.brindeBox {
+  margin: 12px 0 4px;
+  padding: 12px 12px 6px;
+  border: 1px dashed rgba(240, 80, 110, 0.55);
+  border-radius: var(--border-radius-btn);
+  background: color-mix(in srgb, #f0506e 5%, transparent);
+}
 .lineRow {
   display: flex;
   align-items: center;

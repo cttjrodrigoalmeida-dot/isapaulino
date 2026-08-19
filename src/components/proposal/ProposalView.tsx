@@ -646,7 +646,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
                   )}
                 </div>
                 <ul className={styles.priceList}>
-                  {[...block.lines].sort((a, b) => priceNum(a.value) - priceNum(b.value)).map((line) => (
+                  {[...block.lines].filter((l) => !l.brinde).sort((a, b) => priceNum(a.value) - priceNum(b.value)).map((line) => (
                     <li key={line.label} className={styles.priceRow}>
                       <span className={styles.priceLabel}>{line.label}</span>
                       <span className={styles.dots} aria-hidden />
@@ -678,6 +678,35 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
             </div>
             <span className={styles.totalExtenso}>{p.totalExtenso}</span>
           </Reveal>
+
+          {/* Brindes (cortesia) — consolidados abaixo do total; não entram no
+              cálculo. Faixa discreta com tracejado e rosa da marca. */}
+          {(() => {
+            const brindes = (p.investmentBlocks ?? []).flatMap((b) => b.lines.filter((l) => l.brinde));
+            if (!brindes.length) return null;
+            return (
+              <Reveal delay={0.1} className={styles.brindeCard}>
+                <div className={styles.brindeHead}>
+                  <span className={styles.brindeIcon} aria-hidden>🎁</span>
+                  <span className={styles.brindeTitle}>Brindes inclusos</span>
+                  <span className={styles.brindeTag}>CORTESIA</span>
+                </div>
+                <ul className={styles.brindeList}>
+                  {brindes.map((line, bi) => (
+                    <li key={bi} className={styles.brindeRow}>
+                      <span className={styles.brindeLabel}>{line.label}</span>
+                      <span className={styles.dots} aria-hidden />
+                      {priceNum(line.value) > 0 && <span className={styles.brindeFrom}>{line.value}</span>}
+                      <span className={styles.brindeFree}>Cortesia</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className={styles.brindeNote}>
+                  Estes itens são cortesia e não entram no cálculo do investimento total.
+                </p>
+              </Reveal>
+            );
+          })()}
 
           {/* forma de pagamento — abaixo do total */}
           <Reveal delay={0.1} className={styles.payWrap}>

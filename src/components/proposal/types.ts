@@ -10,6 +10,12 @@ export interface PriceLine {
   label: string;
   /** Valor já formatado, ex.: "R$ 480,00". String para permitir "a combinar", "—", etc. */
   value: string;
+  /**
+   * Item de CORTESIA (brinde): não entra no subtotal do bloco nem no
+   * investimento total. Na proposta pública sai numa faixa de brindes à parte
+   * (valor original riscado → R$ 0,00). `value` guarda o valor original.
+   */
+  brinde?: boolean;
 }
 
 export interface InvestmentBlock {

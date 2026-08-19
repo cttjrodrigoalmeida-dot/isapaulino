@@ -34,6 +34,8 @@ export default function InvestmentEditor({
   };
   const addLine = (bi: number) =>
     apply(blocks.map((b, idx) => (idx === bi ? { ...b, lines: [...b.lines, { label: "", value: "R$ 0,00" }] } : b)));
+  const addBrinde = (bi: number) =>
+    apply(blocks.map((b, idx) => (idx === bi ? { ...b, lines: [...b.lines, { label: "", value: "R$ 0,00", brinde: true }] } : b)));
   const removeLine = (bi: number, li: number) =>
     apply(blocks.map((b, idx) => (idx === bi ? { ...b, lines: b.lines.filter((_, j) => j !== li) } : b)));
   const addBlock = () =>
@@ -75,9 +77,10 @@ export default function InvestmentEditor({
             </div>
           </div>
 
+          {/* Itens NORMAIS (entram no subtotal) */}
           <label className={styles.label}>Itens (descrição + valor)</label>
           <div className={styles.lineList}>
-            {b.lines.map((l, li) => (
+            {b.lines.map((l, li) => (l.brinde ? null : (
               <div key={li} className={styles.lineRow}>
                 <input
                   className={styles.input}
@@ -96,14 +99,48 @@ export default function InvestmentEditor({
                   ×
                 </button>
               </div>
-            ))}
+            )))}
             <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => addLine(bi)}>
               + adicionar item
             </button>
           </div>
 
+          {/* BRINDES (cortesia): não entram no subtotal; o "valor" é só o preço
+              original que aparece riscado na proposta. */}
+          <div className={styles.brindeBox}>
+            <label className={styles.label} style={{ margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+              🎁 Brindes (cortesia) — não entram no subtotal
+            </label>
+            <div className={styles.lineList}>
+              {b.lines.map((l, li) => (l.brinde ? (
+                <div key={li} className={styles.lineRow}>
+                  <input
+                    className={styles.input}
+                    placeholder="Descrição do brinde (ex.: Planta Baixa)"
+                    value={l.label}
+                    onChange={(e) => setLine(bi, li, { label: e.target.value })}
+                  />
+                  <input
+                    className={`${styles.input} ${styles.mono} ${styles.moneyInput}`}
+                    placeholder="Valor original"
+                    title="Valor original (aparece riscado na proposta). Deixe R$ 0,00 se não quiser mostrar."
+                    value={l.value}
+                    onChange={(e) => setLine(bi, li, { value: e.target.value })}
+                    onBlur={(e) => setLine(bi, li, { value: formatBRL(parseBRL(e.target.value)) })}
+                  />
+                  <button type="button" className={styles.iconBtn} onClick={() => removeLine(bi, li)} aria-label="Remover brinde">
+                    ×
+                  </button>
+                </div>
+              ) : null))}
+              <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => addBrinde(bi)}>
+                + adicionar brinde
+              </button>
+            </div>
+          </div>
+
           <div className={styles.subtotalRow}>
-            <span className={styles.label} style={{ margin: 0 }}>Subtotal (automático)</span>
+            <span className={styles.label} style={{ margin: 0 }}>Subtotal · itens normais (automático)</span>
             <span className={`${styles.mono} ${styles.subtotalValue}`}>{b.subtotal}</span>
           </div>
 

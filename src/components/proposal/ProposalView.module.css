@@ -723,6 +723,85 @@
   color: var(--color-text-muted);
 }
 
+/* ── Brindes (cortesia) — faixa discreta abaixo do investimento ── */
+.brindeCard {
+  margin-top: 20px;
+  padding: clamp(18px, 2.4vw, 26px);
+  background: rgba(240, 80, 110, 0.04);
+  border: 1px dashed rgba(240, 80, 110, 0.4);
+  border-radius: var(--border-radius-standard);
+}
+.brindeHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.brindeIcon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.brindeTitle {
+  font-family: var(--font-subtitle);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.brindeTag {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: #f0506e;
+  border: 1px solid rgba(240, 80, 110, 0.5);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.brindeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.brindeRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.brindeRow:last-child {
+  border-bottom: none;
+}
+.brindeLabel {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+.brindeFrom {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(240, 80, 110, 0.7);
+  white-space: nowrap;
+}
+.brindeFree {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: #f0506e;
+  white-space: nowrap;
+  min-width: 66px;
+  text-align: right;
+}
+.brindeNote {
+  margin-top: 12px;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
 .totalCard {
   position: relative;
   margin-top: 24px;

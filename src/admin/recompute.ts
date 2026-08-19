@@ -17,7 +17,8 @@ export function recomputeInvestment(
 ): Proposal {
   const blocks = (p.investmentBlocks ?? []).map((b) => ({
     ...b,
-    subtotal: formatBRL(sumBRL(b.lines.map((l) => l.value))),
+    // Brindes (cortesia) não entram no subtotal do bloco.
+    subtotal: formatBRL(sumBRL(b.lines.filter((l) => !l.brinde).map((l) => l.value))),
   }));
   const sum = blocks.reduce((acc, b) => acc + parseBRL(b.subtotal), 0);
   const applyCombo = comboEnabled && blocks.length >= 2;
