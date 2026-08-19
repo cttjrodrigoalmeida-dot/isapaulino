@@ -61,7 +61,8 @@ export default function Comercial({ requestNew }: { requestNew?: { area: Area; n
             number={view.name === "editor" ? view.number : null}
             duplicateFrom={view.name === "editor" ? view.duplicateFrom ?? null : null}
             onBack={() => setView({ name: "list" })}
-            onSaved={() => setView({ name: "list" })}
+            // Salvar fica na página; ao CRIAR, reabre no modo edição (mesmo número).
+            onCreated={(number) => setView({ name: "editor", number })}
           />
         )
       ) : view.name === "list" ? (

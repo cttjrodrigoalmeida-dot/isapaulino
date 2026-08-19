@@ -65,12 +65,14 @@ export default function ProposalEditor({
   number,
   duplicateFrom = null,
   onBack,
-  onSaved,
+  onCreated,
 }: {
   number: string | null;
   duplicateFrom?: string | null;
   onBack: () => void;
-  onSaved: () => void;
+  /** Chamado após CRIAR uma proposta nova — o pai reabre o editor no modo edição
+   *  (mesmo número), mantendo a Isabela na mesma página em vez de voltar à lista. */
+  onCreated: (number: string) => void;
 }) {
   const isNew = number === null;
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -250,14 +252,26 @@ export default function ProposalEditor({
       setError(`O número ${proposal.number.trim()} já está em uso. Escolha outro (ex.: ${duplicateNumber(proposal.number, existingNumbers)}).`);
       return;
     }
+    const num = proposal.number.trim();
     const clean = buildClean(proposal);
+    // "Salvar e publicar" abre a página pública em nova aba. Abrimos AGORA (ainda
+    // no gesto do clique, antes do await) para o bloqueador de pop-up não barrar;
+    // a URL é definida depois que a gravação confirma.
+    const pubWin = publish ? window.open("", "_blank") : null;
     savingRef.current = true;
     setSaving(true);
     try {
       if (isNew) await api.createProposal(clean, finalStatus, accessPassword);
       else await api.updateProposal(number!, clean, finalStatus, accessPassword);
-      onSaved();
+      if (publish) setStatus("published");
+      setLastSavedAt(Date.now());
+      setDirty(false);
+      // Publicou → leva a aba já aberta para o link público da proposta.
+      if (pubWin) pubWin.location.href = `/proposta/${encodeURIComponent(num)}`;
+      // Criou uma nova → o pai reabre no modo edição (fica na mesma página).
+      if (isNew) onCreated(num);
     } catch (err) {
+      pubWin?.close();
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
     } finally {
       savingRef.current = false;
