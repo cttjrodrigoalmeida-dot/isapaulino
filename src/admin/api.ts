@@ -72,7 +72,8 @@ export interface BriefingResponse {
   client: string | null;
   submittedAt: string;
   answers: Record<string, string>;
-  refImages: Record<string, string>;
+  // Cada pergunta pode ter vários anexos (imagens/PDFs). Formato legado: string única.
+  refImages: Record<string, string | string[]>;
 }
 
 export interface AdminUser {

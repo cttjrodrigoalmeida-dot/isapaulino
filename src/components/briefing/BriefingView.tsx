@@ -161,7 +161,35 @@ function CopyButton({ value }: { value: string }) {
 }
 
 type Answers = Record<string, string>;
-type Refs = Record<string, string>;
+// Cada pergunta pode ter VÁRIOS anexos (imagens e/ou PDFs) + links.
+type RefItem = {
+  /** URL de exibição: blob: (preview local), /api/files/… (já no R2) ou link externo. */
+  url: string;
+  /** nome amigável do arquivo (para PDFs/arquivos e para o alt). */
+  name: string;
+  /** imagem → mostra miniatura; senão (PDF/arquivo/link) → chip. */
+  isImage: boolean;
+  /** link externo (Drive, Pinterest…) — não sobe pro R2. */
+  isLink: boolean;
+  /** arquivo local ainda por enviar ao R2. */
+  file?: File;
+};
+type Refs = Record<string, RefItem[]>;
+
+const IMG_EXT_RE = /\.(jpe?g|png|webp|avif|gif|heic|heif)$/i;
+// Deriva um RefItem a partir de uma URL já persistida (sem File).
+function refItemFromUrl(url: string): RefItem {
+  const isLink = !url.startsWith("blob:") && !url.startsWith("/api/files/");
+  const name = decodeURIComponent(url.split("/").pop() || url).replace(/^https?:\/\//, "");
+  return { url, name, isImage: IMG_EXT_RE.test(url), isLink };
+}
+// Referência vazia estável (evita re-render por identidade de array nova).
+const EMPTY_REFS: RefItem[] = [];
+// Normaliza o formato guardado (string legada OU array) para RefItem[].
+function refsFromStored(v: unknown): RefItem[] {
+  const arr = Array.isArray(v) ? v : v ? [v] : [];
+  return arr.filter((u): u is string => typeof u === "string" && !!u).map(refItemFromUrl);
+}
 
 interface Props {
   briefing: Briefing;
@@ -198,8 +226,8 @@ function QuestionItem({
   sectionKind,
   answer,
   onAnswer,
-  refImage,
-  onPickRef,
+  refItems,
+  onPickFiles,
   onPickLink,
   onRemoveRef,
   pending,
@@ -218,10 +246,10 @@ function QuestionItem({
   sectionKind: "info" | "ambiente";
   answer: string;
   onAnswer: (value: string) => void;
-  refImage?: string;
-  onPickRef: (file: File) => void;
+  refItems: RefItem[];
+  onPickFiles: (files: File[]) => void;
   onPickLink: (url: string) => void;
-  onRemoveRef: () => void;
+  onRemoveRef: (index: number) => void;
   pending: boolean;
   locked: boolean;
   /** já respondida (tem valor) — ganha borda de destaque. */
@@ -241,9 +269,7 @@ function QuestionItem({
   const fileRef = useRef<HTMLInputElement>(null);
   const [refModalOpen, setRefModalOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
-  // Uma referência é "link" quando não é um preview local (blob:) nem um upload
-  // nosso (/api/files/...). Nesse caso mostramos um chip clicável em vez da imagem.
-  const refIsLink = !!refImage && !refImage.startsWith("blob:") && !refImage.startsWith("/api/files/");
+  const hasRefs = refItems.length > 0;
   const type = question.type ?? "longtext";
   const allowReference = question.allowReference ?? sectionKind === "ambiente";
   // Botões de resposta rápida: a lista da pergunta é a fonte da verdade (o admin
@@ -265,13 +291,44 @@ function QuestionItem({
       ref={fileRef}
       type="file"
       accept="image/*,.pdf,.dwg,.skp,.zip"
+      multiple
       className={styles.refHidden}
       onChange={(e) => {
-        const file = e.target.files?.[0];
-        if (file) onPickRef(file);
+        const files = Array.from(e.target.files ?? []);
+        if (files.length) onPickFiles(files);
         e.target.value = "";
       }}
     />
+  );
+
+  // Galeria de anexos (imagens viram miniatura; PDFs/arquivos e links viram chip).
+  // No modo impressão os botões de remover somem.
+  const refGallery = (
+    <span className={styles.refGallery}>
+      {refItems.map((it, i) =>
+        it.isImage ? (
+          <span key={i} className={styles.refPreview}>
+            <img src={it.url} alt={it.name || "Referência anexada"} className={styles.refImg} />
+            {!printing && (
+              <button type="button" className={styles.refRemove} onClick={() => onRemoveRef(i)} aria-label="Remover anexo">
+                ×
+              </button>
+            )}
+          </span>
+        ) : (
+          <span key={i} className={styles.refLinkChip}>
+            <a href={it.url} target="_blank" rel="noopener noreferrer">
+              {it.isLink ? "🔗" : "📄"} {it.name}
+            </a>
+            {!printing && (
+              <button type="button" className={styles.refChipRemove} onClick={() => onRemoveRef(i)} aria-label="Remover anexo">
+                ×
+              </button>
+            )}
+          </span>
+        )
+      )}
+    </span>
   );
 
   const email = studioEmail ?? "IsaPaulinoStudio@gmail.com";
@@ -427,24 +484,14 @@ function QuestionItem({
               />
             )}
             {wantsTemplateAttach &&
-              (refImage ? (
-                refIsLink ? (
-                  <span className={styles.refLinkChip}>
-                    <a href={refImage} target="_blank" rel="noopener noreferrer">
-                      {refImage.replace(/^https?:\/\//, "")}
-                    </a>
-                    <button type="button" className={styles.refChipRemove} onClick={onRemoveRef} aria-label="Remover template">
-                      ×
-                    </button>
-                  </span>
-                ) : (
-                  <span className={styles.refPreview}>
-                    <img src={refImage} alt="Template anexado" className={styles.refImg} />
-                    <button type="button" className={styles.refRemove} onClick={onRemoveRef} aria-label="Remover anexo">
-                      ×
-                    </button>
-                  </span>
-                )
+              (hasRefs ? (
+                <>
+                  {refGallery}
+                  <button type="button" className={styles.refBtn} onClick={() => fileRef.current?.click()}>
+                    <span className={styles.plus}>+</span> Anexar outro
+                  </button>
+                  {attachInput}
+                </>
               ) : (
                 <>
                   <div className={styles.templateAttach}>
@@ -727,33 +774,15 @@ function QuestionItem({
 
       {(quickFills.length || allowReference) && !printing && !locked && (
         <div className={styles.refRow}>
-          {allowReference &&
-            (refImage ? (
-              refIsLink ? (
-                <span className={styles.refLinkChip}>
-                  <a href={refImage} target="_blank" rel="noopener noreferrer">
-                    {refImage.replace(/^https?:\/\//, "")}
-                  </a>
-                  <button type="button" className={styles.refChipRemove} onClick={onRemoveRef} aria-label="Remover referência">
-                    ×
-                  </button>
-                </span>
-              ) : (
-                <span className={styles.refPreview}>
-                  <img src={refImage} alt="Referência anexada" className={styles.refImg} />
-                  <button type="button" className={styles.refRemove} onClick={onRemoveRef} aria-label="Remover referência">
-                    ×
-                  </button>
-                </span>
-              )
-            ) : (
-              <>
-                <button type="button" className={styles.refBtn} onClick={() => setRefModalOpen(true)}>
-                  <span className={styles.plus}>+</span> ANEXAR REFERÊNCIA
-                </button>
-                {attachInput}
-              </>
-            ))}
+          {allowReference && (
+            <>
+              {hasRefs && refGallery}
+              <button type="button" className={styles.refBtn} onClick={() => setRefModalOpen(true)}>
+                <span className={styles.plus}>+</span> {hasRefs ? "ANEXAR OUTRA" : "ANEXAR REFERÊNCIA"}
+              </button>
+              {attachInput}
+            </>
+          )}
           {quickFills.map((qf) => (
             <button
               key={qf}
@@ -767,16 +796,7 @@ function QuestionItem({
         </div>
       )}
 
-      {printing && refImage &&
-        (refIsLink ? (
-          <span className={styles.refLinkChip}>
-            <a href={refImage}>{refImage.replace(/^https?:\/\//, "")}</a>
-          </span>
-        ) : (
-          <span className={styles.refPreview}>
-            <img src={refImage} alt="Referência anexada" className={styles.refImg} />
-          </span>
-        ))}
+      {printing && hasRefs && refGallery}
 
       {refModalOpen && (
         <div
@@ -795,8 +815,9 @@ function QuestionItem({
                 fileRef.current?.click();
               }}
             >
-              <IconImage /> Anexar imagem
+              <IconImage /> Anexar imagem ou PDF
             </button>
+            <span className={styles.refModalNote}>Você pode anexar várias — imagens e PDFs.</span>
 
             <span className={styles.refModalDivider}>ou</span>
 
@@ -923,10 +944,21 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
       try {
         const res = await fetch("/api/client/briefings", { credentials: "include" });
         if (!res.ok) return; // visitante público / sem sessão — fluxo normal
-        const { briefings } = (await res.json()) as { briefings?: { number: string; responded: boolean; answers: Answers }[] };
+        const { briefings } = (await res.json()) as {
+          briefings?: { number: string; responded: boolean; answers: Answers; refImages?: Record<string, unknown> }[];
+        };
         const mine = (briefings ?? []).find((x) => String(x.number) === String(b.number));
         if (alive && mine?.responded && mine.answers && Object.keys(mine.answers).length > 0) {
           setAnswers(mine.answers);
+          // Recarrega os anexos já enviados para não perdê-los ao reeditar/reenviar.
+          if (mine.refImages && typeof mine.refImages === "object") {
+            const seeded: Refs = {};
+            for (const [qid, v] of Object.entries(mine.refImages)) {
+              const list = refsFromStored(v);
+              if (list.length) seeded[qid] = list;
+            }
+            if (Object.keys(seeded).length) setRefs(seeded);
+          }
           setEditingSubmitted(true);
         }
       } catch { /* segue o fluxo público */ }
@@ -945,19 +977,18 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
     }
   });
 
-  // ── Imagens de referência — preview (blob:) + arquivo original p/ enviar ao R2 ──
+  // ── Anexos de referência — vários por pergunta (imagens/PDFs + links) ──
+  // Preview local via blob: e o File original para subir ao R2 no envio.
   const [refs, setRefs] = useState<Refs>({});
   const refsRef = useRef(refs);
   refsRef.current = refs;
-  const refFiles = useRef<Record<string, File>>({});
-  // Referências por link (URL externa) — não têm arquivo para subir ao R2,
-  // mas precisam ir junto nas respostas enviadas.
-  const refLinks = useRef<Record<string, string>>({});
   useEffect(() => {
     return () => {
-      Object.values(refsRef.current).forEach((url) => {
-        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
-      });
+      Object.values(refsRef.current).forEach((list) =>
+        list.forEach((it) => {
+          if (it.url.startsWith("blob:")) URL.revokeObjectURL(it.url);
+        })
+      );
     };
   }, []);
 
@@ -973,33 +1004,29 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
     setAnswers((prev) => ({ ...prev, [qid]: value }));
     setPending((prev) => (prev.has(qid) ? removeFromSet(prev, qid) : prev));
   };
-  const pickRef = (qid: string, file: File) => {
-    const url = URL.createObjectURL(file);
-    refFiles.current[qid] = file;
-    delete refLinks.current[qid];
-    setRefs((prev) => {
-      const old = prev[qid];
-      if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
-      return { ...prev, [qid]: url };
-    });
+  const pickFiles = (qid: string, files: File[]) => {
+    const items: RefItem[] = files.map((file) => ({
+      url: URL.createObjectURL(file),
+      name: file.name,
+      isImage: file.type.startsWith("image/") || IMG_EXT_RE.test(file.name),
+      isLink: false,
+      file,
+    }));
+    setRefs((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), ...items] }));
   };
   const pickLink = (qid: string, link: string) => {
-    delete refFiles.current[qid];
-    refLinks.current[qid] = link;
-    setRefs((prev) => {
-      const old = prev[qid];
-      if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
-      return { ...prev, [qid]: link };
-    });
+    const item: RefItem = { url: link, name: link.replace(/^https?:\/\//, ""), isImage: false, isLink: true };
+    setRefs((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), item] }));
   };
-  const removeRef = (qid: string) => {
-    delete refFiles.current[qid];
-    delete refLinks.current[qid];
+  const removeRef = (qid: string, index: number) => {
     setRefs((prev) => {
-      const old = prev[qid];
-      if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
+      const list = prev[qid] ?? [];
+      const gone = list[index];
+      if (gone?.url.startsWith("blob:")) URL.revokeObjectURL(gone.url);
+      const nextList = list.filter((_, i) => i !== index);
       const next = { ...prev };
-      delete next[qid];
+      if (nextList.length) next[qid] = nextList;
+      else delete next[qid];
       return next;
     });
   };
@@ -1177,29 +1204,35 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
 
   // Sobe os anexos pro R2 e envia as respostas + URLs (best-effort).
   const sendResponses = async () => {
-    const refImages: Record<string, string> = {};
+    const refImages: Record<string, string[]> = {};
+    const current = refsRef.current;
+    // Cada pergunta pode ter vários anexos — sobe os arquivos preservando a ordem.
     await Promise.all(
-      Object.entries(refFiles.current).map(async ([qid, file]) => {
-        try {
-          const fd = new FormData();
-          fd.append("file", file);
-          const res = await fetch(`/api/briefings/${encodeURIComponent(b.number)}/upload`, {
-            method: "POST",
-            body: fd,
-          });
-          if (res.ok) {
-            const data = (await res.json()) as { url?: string };
-            if (data.url) refImages[qid] = data.url;
-          }
-        } catch {
-          /* anexo é best-effort — não bloqueia o envio das respostas */
-        }
+      Object.entries(current).map(async ([qid, list]) => {
+        const urls = await Promise.all(
+          list.map(async (it) => {
+            if (!it.file) return it.url; // já é uma URL (/api/files/…) ou link
+            try {
+              const fd = new FormData();
+              fd.append("file", it.file);
+              const res = await fetch(`/api/briefings/${encodeURIComponent(b.number)}/upload`, {
+                method: "POST",
+                body: fd,
+              });
+              if (res.ok) {
+                const data = (await res.json()) as { url?: string };
+                if (data.url) return data.url;
+              }
+            } catch {
+              /* anexo é best-effort — não bloqueia o envio das respostas */
+            }
+            return "";
+          })
+        );
+        const kept = urls.filter(Boolean);
+        if (kept.length) refImages[qid] = kept;
       })
     );
-    // Referências por link entram direto (sem upload).
-    Object.entries(refLinks.current).forEach(([qid, url]) => {
-      refImages[qid] = url;
-    });
     try {
       await fetch(`/api/briefings/${encodeURIComponent(b.number)}/responses`, {
         method: "POST",
@@ -1248,10 +1281,10 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
         sectionKind={section.kind}
         answer={answers[q.id] ?? ""}
         onAnswer={(v) => setAnswer(q.id, v)}
-        refImage={refs[q.id]}
-        onPickRef={(file) => pickRef(q.id, file)}
+        refItems={refs[q.id] ?? EMPTY_REFS}
+        onPickFiles={(files) => pickFiles(q.id, files)}
         onPickLink={(url) => pickLink(q.id, url)}
-        onRemoveRef={() => removeRef(q.id)}
+        onRemoveRef={(idx) => removeRef(q.id, idx)}
         pending={pending.has(q.id)}
         locked={isLockedQuestion(q, allQuestions, answers)}
         answered={isAnswered(q, answers)}

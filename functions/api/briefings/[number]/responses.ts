@@ -13,7 +13,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const body = await readJson<{
       answers?: Record<string, string>;
       client?: string;
-      refImages?: Record<string, string>;
+      refImages?: Record<string, string | string[]>;
     }>(request);
     const answers = body.answers;
     if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
@@ -22,16 +22,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const answersStr = JSON.stringify(answers);
     if (answersStr.length > MAX_ANSWERS_BYTES) return error(413, "Respostas muito grandes.");
 
-    // anexos: mapa { questionId: url } — só guarda URLs internas (/api/files/…)
-    const refs = body.refImages;
-    const refImages =
-      refs && typeof refs === "object" && !Array.isArray(refs)
-        ? Object.fromEntries(
-            Object.entries(refs).filter(
-              ([, url]) => typeof url === "string" && url.startsWith("/api/files/")
-            )
-          )
-        : {};
+    // anexos: mapa { questionId: url[] } — cada pergunta pode ter VÁRIOS anexos
+    // (imagens/PDFs). Só guarda URLs internas (/api/files/…); links externos e
+    // valores inválidos são descartados. Aceita também o formato legado (string).
+    const rawRefs = body.refImages;
+    const refImages: Record<string, string[]> = {};
+    if (rawRefs && typeof rawRefs === "object" && !Array.isArray(rawRefs)) {
+      for (const [qid, v] of Object.entries(rawRefs)) {
+        const list = (Array.isArray(v) ? v : [v]).filter(
+          (u): u is string => typeof u === "string" && u.startsWith("/api/files/")
+        );
+        if (list.length) refImages[qid] = list;
+      }
+    }
     const refImagesStr = Object.keys(refImages).length ? JSON.stringify(refImages) : null;
 
     // só aceita envio para briefing publicado
@@ -75,11 +78,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       // Limpa do R2 os anexos antigos (de qualquer versão anterior) que não estão
       // mais na resposta atual — evita lixo ocupando espaço.
       try {
-        const keep = new Set(Object.values(refImages));
+        const flat = (m: Record<string, string | string[]>): string[] =>
+          Object.values(m).flatMap((v) => (Array.isArray(v) ? v : [v]));
+        const keep = new Set(flat(refImages));
         const oldUrls = new Set<string>();
         for (const p of prev) {
-          const map = p.refImages ? (JSON.parse(p.refImages) as Record<string, string>) : {};
-          for (const u of Object.values(map)) oldUrls.add(u);
+          const map = p.refImages ? (JSON.parse(p.refImages) as Record<string, string | string[]>) : {};
+          for (const u of flat(map)) oldUrls.add(u);
         }
         for (const url of oldUrls) {
           if (keep.has(url)) continue;
@@ -126,7 +131,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       client: r.client,
       submittedAt: r.submittedAt,
       answers: JSON.parse(r.answers) as Record<string, string>,
-      refImages: (r.refImages ? JSON.parse(r.refImages) : {}) as Record<string, string>,
+      refImages: (r.refImages ? JSON.parse(r.refImages) : {}) as Record<string, string | string[]>,
     }));
     return json({ responses });
   } catch (e) {

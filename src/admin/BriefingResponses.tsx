@@ -64,6 +64,13 @@ export default function BriefingResponses({
   const answered = (answers: Record<string, string>, qid: string) =>
     (answers[qid] ?? "").trim() !== "";
 
+  // Uma pergunta pode ter vários anexos (imagens/PDFs). Normaliza o formato
+  // guardado (string legada OU array) para uma lista de URLs.
+  const refList = (r: BriefingResponse, qid: string): string[] => {
+    const v = r.refImages[qid];
+    return Array.isArray(v) ? v.filter(Boolean) : v ? [v] : [];
+  };
+
   // ids cobertos pelas seções (para detectar respostas/anexos "órfãos")
   const knownIds = new Set(sections.flatMap((s) => s.questions.map((q) => q.id)));
 
@@ -83,13 +90,13 @@ export default function BriefingResponses({
     const rows: { section: string; question: string; answer: string; attachment: string }[] = [];
     for (const section of sections) {
       for (const q of section.questions) {
-        if (!(answered(r.answers, q.id) || r.refImages[q.id])) continue;
-        rows.push({ section: section.title, question: q.text, answer: r.answers[q.id] ?? "", attachment: r.refImages[q.id] ?? "" });
+        if (!(answered(r.answers, q.id) || refList(r, q.id).length)) continue;
+        rows.push({ section: section.title, question: q.text, answer: r.answers[q.id] ?? "", attachment: refList(r, q.id).join(" | ") });
       }
     }
     for (const qid of [...new Set([...Object.keys(r.answers), ...Object.keys(r.refImages)])]) {
-      if (knownIds.has(qid) || !(answered(r.answers, qid) || r.refImages[qid])) continue;
-      rows.push({ section: "Outras respostas", question: qid, answer: r.answers[qid] ?? "", attachment: r.refImages[qid] ?? "" });
+      if (knownIds.has(qid) || !(answered(r.answers, qid) || refList(r, qid).length)) continue;
+      rows.push({ section: "Outras respostas", question: qid, answer: r.answers[qid] ?? "", attachment: refList(r, qid).join(" | ") });
     }
     return rows;
   };
@@ -138,10 +145,9 @@ export default function BriefingResponses({
       }
       section.questions.forEach((q, i) => {
         const val = (r.answers[q.id] ?? "").trim();
-        const att = r.refImages[q.id];
         body += `<div class="q"><span class="qn">${String(i + 1).padStart(2, "0")}</span> ${esc(q.text)}</div>`;
         body += `<div class="a${val ? "" : " empty"}">${val ? esc(val) : "— sem resposta"}</div>`;
-        if (att) {
+        for (const att of refList(r, q.id)) {
           body += isImgUrl(att)
             ? `<img class="att" src="${esc(att)}" alt="Anexo">`
             : `<div class="a">📎 ${esc(att)}</div>`;
@@ -150,14 +156,15 @@ export default function BriefingResponses({
     }
     // respostas fora do template atual
     const orphans = [...new Set([...Object.keys(r.answers), ...Object.keys(r.refImages)])].filter(
-      (qid) => !knownIds.has(qid) && (answered(r.answers, qid) || r.refImages[qid])
+      (qid) => !knownIds.has(qid) && (answered(r.answers, qid) || refList(r, qid).length)
     );
     if (orphans.length > 0) {
       body += `<h2>Outras respostas</h2>`;
       for (const qid of orphans) {
         body += `<div class="q">${esc(qid)}</div><div class="a">${esc(r.answers[qid] ?? "")}</div>`;
-        const att = r.refImages[qid];
-        if (att) body += isImgUrl(att) ? `<img class="att" src="${esc(att)}" alt="Anexo">` : `<div class="a">📎 ${esc(att)}</div>`;
+        for (const att of refList(r, qid)) {
+          body += isImgUrl(att) ? `<img class="att" src="${esc(att)}" alt="Anexo">` : `<div class="a">📎 ${esc(att)}</div>`;
+        }
       }
     }
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Briefing ${number} — ${esc(r.client || "Cliente")}</title>
@@ -217,7 +224,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
     }
   };
 
-  // Miniatura de anexo (imagem inline; outros formatos viram link de download).
+  // Miniatura de anexo (imagem inline; PDF/outros viram link de download).
   const Attachment = ({ url }: { url: string }) => {
     return isImgUrl(url) ? (
       <a href={url} target="_blank" rel="noopener noreferrer" className={styles.refThumbLink}>
@@ -225,10 +232,19 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
       </a>
     ) : (
       <a href={url} target="_blank" rel="noopener noreferrer" className={styles.answerView}>
-        📎 Baixar anexo
+        📎 {/\.pdf$/i.test(url) ? "Baixar PDF" : "Baixar anexo"}
       </a>
     );
   };
+  // Lista de anexos de uma pergunta (vários possíveis).
+  const Attachments = ({ urls }: { urls: string[] }) =>
+    urls.length ? (
+      <span className={styles.refThumbRow}>
+        {urls.map((u, i) => (
+          <Attachment key={i} url={u} />
+        ))}
+      </span>
+    ) : null;
 
   const numBadge = (i: number) => (
     <span
@@ -268,7 +284,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
       ) : (
         <div className={styles.editorGrid}>
           {responses.map((r) => {
-            const hasContent = (qid: string) => answered(r.answers, qid) || !!r.refImages[qid];
+            const hasContent = (qid: string) => answered(r.answers, qid) || refList(r, qid).length > 0;
             const orphanIds = [
               ...new Set([...Object.keys(r.answers), ...Object.keys(r.refImages)]),
             ].filter((qid) => hasContent(qid) && !knownIds.has(qid));
@@ -325,7 +341,6 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
                       {section.questions.map((q, i) => {
                         const editing = editingId === r.id;
                         const val = (r.answers[q.id] ?? "").trim();
-                        const att = r.refImages[q.id];
                         return (
                           <div key={q.id} className={styles.field} style={{ marginBottom: 12 }}>
                             <label className={styles.label}>
@@ -349,7 +364,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
                                 — sem resposta
                               </div>
                             )}
-                            {att && <Attachment url={att} />}
+                            <Attachments urls={refList(r, q.id)} />
                           </div>
                         );
                       })}
@@ -366,7 +381,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
                         {answered(r.answers, qid) && (
                           <div className={styles.answerView}>{r.answers[qid]}</div>
                         )}
-                        {r.refImages[qid] && <Attachment url={r.refImages[qid]} />}
+                        <Attachments urls={refList(r, qid)} />
                       </div>
                     ))}
                   </div>

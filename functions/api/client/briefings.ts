@@ -33,7 +33,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       responded: !!r.submittedAt,
       submittedAt: r.submittedAt,
       answers: (r.answers ? JSON.parse(r.answers) : {}) as Record<string, string>,
-      refImages: (r.refImages ? JSON.parse(r.refImages) : {}) as Record<string, string>,
+      refImages: (r.refImages ? JSON.parse(r.refImages) : {}) as Record<string, string | string[]>,
     }));
     return json({ briefings });
   } catch (e) {

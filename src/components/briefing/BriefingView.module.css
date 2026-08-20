@@ -1361,6 +1361,13 @@
   color: var(--color-text-muted);
   letter-spacing: 0.04em;
 }
+/* Galeria de anexos: várias imagens/PDFs por pergunta, quebrando em linha. */
+.refGallery {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
 .refPreview {
   position: relative;
   display: inline-block;
@@ -1493,6 +1500,13 @@
 .refModalImgBtn:hover {
   border-color: var(--color-accent);
   background: var(--ov-06);
+}
+.refModalNote {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  text-align: center;
 }
 .refModalDivider {
   display: flex;

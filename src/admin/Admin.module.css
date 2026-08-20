@@ -1564,3 +1564,14 @@
   height: auto;
   object-fit: cover;
 }
+/* Vários anexos por pergunta — miniaturas/links em linha, quebrando quando precisa. */
+.refThumbRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+.refThumbRow .refThumbLink {
+  margin-top: 0;
+}
