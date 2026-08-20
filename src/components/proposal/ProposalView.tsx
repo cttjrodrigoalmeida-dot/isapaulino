@@ -844,9 +844,9 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
         </section>
 
         {/* ───────────── PRAZO ─────────────
-            Um prazo de PRODUÇÃO por serviço, empilhados na ordem sequencial
-            (cada etapa começa após a aprovação da anterior). Tudo numa seção só,
-            sob a MESMA observação — que vale para todos os prazos. */}
+            Layout de cards (mesmo de antes). Todos os prazos de produção — os 2
+            principais + os adicionais (3º serviço em diante) — entram como cards
+            na MESMA grade, e a observação "Importante" única vale para todos. */}
         {(() => {
           const prazoItems = [
             ...(p.prazoDetalhamento?.trim() ? [{ value: p.prazoDetalhamento, label: p.investmentBlocks?.[0]?.title || "Detalhamento Executivo" }] : []),
@@ -864,24 +864,20 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
               compactHeader
               header={<SectionLabel>{`PRAZO DE ENTREGA${p.prazoTitulo ? `: ${p.prazoTitulo}` : ""}`}</SectionLabel>}
             >
-              {p.availableDate && (
-                <div className={styles.prazoStartRow}>
-                  <span className={styles.prazoCaption}>Disponível para iniciar a partir de</span>
-                  <span className={styles.prazoStartDate}>{p.availableDate}</span>
-                </div>
-              )}
-              <ol className={styles.prazoStack}>
+              <div className={styles.prazoRow}>
                 {prazoItems.map((it, i) => (
-                  <li key={i} className={styles.prazoStackRow}>
-                    <span className={styles.prazoStackStep}>{String(i + 1).padStart(2, "0")}</span>
-                    <span className={styles.prazoStackNum}>{it.value}</span>
-                    <span className={styles.prazoStackLabel}>{it.label}</span>
-                  </li>
+                  <div key={i} className={styles.prazoItem}>
+                    <span className={styles.prazoNum}>{it.value}</span>
+                    <span className={styles.prazoCaption}>{it.label}</span>
+                  </div>
                 ))}
-              </ol>
-              <p className={styles.prazoSeq}>
-                Os serviços são sequenciais: cada etapa começa após a aprovação da anterior, e o prazo passa a contar a partir daí.
-              </p>
+                {p.availableDate && (
+                  <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
+                    <span className={styles.prazoNum}>{p.availableDate}</span>
+                    <span className={styles.prazoCaption}>Disponível para iniciar</span>
+                  </div>
+                )}
+              </div>
               {p.prazoNote && (
                 <p className={styles.prazoNote}>
                   {p.prazoNote.startsWith("Importante:") ? (
