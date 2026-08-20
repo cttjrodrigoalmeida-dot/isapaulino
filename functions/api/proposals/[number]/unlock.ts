@@ -13,7 +13,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const attempt = (body.password ?? "").toString();
 
     const row = await env.DB.prepare(
-      "SELECT status, access_password FROM proposals WHERE number = ? OR custom_slug = ?"
+      "SELECT status, access_password FROM proposals WHERE (number = ? OR custom_slug = ?) AND deleted_at IS NULL"
     ).bind(key, key).first<{ status: string; access_password: string | null }>();
     if (!row || row.status !== "published") return error(404, "Proposta não encontrada.");
 

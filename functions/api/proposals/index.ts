@@ -27,7 +27,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     await requireAuth(request, env);
     const { results } = await env.DB.prepare(
       `SELECT number, client, service_title AS serviceTitle, date, status, outcome, data, updated_at AS updatedAt
-       FROM proposals ORDER BY updated_at DESC`
+       FROM proposals WHERE deleted_at IS NULL ORDER BY updated_at DESC`
     ).all<{ data: string; [k: string]: unknown }>();
     // Anexa o valor (R$) de cada proposta parseado do JSON, sem devolver o data inteiro.
     const proposals = (results ?? []).map((r) => {

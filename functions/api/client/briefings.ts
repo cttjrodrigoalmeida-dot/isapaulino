@@ -20,7 +20,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
          (SELECT r.submitted_at FROM briefing_responses r WHERE r.briefing_number = b.number ORDER BY r.submitted_at DESC LIMIT 1) AS submittedAt
        FROM briefings b
        JOIN proposals p ON p.number = b.proposal_number
-       WHERE b.status = 'published' AND lower(trim(p.client)) = lower(trim(?))
+       WHERE b.status = 'published' AND b.deleted_at IS NULL AND p.deleted_at IS NULL AND lower(trim(p.client)) = lower(trim(?))
        ORDER BY b.number DESC`
     )
       .bind(client.name)

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS proposals (
   -- URL personalizada opcional (ex.: "2650-DaniloFerreira"). É um ALIAS: a
   -- proposta continua resolvendo por `number` E por este slug. NULL = só o número.
   custom_slug   TEXT,
+  deleted_at    TEXT,                       -- soft-delete (lixeira); NULL = ativa. Migração: ALTER TABLE proposals ADD COLUMN deleted_at TEXT;
   -- Apoio PESSOAL do admin ao montar a proposta (não vai para o cliente):
   editor_notes  TEXT,                       -- bloco de notas do editor
   editor_done   TEXT,                       -- JSON array de ids de seção "revisadas"
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS briefings (
   -- Bloqueio manual das respostas: NULL = cliente pode editar; timestamp = congelado
   -- (o cliente só visualiza; o admin ainda pode editar pelo painel).
   locked_at       TEXT,
+  deleted_at      TEXT,                          -- soft-delete (lixeira); NULL = ativo. Migração: ALTER TABLE briefings ADD COLUMN deleted_at TEXT;
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );

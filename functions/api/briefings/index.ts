@@ -24,7 +24,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
               (SELECT p.client FROM proposals p WHERE p.number = b.proposal_number) AS clientName,
               (SELECT COUNT(*) FROM briefing_responses r WHERE r.briefing_number = b.number) AS responseCount,
               (SELECT MAX(r.submitted_at) FROM briefing_responses r WHERE r.briefing_number = b.number) AS lastResponseAt
-       FROM briefings b ORDER BY b.updated_at DESC`
+       FROM briefings b WHERE b.deleted_at IS NULL ORDER BY b.updated_at DESC`
     ).all();
     return json({ briefings: results ?? [] });
   } catch (e) {

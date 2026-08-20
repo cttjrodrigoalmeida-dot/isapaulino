@@ -29,7 +29,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     // O parâmetro da URL pode ser o número OU a URL personalizada (custom_slug).
     const key = String(params.number);
     const row = await env.DB.prepare(
-      "SELECT data, status, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE number = ? OR custom_slug = ?"
+      "SELECT data, status, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE (number = ? OR custom_slug = ?) AND deleted_at IS NULL"
     ).bind(key, key).first<Row>();
     if (!row) return error(404, "Proposta não encontrada.");
 
@@ -71,7 +71,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     const proposal = body.proposal;
     if (!proposal) return error(400, "Proposta inválida.");
 
-    const existing = await env.DB.prepare("SELECT status, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE number = ?")
+    const existing = await env.DB.prepare("SELECT status, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE number = ? AND deleted_at IS NULL")
       .bind(number)
       .first<{ status: string; access_password: string | null; custom_slug: string | null; editor_notes: string | null; editor_done: string | null }>();
     if (!existing) return error(404, "Proposta não encontrada.");
@@ -135,7 +135,10 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   try {
     await requireAuth(request, env);
     const number = String(params.number);
-    const res = await env.DB.prepare("DELETE FROM proposals WHERE number = ?").bind(number).run();
+    // Soft-delete: vai para a Lixeira (recuperável / apagável de vez lá).
+    const res = await env.DB.prepare(
+      "UPDATE proposals SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE number = ? AND deleted_at IS NULL"
+    ).bind(number).run();
     if (!res.meta.changes) return error(404, "Proposta não encontrada.");
     return json({ ok: true });
   } catch (e) {

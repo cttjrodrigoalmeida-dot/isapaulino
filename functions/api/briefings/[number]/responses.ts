@@ -23,15 +23,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     if (answersStr.length > MAX_ANSWERS_BYTES) return error(413, "Respostas muito grandes.");
 
     // anexos: mapa { questionId: url[] } — cada pergunta pode ter VÁRIOS anexos
-    // (imagens/PDFs). Só guarda URLs internas (/api/files/…); links externos e
-    // valores inválidos são descartados. Aceita também o formato legado (string).
+    // (imagens/PDFs) E/OU links externos (Drive, Pinterest…). Guarda URLs internas
+    // (/api/files/…) e links http(s) válidos; descarta o resto (ex.: blob:,
+    // javascript:). Aceita também o formato legado (string única).
     const rawRefs = body.refImages;
+    const okRef = (u: unknown): u is string =>
+      typeof u === "string" && (u.startsWith("/api/files/") || /^https?:\/\//i.test(u));
     const refImages: Record<string, string[]> = {};
     if (rawRefs && typeof rawRefs === "object" && !Array.isArray(rawRefs)) {
       for (const [qid, v] of Object.entries(rawRefs)) {
-        const list = (Array.isArray(v) ? v : [v]).filter(
-          (u): u is string => typeof u === "string" && u.startsWith("/api/files/")
-        );
+        const list = (Array.isArray(v) ? v : [v]).filter(okRef);
         if (list.length) refImages[qid] = list;
       }
     }
@@ -40,7 +41,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     // só aceita envio para briefing publicado e NÃO bloqueado. O bloqueio é
     // manual (a Isabela fecha o briefing quando inicia os trabalhos); a partir
     // dele o cliente só visualiza — o admin ainda edita as respostas pelo PUT.
-    const b = await env.DB.prepare("SELECT status, locked_at FROM briefings WHERE number = ?")
+    const b = await env.DB.prepare("SELECT status, locked_at FROM briefings WHERE number = ? AND deleted_at IS NULL")
       .bind(number)
       .first<{ status: string; locked_at: string | null }>();
     if (!b || b.status !== "published") return error(404, "Briefing não encontrado.");

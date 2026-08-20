@@ -18,7 +18,7 @@ type Row = { data: string; status: string; editor_notes: string | null; editor_d
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
     const number = String(params.number);
-    const row = await env.DB.prepare("SELECT data, status, editor_notes, editor_done, locked_at FROM briefings WHERE number = ?")
+    const row = await env.DB.prepare("SELECT data, status, editor_notes, editor_done, locked_at FROM briefings WHERE number = ? AND deleted_at IS NULL")
       .bind(number)
       .first<Row>();
     if (!row) return error(404, "Briefing não encontrado.");
@@ -49,7 +49,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     const briefing = body.briefing;
     if (!briefing) return error(400, "Briefing inválido.");
 
-    const existing = await env.DB.prepare("SELECT status, editor_notes, editor_done FROM briefings WHERE number = ?")
+    const existing = await env.DB.prepare("SELECT status, editor_notes, editor_done FROM briefings WHERE number = ? AND deleted_at IS NULL")
       .bind(number)
       .first<{ status: string; editor_notes: string | null; editor_done: string | null }>();
     if (!existing) return error(404, "Briefing não encontrado.");
@@ -78,7 +78,10 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   try {
     await requireAuth(request, env);
     const number = String(params.number);
-    const res = await env.DB.prepare("DELETE FROM briefings WHERE number = ?").bind(number).run();
+    // Soft-delete: vai para a Lixeira (recuperável / apagável de vez lá).
+    const res = await env.DB.prepare(
+      "UPDATE briefings SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE number = ? AND deleted_at IS NULL"
+    ).bind(number).run();
     if (!res.meta.changes) return error(404, "Briefing não encontrado.");
     return json({ ok: true });
   } catch (e) {

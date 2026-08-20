@@ -258,13 +258,26 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
     }
   };
 
-  // Miniatura de anexo (imagem inline; PDF/outros viram link de download).
+  // Anexo: imagem → miniatura; link externo (http/https, não é /api/files) →
+  // chip clicável com o domínio; PDF/arquivo interno → link de download.
   const Attachment = ({ url }: { url: string }) => {
-    return isImgUrl(url) ? (
-      <a href={url} target="_blank" rel="noopener noreferrer" className={styles.refThumbLink}>
-        <img src={url} alt="Anexo enviado" className={styles.refThumb} />
-      </a>
-    ) : (
+    const isExternal = /^https?:\/\//i.test(url) && !url.startsWith("/api/files/");
+    if (isImgUrl(url)) {
+      return (
+        <a href={url} target="_blank" rel="noopener noreferrer" className={styles.refThumbLink}>
+          <img src={url} alt="Anexo enviado" className={styles.refThumb} />
+        </a>
+      );
+    }
+    if (isExternal) {
+      const label = url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+      return (
+        <a href={url} target="_blank" rel="noopener noreferrer" className={styles.answerView} title={url}>
+          🔗 {label.length > 46 ? label.slice(0, 46) + "…" : label}
+        </a>
+      );
+    }
+    return (
       <a href={url} target="_blank" rel="noopener noreferrer" className={styles.answerView}>
         📎 {/\.pdf$/i.test(url) ? "Baixar PDF" : "Baixar anexo"}
       </a>

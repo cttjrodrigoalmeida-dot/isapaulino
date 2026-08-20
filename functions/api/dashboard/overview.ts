@@ -93,10 +93,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     const [propsRes, briefsRes, respCountRes, recentRespRes, faturadoRes, instByStatusRes, recvByMonthRes, contractsCountRes, hfByStatusRes, hfRecvByMonthRes, annualGoalRes, calendarRes, clientsRes] = await Promise.all([
       env.DB.prepare(
-        "SELECT number, client, date, status, outcome, data, updated_at FROM proposals"
+        "SELECT number, client, date, status, outcome, data, updated_at FROM proposals WHERE deleted_at IS NULL"
       ).all<ProposalRow>(),
       env.DB.prepare(
-        "SELECT number, title, status, updated_at FROM briefings"
+        "SELECT number, title, status, updated_at FROM briefings WHERE deleted_at IS NULL"
       ).all<BriefingRow>(),
       env.DB.prepare(
         "SELECT briefing_number, COUNT(*) AS c FROM briefing_responses GROUP BY briefing_number"

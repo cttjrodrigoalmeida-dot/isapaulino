@@ -34,7 +34,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const number = String(params.number);
 
     // só aceita anexo para briefing publicado e NÃO bloqueado
-    const b = await env.DB.prepare("SELECT status, locked_at, proposal_number FROM briefings WHERE number = ?")
+    const b = await env.DB.prepare("SELECT status, locked_at, proposal_number FROM briefings WHERE number = ? AND deleted_at IS NULL")
       .bind(number)
       .first<{ status: string; locked_at: string | null; proposal_number: string | null }>();
     if (!b || b.status !== "published") return error(404, "Briefing não encontrado.");

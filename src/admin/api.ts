@@ -458,8 +458,8 @@ export const api = {
 
   // ── lixeira (soft-delete) ──
   listTrash: () =>
-    req<{ clients: TrashItem[]; contracts: TrashItem[] }>("/api/trash"),
-  trashAction: (entity: "client" | "contract", id: string, action: "restore" | "purge") =>
+    req<{ clients: TrashItem[]; contracts: TrashItem[]; proposals: TrashItem[]; briefings: TrashItem[] }>("/api/trash"),
+  trashAction: (entity: "client" | "contract" | "proposal" | "briefing", id: string, action: "restore" | "purge") =>
     req<{ ok: true }>("/api/trash", { method: "POST", body: JSON.stringify({ entity, id, action }) }),
 
   // ── calendário ──
@@ -884,8 +884,13 @@ export const api = {
 
 export interface TrashItem {
   id: string;
+  /** proposta/briefing usam o número como chave (em vez de id uuid). */
+  number?: string | null;
   name?: string | null;
   title?: string | null;
+  serviceTitle?: string | null;
+  proposalNumber?: string | null;
+  client?: string | null;
   clientName?: string | null;
   status?: string | null;
   cpfCnpj?: string | null;

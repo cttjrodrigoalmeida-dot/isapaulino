@@ -13,7 +13,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     if (!proposal) return error(400, "Parâmetro 'proposal' é obrigatório.");
 
     const prop = await env.DB.prepare(
-      "SELECT number, client, service_title, outcome, status FROM proposals WHERE number = ?"
+      "SELECT number, client, service_title, outcome, status FROM proposals WHERE number = ? AND deleted_at IS NULL"
     ).bind(proposal).first<{ number: string; client: string | null; service_title: string | null; outcome: string | null; status: string | null }>();
 
     // Contrato vinculado: prioriza o principal (aditivo por último), mais antigo primeiro.
@@ -26,7 +26,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     ).bind(proposal).first<{ slug: string | null; status: string; contractNumber: string | null }>();
 
     const briefing = await env.DB.prepare(
-      "SELECT number, status FROM briefings WHERE proposal_number = ? ORDER BY updated_at DESC LIMIT 1"
+      "SELECT number, status FROM briefings WHERE proposal_number = ? AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 1"
     ).bind(proposal).first<{ number: string; status: string }>();
 
     return json({
