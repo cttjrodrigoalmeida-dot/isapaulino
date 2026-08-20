@@ -844,13 +844,22 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
         </section>
 
         {/* ───────────── PRAZO ─────────────
-            Linha de cima = LAYOUT ORIGINAL, intacto (15 dias, 10 dias e a data).
-            Os prazos adicionais entram numa NOVA LINHA abaixo, na MESMA seção,
-            sob a MESMA observação "Importante" (que vale para todos). */}
+            Linha de cima = LAYOUT ORIGINAL (15 dias, 10 dias e a data). Os prazos
+            adicionais entram LOGO ABAIXO, alinhados e do MESMO TAMANHO dos de
+            cima (mesma grade, nº de colunas = nº de cards da linha original).
+            Tudo numa seção, sob a MESMA observação. */}
         {(() => {
+          const topItems = [
+            { value: p.prazoDetalhamento, label: p.investmentBlocks?.[0]?.title || "Detalhamento Executivo", highlight: false },
+            ...(p.prazoAnteprojeto ? [{ value: p.prazoAnteprojeto, label: p.investmentBlocks?.[1]?.title || "Anteprojeto", highlight: false }] : []),
+            ...(p.availableDate ? [{ value: p.availableDate, label: "Disponível para iniciar", highlight: true }] : []),
+          ];
           const extras = (p.prazoBlocos ?? []).flatMap((b) =>
-            (b.itens ?? []).filter((it) => it.value?.trim()).map((it) => ({ value: it.value, label: it.label?.trim() || b.titulo?.trim() || "Prazo" }))
+            (b.itens ?? []).filter((it) => it.value?.trim()).map((it) => ({ value: it.value, label: it.label?.trim() || b.titulo?.trim() || "Prazo", highlight: false }))
           );
+          const cols = Math.min(3, Math.max(1, topItems.length));
+          const colsClass = cols === 3 ? styles.prazoCols3 : cols === 2 ? styles.prazoCols2 : styles.prazoCols1;
+          const allItems = [...topItems, ...extras];
           return (
         <section className={`${styles.section} ${styles.sectionTight}`} data-spy="condicoes">
           <Reveal className={styles.prazoCard}>
@@ -859,36 +868,14 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
               compactHeader
               header={<SectionLabel>{`PRAZO DE ENTREGA${p.prazoTitulo ? `: ${p.prazoTitulo}` : ""}`}</SectionLabel>}
             >
-              {/* Linha original (inalterada) */}
-              <div className={styles.prazoRow}>
-                <div className={styles.prazoItem}>
-                  <span className={styles.prazoNum}>{p.prazoDetalhamento}</span>
-                  <span className={styles.prazoCaption}>{p.investmentBlocks?.[0]?.title || "Detalhamento Executivo"}</span>
-                </div>
-                {p.prazoAnteprojeto && (
-                  <div className={styles.prazoItem}>
-                    <span className={styles.prazoNum}>{p.prazoAnteprojeto}</span>
-                    <span className={styles.prazoCaption}>{p.investmentBlocks?.[1]?.title || "Anteprojeto"}</span>
+              <div className={`${styles.prazoRow} ${colsClass}`}>
+                {allItems.map((it, i) => (
+                  <div key={i} className={`${styles.prazoItem} ${it.highlight ? styles.prazoHighlight : ""}`}>
+                    <span className={styles.prazoNum}>{it.value}</span>
+                    <span className={styles.prazoCaption}>{it.label}</span>
                   </div>
-                )}
-                {p.availableDate && (
-                  <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
-                    <span className={styles.prazoNum}>{p.availableDate}</span>
-                    <span className={styles.prazoCaption}>Disponível para iniciar</span>
-                  </div>
-                )}
+                ))}
               </div>
-              {/* Blocos adicionais — nova linha ABAIXO, quando houver */}
-              {extras.length > 0 && (
-                <div className={styles.prazoRow} style={{ marginTop: 0 }}>
-                  {extras.map((it, i) => (
-                    <div key={i} className={styles.prazoItem}>
-                      <span className={styles.prazoNum}>{it.value}</span>
-                      <span className={styles.prazoCaption}>{it.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
               {p.prazoNote && (
                 <p className={styles.prazoNote}>
                   {p.prazoNote.startsWith("Importante:") ? (
