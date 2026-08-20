@@ -38,6 +38,23 @@ const SIGN_STATUS: { value: SignatureStatus; label: string }[] = [
 ];
 
 // Data de hoje no formato "DD/MM/AAAA".
+// Link do contrato = número da proposta (base) + complemento opcional.
+// Deriva o complemento a partir do slug salvo (tira "<número>-"); e monta o slug
+// completo p/ salvar (número, ou número-complemento).
+function suffixFromSlug(slug: string, base: string): string {
+  const s = (slug ?? "").trim();
+  const b = (base ?? "").trim();
+  if (!s || s === b) return "";
+  if (b && s.startsWith(`${b}-`)) return s.slice(b.length + 1);
+  return ""; // slug legado (nome do cliente): sem complemento derivável
+}
+function slugFromParts(base: string, suffix: string): string {
+  const b = (base ?? "").trim();
+  const s = (suffix ?? "").trim().replace(/^-+/, "");
+  if (!b) return ""; // sem número da proposta: mantém o slug atual (publish auto-gera)
+  return s ? `${b}-${s}` : b;
+}
+
 function todayBR(): string {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
@@ -123,6 +140,10 @@ export default function ContractEditor({
   const [legacyContent, setLegacyContent] = useState("");
   const [status, setStatus] = useState<ContractStatus>("draft");
   const [slug, setSlug] = useState<string | null>(null);
+  // Senha de acesso (cliente novo abre por senha) + complemento da URL (o número
+  // da proposta vinculada é sempre a base: /contrato/2630[-Complemento]).
+  const [accessPassword, setAccessPassword] = useState("");
+  const [slugSuffix, setSlugSuffix] = useState("");
   const [autentiqueDocId, setAutentiqueDocId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -204,6 +225,8 @@ export default function ContractEditor({
             parsed.autentiqueUrl = c.autentiqueUrl ?? "";
           }
           setDoc(parsed);
+          setAccessPassword(c.accessPassword ?? "");
+          setSlugSuffix(suffixFromSlug(c.slug ?? "", parsed.proposalNumber ?? ""));
           setNotes(c.editorNotes ?? "");
           setDoneSet(new Set(c.editorDone ?? []));
         } else if (duplicateFrom) {
@@ -456,6 +479,9 @@ export default function ContractEditor({
     deadline: null,
     autentique_url: doc?.autentiqueUrl?.trim() || null,
     status: overrideStatus ?? status,
+    // Link = nº da proposta (base) + complemento. Vazio = mantém o slug atual.
+    slug: slugFromParts(doc?.proposalNumber ?? "", slugSuffix),
+    accessPassword: accessPassword.trim() || null,
   });
 
   const validate = (): string | null => {
@@ -592,13 +618,13 @@ export default function ContractEditor({
   // mudança de status só é aplicada no Salvar/Republicar (evita cascata silenciosa).
   useEffect(() => {
     if (hydratedRef.current) setDirty(true);
-  }, [doc, notes, doneSet, title, clientId, legacyContent]);
+  }, [doc, notes, doneSet, title, clientId, legacyContent, accessPassword, slugSuffix]);
 
   // Autosave silencioso (só contrato JÁ salvo e válido): debounce ~2,5s de ociosidade.
   // Não envia `status` (mantém o salvo) — trocar status é sempre ação explícita.
   // Usa uma ref sempre atual (evita closure velha do `doc` dentro do setTimeout).
-  const latestRef = useRef({ doc, status, clientId, title, legacyContent, notes, doneSet });
-  latestRef.current = { doc, status, clientId, title, legacyContent, notes, doneSet };
+  const latestRef = useRef({ doc, status, clientId, title, legacyContent, notes, doneSet, accessPassword, slugSuffix });
+  latestRef.current = { doc, status, clientId, title, legacyContent, notes, doneSet, accessPassword, slugSuffix };
   useEffect(() => {
     if (!dirty || !autosaveOn || !contractId) return;
     const cur = latestRef.current;
@@ -616,6 +642,8 @@ export default function ContractEditor({
           value: contractValue(c.doc),
           deadline: null,
           autentique_url: c.doc?.autentiqueUrl?.trim() || null,
+          slug: slugFromParts(c.doc?.proposalNumber ?? "", c.slugSuffix),
+          accessPassword: c.accessPassword.trim() || null,
           // status omitido de propósito → o servidor mantém o status salvo
         }, { editorNotes: c.notes, editorDone: [...c.doneSet] });
         setLastSavedAt(Date.now()); setDirty(false);
@@ -623,7 +651,7 @@ export default function ContractEditor({
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
-  }, [dirty, autosaveOn, contractId, doc, clientId, title, legacyContent, notes, doneSet]);
+  }, [dirty, autosaveOn, contractId, doc, clientId, title, legacyContent, notes, doneSet, accessPassword, slugSuffix]);
 
   // Scroll-spy: acende a seção visível durante a rolagem.
   useEffect(() => {
@@ -675,6 +703,7 @@ export default function ContractEditor({
     });
   };
   const publicUrl = slug ? `${window.location.origin}/contrato/${slug}` : null;
+  const slugBase = (doc?.proposalNumber ?? "").trim(); // nº da proposta = base do link
 
   // Derivados do apoio (navegação/progresso/recolher).
   const collapseAll = () => setCollapsed(new Set(sectionsMeta.map((s) => s.id)));
@@ -728,6 +757,59 @@ export default function ContractEditor({
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}
       {sending && <div className={styles.notice}>Gerando o PDF e enviando para a Autentique… aguarde.</div>}
+
+      {/* Acesso: senha (cliente novo) + link padronizado (número + complemento). */}
+      <div className={styles.publicLinkBox} style={{ flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
+        <div className={styles.field} style={{ margin: 0 }}>
+          <label className={styles.label} style={{ marginBottom: 4 }}>
+            Senha de acesso {accessPassword ? "🔒" : "(link público)"}
+            {accessPassword && (
+              <button
+                type="button"
+                onClick={() => setAccessPassword("")}
+                style={{ marginLeft: 8, background: "none", border: "none", color: "var(--color-accent)", cursor: "pointer", font: "inherit", fontSize: 11, textDecoration: "underline", padding: 0 }}
+              >
+                remover senha
+              </button>
+            )}
+          </label>
+          <input
+            className={styles.input}
+            type="text"
+            value={accessPassword}
+            onChange={(e) => setAccessPassword(e.target.value)}
+            placeholder="ex.: contrato2630"
+            title="O cliente novo (sem Área do Cliente) abre o contrato digitando esta senha. Vazio = link público."
+            style={{ width: 200 }}
+          />
+        </div>
+        <div className={styles.field} style={{ margin: 0 }}>
+          <label className={styles.label} style={{ marginBottom: 4 }}>Complemento da URL (opcional)</label>
+          {slugBase ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span className={`${styles.pageHint} ${styles.mono}`} style={{ margin: 0, fontSize: 12, whiteSpace: "nowrap" }}>
+                /contrato/{slugBase}-
+              </span>
+              <input
+                className={`${styles.input} ${styles.mono}`}
+                type="text"
+                value={slugSuffix}
+                onChange={(e) => setSlugSuffix(e.target.value)}
+                placeholder="Rodrigo-Almeida"
+                style={{ width: 170 }}
+              />
+            </div>
+          ) : (
+            <span className={styles.fieldWarn}>⚠ Defina o Nº da proposta vinculada (no documento) para o link ficar /contrato/&lt;número&gt;.</span>
+          )}
+          {slugBase && (() => {
+            const suf = slugSuffix.trim();
+            const invalid = suf !== "" && !/^[A-Za-z0-9_-]+$/.test(suf);
+            if (invalid) return <span className={styles.fieldWarn}>⚠ Use só letras, números, hífen (-) e underscore (_), sem espaços.</span>;
+            return <span className={styles.pageHint} style={{ margin: "4px 0 0", fontSize: 11 }}>Link ao publicar: isabelapaulino.com.br/contrato/{suf ? `${slugBase}-${suf}` : slugBase}</span>;
+          })()}
+        </div>
+      </div>
 
       {publicUrl && (
         <div className={styles.publicLinkBox}>

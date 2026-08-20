@@ -41,9 +41,10 @@ interface AccessPayload {
   exp: number; // expiração (ms)
 }
 
-/** Nome do cookie por proposta (ex.: ips_prop_2624). */
-function cookieName(number: string): string {
-  return `ips_prop_${number.replace(/[^A-Za-z0-9_-]/g, "")}`;
+/** Nome do cookie por documento (ex.: ips_prop_2624). O `prefix` separa os
+ *  namespaces (proposta = "ips_prop_", contrato = "ips_ctr_") p/ não colidirem. */
+function cookieName(number: string, prefix = "ips_prop_"): string {
+  return `${prefix}${number.replace(/[^A-Za-z0-9_-]/g, "")}`;
 }
 
 /** Cria o token assinado que libera esta proposta. */
@@ -55,9 +56,9 @@ export async function signAccess(number: string, secret: string): Promise<string
 }
 
 /** Cookie Set-Cookie que grava o token (HttpOnly, 30 dias). */
-export function accessCookie(number: string, token: string): string {
+export function accessCookie(number: string, token: string, prefix = "ips_prop_"): string {
   const maxAge = Math.floor(ACCESS_TTL_MS / 1000);
-  return `${cookieName(number)}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+  return `${cookieName(number, prefix)}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
 }
 
 function readCookie(request: Request, name: string): string | null {
@@ -70,9 +71,9 @@ function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
-/** true se o request já tem um token válido liberando esta proposta. */
-export async function hasAccess(request: Request, secret: string, number: string): Promise<boolean> {
-  const token = readCookie(request, cookieName(number));
+/** Verifica um token cru (assinatura + expiração + chave). Usado tanto pelo
+ *  cookie quanto pelo parâmetro ?access= (renderização de PDF no servidor). */
+export async function verifyAccessToken(token: string, secret: string, number: string): Promise<boolean> {
   if (!token) return false;
   const dot = token.indexOf(".");
   if (dot < 0) return false;
@@ -86,4 +87,10 @@ export async function hasAccess(request: Request, secret: string, number: string
   } catch {
     return false;
   }
+}
+
+/** true se o request já tem um cookie válido liberando este documento. */
+export async function hasAccess(request: Request, secret: string, number: string, prefix = "ips_prop_"): Promise<boolean> {
+  const token = readCookie(request, cookieName(number, prefix));
+  return token ? verifyAccessToken(token, secret, number) : false;
 }

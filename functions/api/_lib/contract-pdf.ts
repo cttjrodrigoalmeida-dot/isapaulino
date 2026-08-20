@@ -4,6 +4,7 @@
 // HttpError amigável — o chamador cai no upload manual.
 import type { Env } from "./types";
 import { HttpError } from "./http";
+import { signAccess } from "./proposal-access";
 
 export function browserRenderingAvailable(env: Env): boolean {
   return !!(env.BROWSER_RENDER_TOKEN && env.CF_ACCOUNT_ID);
@@ -14,7 +15,10 @@ export async function renderContractPdf(env: Env, origin: string, slug: string):
   if (!browserRenderingAvailable(env)) {
     throw new HttpError(400, "Geração automática de PDF indisponível (defina BROWSER_RENDER_TOKEN). Envie o PDF manualmente.");
   }
-  const url = `${origin.replace(/\/+$/, "")}/contrato/${encodeURIComponent(slug)}?pdf=1`;
+  // Token assinado que libera contratos protegidos por senha só nesta
+  // renderização de servidor (a página o repassa no fetch da API pública).
+  const access = await signAccess(slug, env.SESSION_SECRET);
+  const url = `${origin.replace(/\/+$/, "")}/contrato/${encodeURIComponent(slug)}?pdf=1&access=${encodeURIComponent(access)}`;
   const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/browser-rendering/pdf`;
 
   const res = await fetch(endpoint, {

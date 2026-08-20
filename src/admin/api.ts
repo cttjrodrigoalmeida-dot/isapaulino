@@ -242,6 +242,8 @@ export interface Contract extends ContractSummary {
   autentiqueUrl: string | null;
   /** Id do documento na Autentique (quando enviado para assinatura). */
   autentiqueDocumentId: string | null;
+  /** Senha de acesso opcional (vazio/null = link público). */
+  accessPassword?: string | null;
   /** Data/hora da assinatura (preenchida pelo webhook da Autentique). */
   signedAt: string | null;
   createdAt: string;
@@ -261,6 +263,10 @@ export interface ContractInput {
   deadline: string | null;
   autentique_url: string | null;
   status?: ContractStatus;
+  /** Link público (slug): número base + complemento. Vazio/ausente mantém o atual. */
+  slug?: string;
+  /** Senha de acesso opcional (vazio = torna público). */
+  accessPassword?: string | null;
 }
 
 export interface StoragePrefixUsage {

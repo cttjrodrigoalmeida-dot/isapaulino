@@ -181,7 +181,8 @@ CREATE TABLE IF NOT EXISTS contracts (
   value          REAL,                          -- valor total (para listagem/financeiro)
   deadline       TEXT,                          -- prazo (texto livre, legado)
   status         TEXT NOT NULL DEFAULT 'draft', -- draft|published|signed|cancelled
-  slug           TEXT UNIQUE,                   -- gerado ao publicar
+  slug           TEXT UNIQUE,                   -- link público (definível no editor: número + complemento). Migração: ALTER TABLE contracts ADD COLUMN access_password TEXT;
+  access_password TEXT,                          -- senha opcional (NULL/vazio = link público). Cliente novo abre o contrato por senha.
   autentique_url TEXT,                          -- link de assinatura (Autentique)
   autentique_document_id TEXT,                  -- id do documento na Autentique (quando enviado)
   signed_at      TEXT,                          -- data/hora da assinatura (preenchida pelo webhook)
