@@ -241,6 +241,7 @@ export default function BriefingSectionEditor({
   onChange,
   onRemove,
   onMove,
+  onReorderSection,
   onDuplicate,
   onContinuar,
   onQuestionDragStart,
@@ -274,6 +275,8 @@ export default function BriefingSectionEditor({
   onChange: (next: BriefingSection) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
+  /** DnD de seção: reordena arrastando (tira `from`, insere em `to`) */
+  onReorderSection: (from: number, to: number) => void;
   /** duplica a seção inteira (imagem + perguntas) logo abaixo */
   onDuplicate: () => void;
   /** nova seção do MESMO ambiente, logo abaixo, começando em branco */
@@ -297,6 +300,11 @@ export default function BriefingSectionEditor({
   const [dropIdx, setDropIdx] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // DnD de SEÇÃO (arrastar o bloco inteiro p/ reordenar). Usa um tipo próprio no
+  // dataTransfer p/ NÃO se misturar com o arraste de perguntas (que não usa tipo).
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [sectionDropOver, setSectionDropOver] = useState(false);
+  const SECTION_DND = "application/x-ips-section";
 
   const setQuestion = (qi: number, patch: Partial<BriefingQuestion>) =>
     set({ questions: section.questions.map((q, i) => (i === qi ? { ...q, ...patch } : q)) });
@@ -363,11 +371,48 @@ export default function BriefingSectionEditor({
 
   return (
     <div
+      ref={cardRef}
       className={styles.card}
       id={`sec-card-${section.id}`}
-      style={isCont ? { marginLeft: 20, borderLeft: "3px solid var(--color-accent)" } : undefined}
+      style={{
+        ...(isCont ? { marginLeft: 20, borderLeft: "3px solid var(--color-accent)" } : {}),
+        ...(sectionDropOver ? { outline: "2px dashed var(--color-accent)", outlineOffset: 3 } : {}),
+      }}
+      onDragOver={(e) => {
+        // só reage ao arraste de SEÇÃO (ignora o arraste de perguntas)
+        if (!e.dataTransfer.types.includes(SECTION_DND)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!sectionDropOver) setSectionDropOver(true);
+      }}
+      onDragLeave={(e) => {
+        // só limpa quando realmente sai do card (evita piscar entre filhos)
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setSectionDropOver(false);
+      }}
+      onDrop={(e) => {
+        if (!e.dataTransfer.types.includes(SECTION_DND)) return;
+        e.preventDefault();
+        setSectionDropOver(false);
+        const from = Number(e.dataTransfer.getData(SECTION_DND));
+        if (Number.isInteger(from) && from !== index) onReorderSection(from, index);
+      }}
     >
       <div className={styles.blockHead}>
+        <span
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData(SECTION_DND, String(index));
+            if (cardRef.current) e.dataTransfer.setDragImage(cardRef.current, 24, 18);
+          }}
+          onDragEnd={() => setSectionDropOver(false)}
+          title="Arraste para reordenar esta seção"
+          aria-label="Arrastar seção"
+          style={{ cursor: "grab", userSelect: "none", fontSize: 16, lineHeight: 1, color: "var(--color-text-muted)", flexShrink: 0, paddingRight: 2 }}
+        >
+          ⠿
+        </span>
         <input
           type="checkbox"
           className={styles.selectCheckbox}

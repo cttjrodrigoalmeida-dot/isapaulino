@@ -255,6 +255,17 @@ export default function BriefingEditor({
       [list[i], list[j]] = [list[j], list[i]];
       return { ...prev, sections: list };
     });
+  // Reordena por arrastar: tira a seção `from` e a insere na posição `to`.
+  const moveSectionTo = (from: number, to: number) =>
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const n = prev.sections.length;
+      if (from < 0 || from >= n || to < 0 || to >= n || from === to) return prev;
+      const list = prev.sections.slice();
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      return { ...prev, sections: list };
+    });
 
   // ── Recolher/expandir seções ──
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -734,6 +745,7 @@ export default function BriefingEditor({
               onChange={(next) => setSection(i, next)}
               onRemove={() => removeSection(i)}
               onMove={(dir) => moveSection(i, dir)}
+              onReorderSection={moveSectionTo}
               onDuplicate={() => duplicateSection(i)}
               onContinuar={() => continuarSection(i)}
               onQuestionDragStart={(qi) => { dragSource.current = { s: i, q: qi }; }}

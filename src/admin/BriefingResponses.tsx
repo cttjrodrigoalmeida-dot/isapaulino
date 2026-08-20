@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { BriefingSection } from "../components/briefing/types";
 import SectionFigure from "../components/briefing/SectionFigure";
 import { api, ApiError, type BriefingResponse } from "./api";
+import { exportElementToPdf, waitForRenderReady } from "../lib/pdfExport";
 import styles from "./Admin.module.css";
 
 // Respostas no MESMO formato do template do cliente: seção por seção, com a
@@ -27,6 +28,7 @@ export default function BriefingResponses({
   // Bloqueio manual das respostas (preserva o briefing após iniciar os trabalhos).
   const [locked, setLocked] = useState(false);
   const [lockBusy, setLockBusy] = useState(false);
+  const [pdfId, setPdfId] = useState<number | null>(null); // resposta gerando PDF
 
   const startEdit = (r: BriefingResponse) => { setEditingId(r.id); setDraft({ ...r.answers }); setNotice(null); setError(null); };
   const cancelEdit = () => { setEditingId(null); setDraft({}); };
@@ -141,7 +143,13 @@ export default function BriefingResponses({
 
   // PDF no formato do template: imagem do ambiente com pinos numerados,
   // perguntas numeradas e anexos do cliente embutidos como imagem.
-  const exportPdf = (r: BriefingResponse) => {
+  // Baixa AUTOMÁTICO em A4 (1 clique, sem abrir a tela de impressão) — mesmo
+  // padrão da página do cliente. Renderiza num iframe oculto (estilos isolados)
+  // e rasteriza com o utilitário compartilhado exportElementToPdf.
+  const exportPdf = async (r: BriefingResponse) => {
+    if (pdfId !== null) return;
+    setPdfId(r.id);
+    setError(null);
     const esc = (s: string) => (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     let body = "";
     for (let si = 0; si < sections.length; si++) {
@@ -158,7 +166,7 @@ export default function BriefingResponses({
               : ""
           )
           .join("");
-        body += `<div class="fig"><div class="figIn"><img src="${esc(section.image)}" alt="">${pins}</div></div>`;
+        body += `<div class="fig"><div class="figIn"><img src="${esc(section.image)}" alt="" crossorigin="anonymous">${pins}</div></div>`;
       }
       section.questions.forEach((q, i) => {
         const val = (r.answers[q.id] ?? "").trim();
@@ -166,12 +174,11 @@ export default function BriefingResponses({
         body += `<div class="a${val ? "" : " empty"}">${val ? esc(val) : "— sem resposta"}</div>`;
         for (const att of refList(r, q.id)) {
           body += isImgUrl(att)
-            ? `<img class="att" src="${esc(att)}" alt="Anexo">`
+            ? `<img class="att" src="${esc(att)}" alt="Anexo" crossorigin="anonymous">`
             : `<div class="a">📎 ${esc(att)}</div>`;
         }
       });
     }
-    // respostas fora do template atual
     const orphans = [...new Set([...Object.keys(r.answers), ...Object.keys(r.refImages)])].filter(
       (qid) => !knownIds.has(qid) && (answered(r.answers, qid) || refList(r, qid).length)
     );
@@ -180,48 +187,58 @@ export default function BriefingResponses({
       for (const qid of orphans) {
         body += `<div class="q">${esc(qid)}</div><div class="a">${esc(r.answers[qid] ?? "")}</div>`;
         for (const att of refList(r, qid)) {
-          body += isImgUrl(att) ? `<img class="att" src="${esc(att)}" alt="Anexo">` : `<div class="a">📎 ${esc(att)}</div>`;
+          body += isImgUrl(att) ? `<img class="att" src="${esc(att)}" alt="Anexo" crossorigin="anonymous">` : `<div class="a">📎 ${esc(att)}</div>`;
         }
       }
     }
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Briefing ${number} — ${esc(r.client || "Cliente")}</title>
-<style>
-body{font-family:Inter,Arial,sans-serif;color:#1a1a1a;padding:32px;max-width:840px;margin:auto}
-h1{font-size:20px;margin:0}
-h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;margin:26px 0 8px;border-bottom:1px solid #e5e0d8;padding-bottom:4px}
-.meta{color:#666;font-size:12px;margin-bottom:8px}
-.fig{text-align:center;margin:10px 0 16px}
-.figIn{position:relative;display:inline-block;line-height:0}
-.figIn img{max-width:100%;max-height:430px;width:auto;height:auto;border-radius:10px;border:1px solid #e2ddd4}
-.pin{position:absolute;transform:translate(-50%,-50%);display:inline-flex;flex-direction:column;align-items:center;gap:2px;line-height:1}
-.pinN{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font:700 10px/1 monospace;color:#fff;background:#f0506e;border:1px solid #fff;border-radius:50%}
-.pinL{font:700 7px/1.4 monospace;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(240,80,110,.92);padding:1px 4px;border-radius:3px;white-space:nowrap}
-.q{font-weight:600;font-size:13px;margin-top:12px}
-.qn{font:700 10px/1 monospace;color:#a08d6a;margin-right:4px}
-.a{font-size:13px;white-space:pre-wrap;margin-top:2px;color:#333}
-.a.empty{color:#b3aca0;font-style:italic}
-.att{display:block;max-width:320px;max-height:260px;border-radius:8px;border:1px solid #e2ddd4;margin:6px 0 2px}
-@media print{.fig,.att{break-inside:avoid}}
-</style>
-</head><body><h1>Briefing Nº ${number}</h1><div class="meta">${esc(r.client || "Cliente")} · ${esc(submittedLabel(r))}</div>${body}</body></html>`;
-    const w = window.open("", "_blank");
-    if (!w) { setError("Permita pop-ups para gerar o PDF (ou use Exportar CSV)."); return; }
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    // espera as imagens carregarem antes de imprimir (com teto de 4s)
-    const waits = Array.from(w.document.images).map(
-      (img) =>
-        new Promise<void>((res) => {
-          if (img.complete) return res();
-          img.onload = () => res();
-          img.onerror = () => res();
-        })
-    );
-    const timeout = new Promise<void>((res) => setTimeout(res, 4000));
-    Promise.race([Promise.all(waits).then(() => undefined), timeout]).then(() =>
-      setTimeout(() => w.print(), 150)
-    );
+    // Estilos ESCOPADOS na raiz (.ipsPdfRoot) — não vazam para o painel.
+    const P = ".ipsPdfRoot";
+    const css = `
+${P}{font-family:Inter,Arial,sans-serif;color:#1a1a1a;background:#fff;padding:32px 36px;width:722px;box-sizing:border-box}
+${P} h1{font-size:20px;margin:0}
+${P} h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;margin:26px 0 8px;border-bottom:1px solid #e5e0d8;padding-bottom:4px}
+${P} .meta{color:#666;font-size:12px;margin-bottom:8px}
+${P} .fig{text-align:center;margin:10px 0 16px}
+${P} .figIn{position:relative;display:inline-block;line-height:0}
+${P} .figIn img{max-width:100%;max-height:430px;width:auto;height:auto;border-radius:10px;border:1px solid #e2ddd4}
+${P} .pin{position:absolute;transform:translate(-50%,-50%);display:inline-flex;flex-direction:column;align-items:center;gap:2px;line-height:1}
+${P} .pinN{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font:700 10px/1 monospace;color:#fff;background:#f0506e;border:1px solid #fff;border-radius:50%}
+${P} .pinL{font:700 7px/1.4 monospace;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(240,80,110,.92);padding:1px 4px;border-radius:3px;white-space:nowrap}
+${P} .q{font-weight:600;font-size:13px;margin-top:12px}
+${P} .qn{font:700 10px/1 monospace;color:#a08d6a;margin-right:4px}
+${P} .a{font-size:13px;white-space:pre-wrap;margin-top:2px;color:#333}
+${P} .a.empty{color:#b3aca0;font-style:italic}
+${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;border:1px solid #e2ddd4;margin:6px 0 2px}`;
+
+    // Container fora da tela, MAS renderizado (html2canvas precisa de layout).
+    // Mesmo caminho da página do cliente: elemento no documento principal.
+    const root = document.createElement("div");
+    root.className = "ipsPdfRoot";
+    // absolute (NÃO fixed/sticky) — o exportElementToPdf ignora fixed/sticky,
+    // então um container fixed sumiria da captura ("cloned iframe" error).
+    root.style.cssText = "position:absolute;left:-10000px;top:0;z-index:-1;pointer-events:none";
+    const styleEl = document.createElement("style");
+    styleEl.textContent = css;
+    root.appendChild(styleEl);
+    const content = document.createElement("div");
+    content.innerHTML = `<h1>Briefing Nº ${number}</h1><div class="meta">${esc(r.client || "Cliente")} · ${esc(submittedLabel(r))}</div>${body}`;
+    root.appendChild(content);
+    document.body.appendChild(root);
+    try {
+      // espera imagens (anexos/ambiente) carregarem, com teto de 6s
+      const imgs = Array.from(root.querySelectorAll("img"));
+      await Promise.race([
+        Promise.all(imgs.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); })))),
+        new Promise<void>((res) => setTimeout(res, 6000)),
+      ]);
+      await waitForRenderReady();
+      await exportElementToPdf(root, fileBase(r), { background: "#ffffff" });
+    } catch {
+      setError("Não foi possível gerar o PDF. Tente novamente ou use Exportar CSV.");
+    } finally {
+      root.remove();
+      setPdfId(null);
+    }
   };
 
   const saveToArquivos = async (r: BriefingResponse) => {
@@ -346,8 +363,8 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
                   <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => exportCsv(r)}>
                     ⬇ Exportar CSV
                   </button>
-                  <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => exportPdf(r)}>
-                    🖨 PDF
+                  <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => exportPdf(r)} disabled={pdfId === r.id}>
+                    {pdfId === r.id ? "Gerando PDF…" : "⬇ Baixar PDF"}
                   </button>
                   <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => saveToArquivos(r)} disabled={busyId === r.id}>
                     {busyId === r.id ? "Salvando…" : "📁 Salvar em Arquivos"}
