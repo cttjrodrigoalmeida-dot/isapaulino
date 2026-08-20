@@ -19,14 +19,23 @@ const EMPTY: ClientInput = {
   gender: "",
 };
 
+// Nome de pasta seguro — MESMA regra do gerenciador de documentos e do upload
+// de anexos do briefing (functions/api/documents/index.ts e briefings/upload.ts),
+// para o botão abrir exatamente a pasta onde os anexos do cliente caem.
+function safeFolder(input: string): string {
+  return input.trim().toLowerCase().replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+}
+
 export default function ClientEditor({
   id,
   onBack,
   onSaved,
+  onGoArquivos,
 }: {
   id: string | null;
   onBack: () => void;
   onSaved: () => void;
+  onGoArquivos?: (folder: string) => void;
 }) {
   const isNew = id === null;
   const [form, setForm] = useState<ClientInput>(EMPTY);
@@ -216,9 +225,20 @@ export default function ClientEditor({
           <div className={styles.pageTitle}>{isNew ? "Novo cliente" : "Editar cliente"}</div>
           <div className={styles.pageHint}>Campos com * são obrigatórios.</div>
         </div>
-        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
-          ← Voltar
-        </button>
+        <div className={styles.rowActions}>
+          {!isNew && onGoArquivos && form.name.trim() && (
+            <button
+              className={`${styles.btn} ${styles.btnGhost}`}
+              onClick={() => onGoArquivos(safeFolder(form.name))}
+              title="Abrir a pasta de arquivos deste cliente (inclui as imagens/PDFs enviados no briefing)"
+            >
+              📁 Arquivos do cliente
+            </button>
+          )}
+          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
+            ← Voltar
+          </button>
+        </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}

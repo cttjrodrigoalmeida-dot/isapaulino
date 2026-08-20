@@ -33,6 +33,8 @@ export default function AdminApp() {
   const [comercialNew, setComercialNew] = useState<{ area: "proposals" | "briefings"; n: number } | null>(null);
   const [clientesNew, setClientesNew] = useState<number | null>(null);
   const [contratosNew, setContratosNew] = useState<number | null>(null);
+  // Pasta a abrir ao ir para Arquivos (deep-link a partir do editor de cliente).
+  const [arquivosFolder, setArquivosFolder] = useState<string | null>(null);
 
   const { theme, toggle } = useAdminTheme();
 
@@ -72,6 +74,7 @@ export default function AdminApp() {
     setComercialNew(null);
     setClientesNew(null);
     setContratosNew(null);
+    setArquivosFolder(null); // nav pela barra abre Arquivos na raiz (não no deep-link antigo)
     setSection(id);
     setSidebarOpen(false);
   };
@@ -124,7 +127,7 @@ export default function AdminApp() {
       case "comercial":
         return <Comercial requestNew={comercialNew} />;
       case "clientes":
-        return <Clientes requestNew={clientesNew} />;
+        return <Clientes requestNew={clientesNew} onGoArquivos={(folder) => { setArquivosFolder(folder); setSection("arquivos"); }} />;
       case "contratos":
         return <Contratos requestNew={contratosNew} />;
       case "projetos":
@@ -134,7 +137,7 @@ export default function AdminApp() {
       case "relatorios":
         return <Relatorios />;
       case "arquivos":
-        return <Arquivos />;
+        return <Arquivos key={arquivosFolder ?? "root"} initialFolder={arquivosFolder} />;
       case "auditoria":
         return <Auditoria />;
       case "lixeira":

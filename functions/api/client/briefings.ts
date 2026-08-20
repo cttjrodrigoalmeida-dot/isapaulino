@@ -14,7 +14,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     if (!client?.name) return json({ briefings: [] });
 
     const { results } = await env.DB.prepare(
-      `SELECT b.number, b.title, b.proposal_number AS proposalNumber,
+      `SELECT b.number, b.title, b.proposal_number AS proposalNumber, b.locked_at AS lockedAt,
          (SELECT r.answers FROM briefing_responses r WHERE r.briefing_number = b.number ORDER BY r.submitted_at DESC LIMIT 1) AS answers,
          (SELECT r.ref_images FROM briefing_responses r WHERE r.briefing_number = b.number ORDER BY r.submitted_at DESC LIMIT 1) AS refImages,
          (SELECT r.submitted_at FROM briefing_responses r WHERE r.briefing_number = b.number ORDER BY r.submitted_at DESC LIMIT 1) AS submittedAt
@@ -24,13 +24,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        ORDER BY b.number DESC`
     )
       .bind(client.name)
-      .all<{ number: string; title: string | null; proposalNumber: string | null; answers: string | null; refImages: string | null; submittedAt: string | null }>();
+      .all<{ number: string; title: string | null; proposalNumber: string | null; lockedAt: string | null; answers: string | null; refImages: string | null; submittedAt: string | null }>();
 
     const briefings = (results ?? []).map((r) => ({
       number: r.number,
       title: r.title,
       proposalNumber: r.proposalNumber,
       responded: !!r.submittedAt,
+      locked: !!r.lockedAt,
       submittedAt: r.submittedAt,
       answers: (r.answers ? JSON.parse(r.answers) : {}) as Record<string, string>,
       refImages: (r.refImages ? JSON.parse(r.refImages) : {}) as Record<string, string | string[]>,

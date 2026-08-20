@@ -24,14 +24,14 @@ function fileIcon(name: string, type: string | null): string {
   return "📄";
 }
 
-export default function Arquivos() {
+export default function Arquivos({ initialFolder }: { initialFolder?: string | null }) {
   const [files, setFiles] = useState<DocumentFile[]>([]);
   const [folders, setFolders] = useState<{ name: string; count: number }[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [current, setCurrent] = useState<string | null>(null); // pasta aberta (null = raiz)
+  const [current, setCurrent] = useState<string | null>(initialFolder || null); // pasta aberta (null = raiz)
   const [newFolder, setNewFolder] = useState("");
   const [uploadClient, setUploadClient] = useState("");
   const [search, setSearch] = useState("");

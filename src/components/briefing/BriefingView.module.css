@@ -1598,6 +1598,27 @@
   color: var(--color-text-secondary);
   max-width: 560px;
 }
+/* Briefing bloqueado pelo estúdio: aviso claro no rodapé (só-leitura). */
+.ctaLocked {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  color: var(--color-text-secondary);
+  background: var(--ov-06);
+  border: 1px solid var(--ov-40);
+  border-radius: var(--border-radius-sm);
+  padding: 14px 18px;
+}
+.ctaLocked svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-accent);
+}
+.ctaLocked strong {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
 .ctaAlert {
   font-family: var(--font-mono);
   font-size: 0.68rem;

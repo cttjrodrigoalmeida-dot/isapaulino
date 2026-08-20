@@ -13,12 +13,12 @@ interface BriefingLike {
   [k: string]: unknown;
 }
 
-type Row = { data: string; status: string; editor_notes: string | null; editor_done: string | null };
+type Row = { data: string; status: string; editor_notes: string | null; editor_done: string | null; locked_at: string | null };
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
     const number = String(params.number);
-    const row = await env.DB.prepare("SELECT data, status, editor_notes, editor_done FROM briefings WHERE number = ?")
+    const row = await env.DB.prepare("SELECT data, status, editor_notes, editor_done, locked_at FROM briefings WHERE number = ?")
       .bind(number)
       .first<Row>();
     if (!row) return error(404, "Briefing não encontrado.");
@@ -29,7 +29,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     }
     // O apoio pessoal (notas/checklist) só vai para o admin — nunca para o cliente.
     const aid = isAdmin ? { editorNotes: row.editor_notes ?? "", editorDone: safeParseArr(row.editor_done) } : {};
-    return json({ briefing: JSON.parse(row.data), status: row.status, ...aid });
+    // `locked` é público: a página do cliente fica só-leitura quando bloqueado.
+    return json({ briefing: JSON.parse(row.data), status: row.status, locked: !!row.locked_at, ...aid });
   } catch (e) {
     return toErrorResponse(e);
   }

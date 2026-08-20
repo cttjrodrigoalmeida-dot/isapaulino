@@ -37,11 +37,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     }
     const refImagesStr = Object.keys(refImages).length ? JSON.stringify(refImages) : null;
 
-    // só aceita envio para briefing publicado
-    const b = await env.DB.prepare("SELECT status FROM briefings WHERE number = ?")
+    // só aceita envio para briefing publicado e NÃO bloqueado. O bloqueio é
+    // manual (a Isabela fecha o briefing quando inicia os trabalhos); a partir
+    // dele o cliente só visualiza — o admin ainda edita as respostas pelo PUT.
+    const b = await env.DB.prepare("SELECT status, locked_at FROM briefings WHERE number = ?")
       .bind(number)
-      .first<{ status: string }>();
+      .first<{ status: string; locked_at: string | null }>();
     if (!b || b.status !== "published") return error(404, "Briefing não encontrado.");
+    if (b.locked_at) return error(423, "Briefing bloqueado para edição.");
 
     const client = body.client ?? null;
 
@@ -89,7 +92,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
         for (const url of oldUrls) {
           if (keep.has(url)) continue;
           const key = url.replace(/^\/api\/files\//, "");
-          if (key.startsWith("briefing-refs/")) await env.R2.delete(key);
+          // Anexos vivem em docs/ (gerenciador de Arquivos). Só apagamos os que
+          // ESTE briefing gerou (customMetadata.source === "briefing") — nunca
+          // documentos que a Isabela subiu à mão. Legado ainda em briefing-refs/.
+          if (key.startsWith("briefing-refs/")) {
+            await env.R2.delete(key);
+          } else if (key.startsWith("docs/")) {
+            const head = await env.R2.head(key);
+            if (head?.customMetadata?.source === "briefing") await env.R2.delete(key);
+          }
         }
       } catch {
         /* limpeza é best-effort */

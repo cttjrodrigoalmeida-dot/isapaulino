@@ -524,9 +524,15 @@ export const api = {
   // ── briefings ──
   listBriefings: () => req<{ briefings: BriefingSummary[] }>("/api/briefings"),
   getBriefing: (number: string) =>
-    req<{ briefing: Briefing; status: "draft" | "published"; editorNotes?: string; editorDone?: string[] }>(
+    req<{ briefing: Briefing; status: "draft" | "published"; locked?: boolean; editorNotes?: string; editorDone?: string[] }>(
       `/api/briefings/${encodeURIComponent(number)}`
     ),
+  // Bloqueia/desbloqueia a edição das respostas pelo cliente (admin ainda edita).
+  lockBriefing: (number: string, locked: boolean) =>
+    req<{ ok: true; locked: boolean }>(`/api/briefings/${encodeURIComponent(number)}/lock`, {
+      method: "POST",
+      body: JSON.stringify({ locked }),
+    }),
   createBriefing: (briefing: Briefing, status: "draft" | "published") =>
     req<{ ok: true; number: string; status: string }>("/api/briefings", {
       method: "POST",

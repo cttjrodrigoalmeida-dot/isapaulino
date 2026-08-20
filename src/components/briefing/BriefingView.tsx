@@ -32,6 +32,9 @@ import styles from "./BriefingView.module.css";
 
 // Modo impressão: desliga zoom/animações e troca controles por texto fixo.
 const PrintContext = createContext(false);
+// Modo bloqueado (admin fechou o briefing): cliente só VISUALIZA — controles
+// viram texto fixo, sem anexar/enviar. Mantém o visual normal (não é impressão).
+const FrozenContext = createContext(false);
 
 // ── Ícones inline ─────────────────────────────────────────────
 const IconDownload = () => (
@@ -88,6 +91,12 @@ const IconInstagram = () => (
     <rect x="2" y="2" width="20" height="20" rx="5" />
     <circle cx="12" cy="12" r="4.2" />
     <circle cx="17.4" cy="6.6" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+const IconLock = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <rect x="4" y="10.5" width="16" height="10" rx="2.2" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
   </svg>
 );
 const IconGlobe = () => (
@@ -197,6 +206,8 @@ interface Props {
   preview?: boolean;
   /** força o tema (usado na prévia do editor p/ acompanhar o tema do painel). */
   forceTheme?: "light" | "dark";
+  /** briefing bloqueado pelo admin: cliente só visualiza (não edita/reenvia). */
+  locked?: boolean;
 }
 
 const isRequired = (q: BriefingQuestion) => q.required !== false;
@@ -266,6 +277,9 @@ function QuestionItem({
   briefingNumber: string;
 }) {
   const printing = useContext(PrintContext);
+  const frozen = useContext(FrozenContext);
+  // Só-leitura: controles viram texto fixo (impressão OU briefing bloqueado).
+  const readOnly = printing || frozen;
   const fileRef = useRef<HTMLInputElement>(null);
   const [refModalOpen, setRefModalOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
@@ -302,14 +316,14 @@ function QuestionItem({
   );
 
   // Galeria de anexos (imagens viram miniatura; PDFs/arquivos e links viram chip).
-  // No modo impressão os botões de remover somem.
+  // Em impressão OU briefing bloqueado os botões de remover somem.
   const refGallery = (
     <span className={styles.refGallery}>
       {refItems.map((it, i) =>
         it.isImage ? (
           <span key={i} className={styles.refPreview}>
             <img src={it.url} alt={it.name || "Referência anexada"} className={styles.refImg} />
-            {!printing && (
+            {!readOnly && (
               <button type="button" className={styles.refRemove} onClick={() => onRemoveRef(i)} aria-label="Remover anexo">
                 ×
               </button>
@@ -320,7 +334,7 @@ function QuestionItem({
             <a href={it.url} target="_blank" rel="noopener noreferrer">
               {it.isLink ? "🔗" : "📄"} {it.name}
             </a>
-            {!printing && (
+            {!readOnly && (
               <button type="button" className={styles.refChipRemove} onClick={() => onRemoveRef(i)} aria-label="Remover anexo">
                 ×
               </button>
@@ -341,7 +355,7 @@ function QuestionItem({
   )}`;
 
   const renderControl = () => {
-    if (printing) {
+    if (readOnly) {
       return <div className={styles.answerPrint}>{type === "multicheck" ? printAnswer(answer) : answer || " "}</div>;
     }
     if (locked) {
@@ -772,7 +786,7 @@ function QuestionItem({
         <span className={styles.pendingMsg}>Esta pergunta é obrigatória.</span>
       )}
 
-      {(quickFills.length || allowReference) && !printing && !locked && (
+      {(quickFills.length || allowReference) && !readOnly && !locked && (
         <div className={styles.refRow}>
           {allowReference && (
             <>
@@ -796,7 +810,7 @@ function QuestionItem({
         </div>
       )}
 
-      {printing && hasRefs && refGallery}
+      {readOnly && hasRefs && refGallery}
 
       {refModalOpen && (
         <div
@@ -878,7 +892,7 @@ function normalizeLink(url: string): string {
 
 // (a imagem com pinos vive em SectionFigure.tsx — compartilhada com o admin)
 
-export default function BriefingView({ briefing: b, preview = false, forceTheme }: Props) {
+export default function BriefingView({ briefing: b, preview = false, forceTheme, locked: frozen = false }: Props) {
   const linked = getProposalByNumber(b.proposalNumber);
   const clientName = linked?.client ?? b.client ?? "—";
   const projectTitle = linked?.serviceTitle ?? b.serviceTitle ?? b.title;
@@ -1182,6 +1196,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
   )}`;
 
   const handleSubmit = () => {
+    if (frozen) return; // briefing bloqueado — cliente só visualiza
     const miss = validate();
     if (miss.length > 0) {
       setPending(new Set(miss));
@@ -1305,6 +1320,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
     // Na prévia mostramos a UI COMPLETA (opções, marcadores, botões) — só o PDF
     // real (printing) usa o modo impressão enxuto.
     <PrintContext.Provider value={printing}>
+     <FrozenContext.Provider value={frozen}>
       <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} data-theme={theme} ref={pageRef}>
         {!printing && !preview && theme === "dark" && <CustomCursor />}
         <div className={styles.ambient} aria-hidden />
@@ -1574,18 +1590,26 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
           })}
 
           <div className={styles.ctaWrap}>
-            <p className={styles.ctaText}>
-              Revise suas respostas e conclua. Você pode exportar o briefing em PDF a
-              qualquer momento; ao enviar, conferimos se nada ficou pendente.
-            </p>
-            {missingCount > 0 && (
+            {frozen ? (
+              <p className={`${styles.ctaText} ${styles.ctaLocked}`}>
+                <IconLock /> Este briefing foi <strong>fechado pelo estúdio</strong> e serve de base para o
+                projeto. As respostas ficam preservadas — você pode consultar e baixar em PDF,
+                mas não é mais possível editá-las. Precisa ajustar algo? Fale com a Isabela.
+              </p>
+            ) : (
+              <p className={styles.ctaText}>
+                Revise suas respostas e conclua. Você pode exportar o briefing em PDF a
+                qualquer momento; ao enviar, conferimos se nada ficou pendente.
+              </p>
+            )}
+            {!frozen && missingCount > 0 && (
               <p className={styles.ctaAlert}>
                 {missingCount === 1
                   ? "1 pergunta obrigatória está pendente — ela foi destacada em vermelho acima."
                   : `${missingCount} perguntas obrigatórias estão pendentes — destacadas em vermelho acima.`}
               </p>
             )}
-            {editingSubmitted && (
+            {!frozen && editingSubmitted && (
               <p className={styles.ctaSent}>
                 <IconCheck /> Você já respondeu este briefing — edite o que quiser e reenvie; suas respostas serão atualizadas.
               </p>
@@ -1600,7 +1624,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
-                . Pode reenviar pelo WhatsApp sempre que precisar.
+                {frozen ? "." : ". Pode reenviar pelo WhatsApp sempre que precisar."}
               </p>
             )}
             <div className={styles.ctaButtons}>
@@ -1608,10 +1632,12 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
                 <IconDownload />
                 <span>{exporting ? "Gerando PDF…" : "Baixar PDF"}</span>
               </button>
-              <button type="button" onClick={handleSubmit} className={styles.sendBtn}>
-                <IconWhatsApp />
-                <span>Enviar briefing</span>
-              </button>
+              {!frozen && (
+                <button type="button" onClick={handleSubmit} className={styles.sendBtn}>
+                  <IconWhatsApp />
+                  <span>Enviar briefing</span>
+                </button>
+              )}
             </div>
           </div>
         </main>
@@ -1644,6 +1670,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme 
           </button>
         </div>
       </div>
+     </FrozenContext.Provider>
     </PrintContext.Provider>
   );
 }

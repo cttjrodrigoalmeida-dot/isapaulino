@@ -10,7 +10,7 @@ import styles from "../components/briefing/BriefingView.module.css";
 // já existente (/briefing/2624) continua funcionando na transição.
 type State =
   | { status: "loading" }
-  | { status: "ok"; briefing: BriefingType }
+  | { status: "ok"; briefing: BriefingType; locked: boolean }
   | { status: "notfound" };
 
 function staticFallback(number?: string): BriefingType | undefined {
@@ -31,15 +31,15 @@ export default function Briefing() {
           credentials: "include",
         });
         if (res.ok) {
-          const { briefing } = (await res.json()) as { briefing: BriefingType };
-          if (alive) setState({ status: "ok", briefing });
+          const { briefing, locked } = (await res.json()) as { briefing: BriefingType; locked?: boolean };
+          if (alive) setState({ status: "ok", briefing, locked: !!locked });
           return;
         }
       } catch {
         /* sem backend / offline — usa o fallback */
       }
       const fb = staticFallback(number);
-      if (alive) setState(fb ? { status: "ok", briefing: fb } : { status: "notfound" });
+      if (alive) setState(fb ? { status: "ok", briefing: fb, locked: false } : { status: "notfound" });
     })();
     return () => {
       alive = false;
@@ -84,5 +84,5 @@ export default function Briefing() {
     );
   }
 
-  return <BriefingView briefing={state.briefing} />;
+  return <BriefingView briefing={state.briefing} locked={state.locked} />;
 }

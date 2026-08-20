@@ -1,7 +1,9 @@
 // POST /api/briefings/:number/upload  (multipart: campo "file")
-//   PÚBLICO, mas só aceita anexo se o briefing está publicado (limita abuso).
-//   Usado pelo cliente para enviar imagens/arquivos de referência junto do briefing.
-//   Devolve { url, key }; a URL é servida por /api/files/<key>.
+//   PÚBLICO, mas só aceita anexo se o briefing está publicado (limita abuso) e
+//   NÃO está bloqueado. Usado pelo cliente para enviar imagens/PDFs de referência.
+//   Os arquivos vão para o gerenciador de Arquivos (prefixo docs/), numa pasta
+//   com o NOME DO CLIENTE (via proposta vinculada) — assim a Isabela controla,
+//   edita e exclui por lá. Devolve { url, key }; a URL é servida por /api/files/<key>.
 import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
 
@@ -15,6 +17,12 @@ const INLINE_IMAGES: Record<string, string> = {
   "image/gif": "gif",
 };
 
+// Nome de pasta seguro (mesma regra do gerenciador de documentos).
+function safeFolder(input: unknown): string {
+  const s = (typeof input === "string" ? input : "").trim().toLowerCase();
+  const clean = s.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return clean;
+}
 // Extensão a partir do nome original (sanitizada) p/ anexos não-imagem (pdf, dwg, zip…).
 function extFromName(name: string): string {
   const m = /\.([a-z0-9]{1,8})$/i.exec(name ?? "");
@@ -25,31 +33,50 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   try {
     const number = String(params.number);
 
-    // só aceita anexo para briefing publicado
-    const b = await env.DB.prepare("SELECT status FROM briefings WHERE number = ?")
+    // só aceita anexo para briefing publicado e NÃO bloqueado
+    const b = await env.DB.prepare("SELECT status, locked_at, proposal_number FROM briefings WHERE number = ?")
       .bind(number)
-      .first<{ status: string }>();
+      .first<{ status: string; locked_at: string | null; proposal_number: string | null }>();
     if (!b || b.status !== "published") return error(404, "Briefing não encontrado.");
+    if (b.locked_at) return error(423, "Briefing bloqueado para edição.");
 
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return error(400, "Envie um arquivo no campo 'file'.");
     if (file.size > MAX_BYTES) return error(413, "Arquivo muito grande (máx. 15 MB).");
 
+    // Nome do cliente vem da proposta vinculada → vira a pasta em Arquivos.
+    let clientName = "";
+    if (b.proposal_number) {
+      const p = await env.DB.prepare("SELECT client FROM proposals WHERE number = ?")
+        .bind(b.proposal_number)
+        .first<{ client: string | null }>();
+      clientName = (p?.client ?? "").trim();
+    }
+    const folder = safeFolder(clientName) || `briefing-${safeFolder(number) || "sem-numero"}`;
+
     const inlineExt = INLINE_IMAGES[file.type];
     const ext = inlineExt ?? extFromName(file.name);
-    const key = `briefing-refs/${number}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const key = `docs/${folder}/${crypto.randomUUID()}.${ext}`;
+    const name = (file.name || "anexo").slice(0, 160);
 
-    // Imagens conhecidas: servidas inline. Demais: octet-stream + download (evita XSS armazenado).
+    // Metadados p/ o gerenciador de Arquivos: nome, pasta e badge do cliente.
+    // NÃO gravamos clientId — assim o anexo NÃO aparece na Área do Cliente
+    // (ele já vê a imagem dentro do próprio briefing); é só controle interno.
+    const meta: Record<string, string> = { name, folder, source: "briefing", briefingNumber: number };
+    if (clientName) meta.clientName = clientName;
+
+    // Imagens conhecidas: servidas inline (o briefing mostra a miniatura).
+    // Demais (PDF etc.): octet-stream + download (evita XSS armazenado).
     const httpMetadata: R2HTTPMetadata = inlineExt
       ? { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" }
       : {
           contentType: "application/octet-stream",
-          contentDisposition: `attachment; filename="${(file.name || "anexo").replace(/"/g, "")}"`,
+          contentDisposition: `attachment; filename="${name.replace(/"/g, "")}"`,
           cacheControl: "public, max-age=31536000, immutable",
         };
 
-    await env.R2.put(key, file.stream(), { httpMetadata });
+    await env.R2.put(key, file.stream(), { httpMetadata, customMetadata: meta });
 
     return json({ ok: true, url: `/api/files/${key}`, key }, { status: 201 });
   } catch (e) {

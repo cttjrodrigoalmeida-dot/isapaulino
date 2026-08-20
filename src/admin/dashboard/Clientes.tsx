@@ -12,7 +12,7 @@ type View =
   | { name: "projectHistory"; contractId: string; projectLabel: string; clientName: string; signed: boolean; clientId: string }
   | { name: "history"; id: string; clientName: string; phone: string | null };
 
-export default function Clientes({ requestNew }: { requestNew?: number | null }) {
+export default function Clientes({ requestNew, onGoArquivos }: { requestNew?: number | null; onGoArquivos?: (folder: string) => void }) {
   const [view, setView] = useState<View>({ name: "list" });
 
   // Atalho "Novo cliente" → abre o editor em modo novo.
@@ -26,6 +26,7 @@ export default function Clientes({ requestNew }: { requestNew?: number | null })
         id={view.id}
         onBack={() => setView({ name: "list" })}
         onSaved={() => setView({ name: "list" })}
+        onGoArquivos={onGoArquivos}
       />
     );
   }

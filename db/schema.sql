@@ -65,12 +65,16 @@ CREATE TABLE IF NOT EXISTS briefings (
   -- Apoio PESSOAL do admin ao preencher (não vai para o cliente):
   editor_notes    TEXT,                          -- bloco de notas do editor
   editor_done     TEXT,                          -- JSON array de ids de seção marcadas "preenchidas"
+  -- Bloqueio manual das respostas: NULL = cliente pode editar; timestamp = congelado
+  -- (o cliente só visualiza; o admin ainda pode editar pelo painel).
+  locked_at       TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 -- Migração p/ bancos já existentes (rodar uma vez, local e remoto):
 --   ALTER TABLE briefings ADD COLUMN editor_notes TEXT;
 --   ALTER TABLE briefings ADD COLUMN editor_done TEXT;
+--   ALTER TABLE briefings ADD COLUMN locked_at TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_briefings_status ON briefings(status);
 CREATE INDEX IF NOT EXISTS idx_briefings_updated ON briefings(updated_at DESC);

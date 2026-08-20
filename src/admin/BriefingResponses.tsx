@@ -24,6 +24,9 @@ export default function BriefingResponses({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  // Bloqueio manual das respostas (preserva o briefing após iniciar os trabalhos).
+  const [locked, setLocked] = useState(false);
+  const [lockBusy, setLockBusy] = useState(false);
 
   const startEdit = (r: BriefingResponse) => { setEditingId(r.id); setDraft({ ...r.answers }); setNotice(null); setError(null); };
   const cancelEdit = () => { setEditingId(null); setDraft({}); };
@@ -39,17 +42,31 @@ export default function BriefingResponses({
     } finally { setSaving(false); }
   };
 
+  const toggleLock = async () => {
+    const next = !locked;
+    if (next && !confirm("Bloquear a edição deste briefing?\n\nO cliente continuará VISUALIZANDO, mas não poderá mais alterar as respostas. Você (admin) ainda pode editar por aqui. Use isso ao iniciar os trabalhos, para preservar o briefing que embasou o projeto.")) return;
+    setLockBusy(true); setError(null); setNotice(null);
+    try {
+      await api.lockBriefing(number, next);
+      setLocked(next);
+      setNotice(next ? "Briefing bloqueado — o cliente agora só visualiza." : "Briefing desbloqueado — o cliente pode editar novamente.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao alterar o bloqueio.");
+    } finally { setLockBusy(false); }
+  };
+
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const [{ briefing }, { responses }] = await Promise.all([
+        const [{ briefing, locked }, { responses }] = await Promise.all([
           api.getBriefing(number),
           api.listBriefingResponses(number),
         ]);
         if (!alive) return;
         setSections(briefing.sections);
         setResponses(responses);
+        setLocked(!!locked);
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
       } finally {
@@ -265,13 +282,29 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8a6d3b;ma
     <div className={styles.container}>
       <div className={styles.pageHead}>
         <div>
-          <div className={styles.pageTitle}>Respostas · Briefing Nº {number}</div>
+          <div className={styles.pageTitle}>
+            Respostas · Briefing Nº {number}
+            {locked && <span className={`${styles.badge} ${styles.badgeAmber}`} style={{ marginLeft: 10, verticalAlign: "middle" }}>🔒 Bloqueado</span>}
+          </div>
           <div className={styles.pageHint}>
             {responses.length} envio(s) recebido(s). As respostas seguem o template do cliente —
             a imagem de cada ambiente aparece com os pinos numerados.
+            {locked
+              ? " Edição bloqueada: o cliente só visualiza (você ainda edita por aqui)."
+              : " O cliente pode editar e reenviar até você bloquear."}
           </div>
         </div>
-        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>← Voltar</button>
+        <div className={styles.rowActions}>
+          <button
+            className={`${styles.btn} ${locked ? styles.btnPrimary : styles.btnGhost}`}
+            onClick={toggleLock}
+            disabled={lockBusy}
+            title={locked ? "Permitir que o cliente edite novamente" : "Impedir novas edições do cliente (preserva o briefing)"}
+          >
+            {lockBusy ? "…" : locked ? "🔓 Desbloquear edição" : "🔒 Bloquear edição"}
+          </button>
+          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>← Voltar</button>
+        </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
