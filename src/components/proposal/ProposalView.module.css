@@ -1315,6 +1315,30 @@
   border-color: transparent;
 }
 
+/* Prazos em 2 colunas: 1º e 2º lado a lado; os adicionais descem por baixo de
+   cada um (3º sob o 1º, 4º sob o 2º…). */
+.prazoGrid2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin: 8px 0 16px;
+}
+@media (max-width: 640px) {
+  .prazoGrid2 {
+    grid-template-columns: 1fr;
+  }
+}
+/* Data "disponível para iniciar" — faixa própria, largura total, destacada. */
+.prazoDateCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  background: #262727;
+  border-radius: var(--border-radius-btn);
+}
+
 /* ════════════ CONDIÇÕES GERAIS ════════════ */
 .clauseList {
   display: flex;

@@ -864,20 +864,23 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
               compactHeader
               header={<SectionLabel>{`PRAZO DE ENTREGA${p.prazoTitulo ? `: ${p.prazoTitulo}` : ""}`}</SectionLabel>}
             >
-              <div className={styles.prazoRow}>
+              {/* Grade em 2 colunas: 1º e 2º bloco lado a lado; os prazos
+                  adicionais descem POR BAIXO de cada um (3º sob o 1º, 4º sob o
+                  2º, e assim por diante). */}
+              <div className={styles.prazoGrid2}>
                 {prazoItems.map((it, i) => (
                   <div key={i} className={styles.prazoItem}>
                     <span className={styles.prazoNum}>{it.value}</span>
                     <span className={styles.prazoCaption}>{it.label}</span>
                   </div>
                 ))}
-                {p.availableDate && (
-                  <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
-                    <span className={styles.prazoNum}>{p.availableDate}</span>
-                    <span className={styles.prazoCaption}>Disponível para iniciar</span>
-                  </div>
-                )}
               </div>
+              {p.availableDate && (
+                <div className={styles.prazoDateCard}>
+                  <span className={styles.prazoCaption}>Disponível para iniciar a partir de</span>
+                  <span className={styles.prazoNum}>{p.availableDate}</span>
+                </div>
+              )}
               {p.prazoNote && (
                 <p className={styles.prazoNote}>
                   {p.prazoNote.startsWith("Importante:") ? (
