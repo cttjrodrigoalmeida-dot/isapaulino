@@ -105,3 +105,11 @@ export async function requireVerifiedClient(request: Request, env: Env): Promise
   if (t.ver === false) throw new HttpError(428, "Confirme seu CPF para acessar.");
   return t.sub;
 }
+
+/** clientId do cliente logado E verificado, ou null (NÃO lança). Usado nos
+ *  documentos públicos p/ liberar o acesso do DONO sem senha por documento. */
+export async function verifiedClientId(request: Request, env: Env): Promise<string | null> {
+  const t = await getClientSession(request, env);
+  if (!t || t.ver === false) return null;
+  return t.sub;
+}

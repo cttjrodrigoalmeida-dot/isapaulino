@@ -110,6 +110,13 @@ export default function AreaCliente() {
     try {
       const res = await fetch("/api/client/overview", { credentials: "include" });
       if (res.ok) {
+        // Login único: se veio de um link de proposta/contrato/briefing
+        // (?next=/caminho interno), volta direto ao documento após logar.
+        const nxt = params.get("next");
+        if (nxt && nxt.startsWith("/") && !nxt.startsWith("//")) {
+          window.location.replace(nxt);
+          return;
+        }
         const j: Overview = await res.json();
         setData(j);
         setProfile({

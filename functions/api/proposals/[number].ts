@@ -8,6 +8,7 @@ import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth, getSession } from "../_lib/auth";
 import { hasAccess } from "../_lib/proposal-access";
+import { verifiedClientId } from "../_lib/client-auth";
 
 interface ProposalLike {
   number?: string;
@@ -17,7 +18,18 @@ interface ProposalLike {
   [k: string]: unknown;
 }
 
-type Row = { data: string; status: string; access_password: string | null; custom_slug: string | null; editor_notes: string | null; editor_done: string | null };
+type Row = { data: string; status: string; client: string | null; access_password: string | null; custom_slug: string | null; editor_notes: string | null; editor_done: string | null };
+
+// true se o cliente logado (verificado) é o DONO deste documento, por NOME
+// (proposta/briefing ligam ao cliente pelo nome — mesma regra da Área).
+async function ownerByName(request: Request, env: Env, docClient: string | null): Promise<boolean> {
+  const name = (docClient ?? "").trim();
+  if (!name) return false;
+  const cid = await verifiedClientId(request, env);
+  if (!cid) return false;
+  const c = await env.DB.prepare("SELECT name FROM clients WHERE id = ? AND deleted_at IS NULL").bind(cid).first<{ name: string | null }>();
+  return !!c?.name && c.name.trim().toLowerCase() === name.toLowerCase();
+}
 
 function safeParseArr(s: string | null): string[] {
   if (!s) return [];
@@ -29,7 +41,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     // O parâmetro da URL pode ser o número OU a URL personalizada (custom_slug).
     const key = String(params.number);
     const row = await env.DB.prepare(
-      "SELECT data, status, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE (number = ? OR custom_slug = ?) AND deleted_at IS NULL"
+      "SELECT data, status, client, access_password, custom_slug, editor_notes, editor_done FROM proposals WHERE (number = ? OR custom_slug = ?) AND deleted_at IS NULL"
     ).bind(key, key).first<Row>();
     if (!row) return error(404, "Proposta não encontrada.");
 
@@ -50,10 +62,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       });
     }
 
-    // Proposta protegida por senha: sem token válido, não devolve o conteúdo.
+    // Proposta protegida por senha: libera com o token de senha OU quando o
+    // CLIENTE DONO está logado na Área (login único — sem senha por documento).
     const pw = (row.access_password ?? "").trim();
     if (pw) {
-      const ok = await hasAccess(request, env.SESSION_SECRET, key);
+      const ok =
+        (await hasAccess(request, env.SESSION_SECRET, key)) ||
+        (await ownerByName(request, env, row.client));
       if (!ok) return json({ locked: true });
     }
 

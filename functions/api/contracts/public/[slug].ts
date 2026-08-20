@@ -8,12 +8,13 @@ import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
 import { getSession } from "../../_lib/auth";
 import { hasAccess, verifyAccessToken } from "../../_lib/proposal-access";
+import { verifiedClientId } from "../../_lib/client-auth";
 
 // Namespace de cookie separado do da proposta (evita colisão de slug).
 export const CONTRACT_ACCESS_PREFIX = "ips_ctr_";
 
 const COLS = `c.title, c.content, c.data, c.value, c.deadline, c.status,
-  c.access_password AS accessPassword,
+  c.access_password AS accessPassword, c.client_id AS clientId,
   c.autentique_url AS autentiqueUrl, c.signed_at AS signedAt, c.published_at AS publishedAt, cl.name AS clientName`;
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
@@ -24,7 +25,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     const accessToken = new URL(request.url).searchParams.get("access");
     const contract = await env.DB.prepare(
       `SELECT ${COLS} FROM contracts c LEFT JOIN clients cl ON cl.id = c.client_id WHERE c.slug = ?`
-    ).bind(slug).first<{ status: string; accessPassword: string | null }>();
+    ).bind(slug).first<{ status: string; accessPassword: string | null; clientId: string | null }>();
 
     // Só expõe contratos publicados/assinados (rascunho e cancelado ficam ocultos).
     if (!contract || (contract.status !== "published" && contract.status !== "signed")) {
@@ -35,14 +36,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     const pw = (contract.accessPassword ?? "").trim();
     if (pw) {
       const isAdmin = !!(await getSession(request, env));
+      // Dono logado na Área (login único) — sem senha por documento.
+      const ownerLoggedIn = contract.clientId
+        ? (await verifiedClientId(request, env)) === contract.clientId
+        : false;
       const ok =
         isAdmin ||
+        ownerLoggedIn ||
         (accessToken ? await verifyAccessToken(accessToken, env.SESSION_SECRET, slug) : false) ||
         (await hasAccess(request, env.SESSION_SECRET, slug, CONTRACT_ACCESS_PREFIX));
       if (!ok) return json({ locked: true });
     }
-    // Nunca expõe a senha na resposta pública.
+    // Nunca expõe senha nem o client_id na resposta pública.
     delete (contract as { accessPassword?: string | null }).accessPassword;
+    delete (contract as { clientId?: string | null }).clientId;
 
     return json({ contract });
   } catch (e) {
