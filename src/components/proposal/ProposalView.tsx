@@ -844,18 +844,13 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
         </section>
 
         {/* ───────────── PRAZO ─────────────
-            Layout de cards (mesmo de antes). Todos os prazos de produção — os 2
-            principais + os adicionais (3º serviço em diante) — entram como cards
-            na MESMA grade, e a observação "Importante" única vale para todos. */}
+            Linha de cima = LAYOUT ORIGINAL, intacto (15 dias, 10 dias e a data).
+            Os prazos adicionais entram numa NOVA LINHA abaixo, na MESMA seção,
+            sob a MESMA observação "Importante" (que vale para todos). */}
         {(() => {
-          const prazoItems = [
-            ...(p.prazoDetalhamento?.trim() ? [{ value: p.prazoDetalhamento, label: p.investmentBlocks?.[0]?.title || "Detalhamento Executivo" }] : []),
-            ...(p.prazoAnteprojeto?.trim() ? [{ value: p.prazoAnteprojeto, label: p.investmentBlocks?.[1]?.title || "Anteprojeto" }] : []),
-            ...(p.prazoBlocos ?? []).flatMap((b) =>
-              (b.itens ?? []).filter((it) => it.value?.trim()).map((it) => ({ value: it.value, label: it.label?.trim() || b.titulo?.trim() || "Prazo" }))
-            ),
-          ];
-          if (!prazoItems.length && !p.availableDate && !p.prazoNote) return null;
+          const extras = (p.prazoBlocos ?? []).flatMap((b) =>
+            (b.itens ?? []).filter((it) => it.value?.trim()).map((it) => ({ value: it.value, label: it.label?.trim() || b.titulo?.trim() || "Prazo" }))
+          );
           return (
         <section className={`${styles.section} ${styles.sectionTight}`} data-spy="condicoes">
           <Reveal className={styles.prazoCard}>
@@ -864,21 +859,34 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
               compactHeader
               header={<SectionLabel>{`PRAZO DE ENTREGA${p.prazoTitulo ? `: ${p.prazoTitulo}` : ""}`}</SectionLabel>}
             >
-              {/* Grade em 2 colunas: 1º e 2º bloco lado a lado; os prazos
-                  adicionais descem POR BAIXO de cada um (3º sob o 1º, 4º sob o
-                  2º, e assim por diante). */}
-              <div className={styles.prazoGrid2}>
-                {prazoItems.map((it, i) => (
-                  <div key={i} className={styles.prazoItem}>
-                    <span className={styles.prazoNum}>{it.value}</span>
-                    <span className={styles.prazoCaption}>{it.label}</span>
+              {/* Linha original (inalterada) */}
+              <div className={styles.prazoRow}>
+                <div className={styles.prazoItem}>
+                  <span className={styles.prazoNum}>{p.prazoDetalhamento}</span>
+                  <span className={styles.prazoCaption}>{p.investmentBlocks?.[0]?.title || "Detalhamento Executivo"}</span>
+                </div>
+                {p.prazoAnteprojeto && (
+                  <div className={styles.prazoItem}>
+                    <span className={styles.prazoNum}>{p.prazoAnteprojeto}</span>
+                    <span className={styles.prazoCaption}>{p.investmentBlocks?.[1]?.title || "Anteprojeto"}</span>
                   </div>
-                ))}
+                )}
+                {p.availableDate && (
+                  <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
+                    <span className={styles.prazoNum}>{p.availableDate}</span>
+                    <span className={styles.prazoCaption}>Disponível para iniciar</span>
+                  </div>
+                )}
               </div>
-              {p.availableDate && (
-                <div className={styles.prazoDateCard}>
-                  <span className={styles.prazoCaption}>Disponível para iniciar a partir de</span>
-                  <span className={styles.prazoNum}>{p.availableDate}</span>
+              {/* Blocos adicionais — nova linha ABAIXO, quando houver */}
+              {extras.length > 0 && (
+                <div className={styles.prazoRow} style={{ marginTop: 0 }}>
+                  {extras.map((it, i) => (
+                    <div key={i} className={styles.prazoItem}>
+                      <span className={styles.prazoNum}>{it.value}</span>
+                      <span className={styles.prazoCaption}>{it.label}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               {p.prazoNote && (
