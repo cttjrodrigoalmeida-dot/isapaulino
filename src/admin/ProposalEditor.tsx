@@ -73,6 +73,21 @@ function todayBR(): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
+// URL personalizada = número + complemento. Deriva o complemento a partir do
+// slug salvo (tira o "<número>-" da frente); e monta o slug completo p/ salvar.
+function suffixFromSlug(slug: string, num: string): string {
+  const s = (slug ?? "").trim();
+  const n = (num ?? "").trim();
+  if (!s || s === n) return "";
+  if (n && s.startsWith(`${n}-`)) return s.slice(n.length + 1);
+  return s; // legado (slugs antigos já vêm com o número na frente)
+}
+function slugFromSuffix(suffix: string, num: string): string {
+  const suf = (suffix ?? "").trim().replace(/^-+/, "");
+  const n = (num ?? "").trim();
+  return suf ? `${n}-${suf}` : "";
+}
+
 export default function ProposalEditor({
   number,
   duplicateFrom = null,
@@ -94,8 +109,10 @@ export default function ProposalEditor({
   // Senha de acesso da proposta (vazio = link público). Fica fora do JSON da
   // proposta (nunca vai para a página pública) — é uma coluna própria no banco.
   const [accessPassword, setAccessPassword] = useState("");
-  // URL personalizada (alias). Vazio = só o número. Coluna própria no banco.
-  const [customSlug, setCustomSlug] = useState("");
+  // URL personalizada: o NÚMERO é sempre a base (/proposta/2630); aqui guardamos
+  // só o COMPLEMENTO opcional (ex.: "Rodrigo-Almeida" → /proposta/2630-Rodrigo-Almeida).
+  // No banco, o custom_slug é o slug completo (número + complemento).
+  const [slugSuffix, setSlugSuffix] = useState("");
   // ── Apoio pessoal (D1): notas + checklist "revisado" + navegação/recolher ──
   const [notes, setNotes] = useState("");
   const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
@@ -200,7 +217,7 @@ export default function ProposalEditor({
           setProposal(p);
           setStatus(s);
           setAccessPassword(pw ?? "");
-          setCustomSlug(slug ?? "");
+          setSlugSuffix(suffixFromSlug(slug ?? "", p.number ?? number ?? ""));
           setNotes(editorNotes ?? "");
           setDoneSet(new Set(editorDone ?? []));
         }
@@ -284,12 +301,13 @@ export default function ProposalEditor({
       setError(`O número ${proposal.number.trim()} já está em uso. Escolha outro (ex.: ${duplicateNumber(proposal.number, existingNumbers)}).`);
       return;
     }
-    const slug = customSlug.trim();
-    if (slug && !/^[A-Za-z0-9_-]+$/.test(slug)) {
-      setError("URL personalizada inválida: use apenas letras, números, hífen (-) e underscore (_), sem espaços.");
+    const num = proposal.number.trim();
+    const suffix = slugSuffix.trim();
+    if (suffix && !/^[A-Za-z0-9_-]+$/.test(suffix)) {
+      setError("Complemento da URL inválido: use apenas letras, números, hífen (-) e underscore (_), sem espaços.");
       return;
     }
-    const num = proposal.number.trim();
+    const slug = slugFromSuffix(suffix, num);
     const clean = buildClean(proposal);
     // "Salvar e publicar" abre a página pública em nova aba. Abrimos AGORA (ainda
     // no gesto do clique, antes do await) para o bloqueador de pop-up não barrar;
@@ -319,11 +337,11 @@ export default function ProposalEditor({
   // Marca alterações pendentes (após o carregamento inicial).
   useEffect(() => {
     if (hydratedRef.current) setDirty(true);
-  }, [proposal, status, accessPassword, customSlug, notes, doneSet, comboEnabled, comboPercent, pixDiscount, maxInstallments]);
+  }, [proposal, status, accessPassword, slugSuffix, notes, doneSet, comboEnabled, comboPercent, pixDiscount, maxInstallments]);
 
   // Autosave silencioso (só proposta JÁ criada): debounce ~2,5s de ociosidade.
-  const latestRef = useRef({ proposal, status, accessPassword, customSlug, notes, doneSet });
-  latestRef.current = { proposal, status, accessPassword, customSlug, notes, doneSet };
+  const latestRef = useRef({ proposal, status, accessPassword, slugSuffix, notes, doneSet });
+  latestRef.current = { proposal, status, accessPassword, slugSuffix, notes, doneSet };
   useEffect(() => {
     if (!dirty || isNew || !autosaveOn) return;
     const cur = latestRef.current;
@@ -334,8 +352,8 @@ export default function ProposalEditor({
       if (!c.proposal) return;
       // Slug inválido não vai no autosave (undefined = mantém o atual), assim um
       // formato errado não impede de salvar o resto do conteúdo.
-      const s = c.customSlug.trim();
-      const slugArg = s === "" ? "" : /^[A-Za-z0-9_-]+$/.test(s) ? s : undefined;
+      const suf = c.slugSuffix.trim();
+      const slugArg = suf === "" ? "" : /^[A-Za-z0-9_-]+$/.test(suf) ? slugFromSuffix(suf, c.proposal.number.trim()) : undefined;
       savingRef.current = true; setSaving(true);
       try {
         await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword, slugArg, { editorNotes: c.notes, editorDone: [...c.doneSet] });
@@ -345,7 +363,7 @@ export default function ProposalEditor({
     }, 2500);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword, customSlug, notes, doneSet]);
+  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword, slugSuffix, notes, doneSet]);
 
   // Scroll-spy: acende a seção visível durante a rolagem (alimenta rail + prévia).
   useEffect(() => {
@@ -723,21 +741,27 @@ export default function ProposalEditor({
           />
         </div>
         <div className={styles.field} style={{ margin: 0 }}>
-          <label className={styles.label} style={{ marginBottom: 4 }}>URL personalizada (opcional)</label>
-          <input
-            className={`${styles.input} ${styles.mono}`}
-            type="text"
-            value={customSlug}
-            onChange={(e) => setCustomSlug(e.target.value)}
-            placeholder={number ?? proposal.number}
-            title="Deixa o link mais amigável, ex.: 2650-DaniloFerreira. Vale como um apelido: o número original também continua funcionando. Só letras, números, hífen e underscore."
-            style={{ width: 230 }}
-          />
+          <label className={styles.label} style={{ marginBottom: 4 }}>Complemento da URL (opcional)</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span className={`${styles.pageHint} ${styles.mono}`} style={{ margin: 0, fontSize: 12, whiteSpace: "nowrap" }}>
+              /proposta/{(number || proposal.number || "").trim()}-
+            </span>
+            <input
+              className={`${styles.input} ${styles.mono}`}
+              type="text"
+              value={slugSuffix}
+              onChange={(e) => setSlugSuffix(e.target.value)}
+              placeholder="Rodrigo-Almeida"
+              title="O número do projeto é sempre a base do link. Aqui você só adiciona um complemento opcional (ex.: Rodrigo-Almeida). Só letras, números, hífen e underscore."
+              style={{ width: 190 }}
+            />
+          </div>
           {(() => {
-            const s = customSlug.trim();
-            const invalid = s !== "" && !/^[A-Za-z0-9_-]+$/.test(s);
+            const suf = slugSuffix.trim();
+            const num = (number || proposal.number || "").trim();
+            const invalid = suf !== "" && !/^[A-Za-z0-9_-]+$/.test(suf);
             if (invalid) return <span className={styles.fieldWarn}>⚠ Use só letras, números, hífen (-) e underscore (_), sem espaços.</span>;
-            return <span className={styles.pageHint} style={{ margin: "4px 0 0", fontSize: 11 }}>Link: isabelapaulino.com.br/proposta/{s || number || proposal.number}</span>;
+            return <span className={styles.pageHint} style={{ margin: "4px 0 0", fontSize: 11 }}>Link: isabelapaulino.com.br/proposta/{suf ? `${num}-${suf}` : num} · o número {num} sempre funciona</span>;
           })()}
         </div>
         <div className={styles.editorBarRight}>
