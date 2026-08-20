@@ -843,7 +843,20 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
           </Reveal>
         </section>
 
-        {/* ───────────── PRAZO ───────────── */}
+        {/* ───────────── PRAZO ─────────────
+            Um prazo de PRODUÇÃO por serviço, empilhados na ordem sequencial
+            (cada etapa começa após a aprovação da anterior). Tudo numa seção só,
+            sob a MESMA observação — que vale para todos os prazos. */}
+        {(() => {
+          const prazoItems = [
+            ...(p.prazoDetalhamento?.trim() ? [{ value: p.prazoDetalhamento, label: p.investmentBlocks?.[0]?.title || "Detalhamento Executivo" }] : []),
+            ...(p.prazoAnteprojeto?.trim() ? [{ value: p.prazoAnteprojeto, label: p.investmentBlocks?.[1]?.title || "Anteprojeto" }] : []),
+            ...(p.prazoBlocos ?? []).flatMap((b) =>
+              (b.itens ?? []).filter((it) => it.value?.trim()).map((it) => ({ value: it.value, label: it.label?.trim() || b.titulo?.trim() || "Prazo" }))
+            ),
+          ];
+          if (!prazoItems.length && !p.availableDate && !p.prazoNote) return null;
+          return (
         <section className={`${styles.section} ${styles.sectionTight}`} data-spy="condicoes">
           <Reveal className={styles.prazoCard}>
             <MobileCollapsible
@@ -851,24 +864,24 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
               compactHeader
               header={<SectionLabel>{`PRAZO DE ENTREGA${p.prazoTitulo ? `: ${p.prazoTitulo}` : ""}`}</SectionLabel>}
             >
-              <div className={styles.prazoRow}>
-                <div className={styles.prazoItem}>
-                  <span className={styles.prazoNum}>{p.prazoDetalhamento}</span>
-                  <span className={styles.prazoCaption}>{p.investmentBlocks?.[0]?.title || "Detalhamento Executivo"}</span>
+              {p.availableDate && (
+                <div className={styles.prazoStartRow}>
+                  <span className={styles.prazoCaption}>Disponível para iniciar a partir de</span>
+                  <span className={styles.prazoStartDate}>{p.availableDate}</span>
                 </div>
-                {p.prazoAnteprojeto && (
-                  <div className={styles.prazoItem}>
-                    <span className={styles.prazoNum}>{p.prazoAnteprojeto}</span>
-                    <span className={styles.prazoCaption}>{p.investmentBlocks?.[1]?.title || "Anteprojeto"}</span>
-                  </div>
-                )}
-                {p.availableDate && (
-                  <div className={`${styles.prazoItem} ${styles.prazoHighlight}`}>
-                    <span className={styles.prazoNum}>{p.availableDate}</span>
-                    <span className={styles.prazoCaption}>Disponível para iniciar</span>
-                  </div>
-                )}
-              </div>
+              )}
+              <ol className={styles.prazoStack}>
+                {prazoItems.map((it, i) => (
+                  <li key={i} className={styles.prazoStackRow}>
+                    <span className={styles.prazoStackStep}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className={styles.prazoStackNum}>{it.value}</span>
+                    <span className={styles.prazoStackLabel}>{it.label}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className={styles.prazoSeq}>
+                Os serviços são sequenciais: cada etapa começa após a aprovação da anterior, e o prazo passa a contar a partir daí.
+              </p>
               {p.prazoNote && (
                 <p className={styles.prazoNote}>
                   {p.prazoNote.startsWith("Importante:") ? (
@@ -884,30 +897,8 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
             </MobileCollapsible>
           </Reveal>
         </section>
-
-        {/* ── Blocos de prazo adicionais (um por projeto/serviço) ── */}
-        {(p.prazoBlocos ?? [])
-          .filter((b) => b.titulo?.trim() || (b.itens ?? []).some((it) => it.value?.trim()))
-          .map((bloco, bi) => (
-            <section key={`pbloco-${bi}`} className={`${styles.section} ${styles.sectionTight}`}>
-              <Reveal className={styles.prazoCard}>
-                <MobileCollapsible
-                  isDesktop={isDesktop}
-                  compactHeader
-                  header={<SectionLabel>{`PRAZO DE ENTREGA${bloco.titulo ? `: ${bloco.titulo}` : ""}`}</SectionLabel>}
-                >
-                  <div className={styles.prazoRow}>
-                    {(bloco.itens ?? []).filter((it) => it.value?.trim()).map((it, ii) => (
-                      <div key={ii} className={styles.prazoItem}>
-                        <span className={styles.prazoNum}>{it.value}</span>
-                        <span className={styles.prazoCaption}>{it.label || "Prazo"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </MobileCollapsible>
-              </Reveal>
-            </section>
-          ))}
+          );
+        })()}
 
         {/* ───────────── NÃO INCLUSOS ───────────── */}
         {show.notIncluded && (

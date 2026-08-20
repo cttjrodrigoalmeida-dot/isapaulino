@@ -76,9 +76,9 @@ export default function SectionsEditor({
       </div>
 
       <div className={styles.card}>
-        <div className={styles.cardTitle}>Blocos de prazo adicionais</div>
+        <div className={styles.cardTitle}>Prazos adicionais (3º serviço em diante)</div>
         <div className={styles.pageHint} style={{ marginBottom: 12 }}>
-          Para projetos/serviços com prazos diferentes, adicione um bloco separado — cada um vira um card próprio na proposta, com o título que você quiser (“Prazo de Entrega: …”).
+          Os dois primeiros prazos vêm dos campos acima (Bloco 1 e Bloco 2 do investimento). Para o <strong>3º serviço em diante</strong>, adicione aqui — cada prazo entra <strong>empilhado na mesma seção “Prazo de Entrega”</strong>, na ordem, sob a <strong>mesma observação</strong> (que vale para todos). Use o rótulo/“Prazo” de cada item.
         </div>
         {blocos.map((b, i) => (
           <div key={i} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 14, marginBottom: 12 }}>
