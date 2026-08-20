@@ -31,7 +31,8 @@ export type QuestionType =
   | "multicheck"
   | "select"
   | "scale"
-  | "maquete";
+  | "maquete"
+  | "arquivo";
 
 export interface BriefingQuestion {
   /** Identificador estável (chave de resposta/referência). */

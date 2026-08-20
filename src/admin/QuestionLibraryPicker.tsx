@@ -12,6 +12,7 @@ import styles from "./Admin.module.css";
 const TYPE_LABEL: Record<string, string> = {
   text: "Texto curto", longtext: "Texto longo", radio: "Escolha única",
   checklist: "Lista selecionável", select: "Seleção", maquete: "Maquete",
+  arquivo: "Inserir arquivo",
 };
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "text", label: "Texto curto" },

@@ -19,6 +19,7 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "select", label: "Seleção" },
   { value: "scale", label: "Escala / Avaliação" },
   { value: "maquete", label: "Maquete (e-mail/WhatsApp)" },
+  { value: "arquivo", label: "Inserir arquivo (imagem/PDF)" },
 ];
 // Tipos que têm lista de opções editável.
 const HAS_OPTIONS: QuestionType[] = ["radio", "checklist", "multicheck", "select", "maquete"];
@@ -46,10 +47,13 @@ function QuestionEditor({
   moved,
   isFirst,
   isLast,
+  hideType,
 }: {
   q: BriefingQuestion;
   index: number;
   isAmbiente: boolean;
+  /** oculta o seletor "Tipo de resposta" (declutter do editor) */
+  hideType: boolean;
   /** pergunta marcada na seleção em massa (destaque rosa) */
   selected: boolean;
   onToggleSelect: () => void;
@@ -121,20 +125,33 @@ function QuestionEditor({
         <textarea className={styles.textarea} rows={2} value={q.text} onChange={(e) => onChange({ text: e.target.value })} />
       </div>
 
-      <div className={styles.row2}>
-        <div className={styles.field}>
-          <label className={styles.label}>Tipo de resposta</label>
-          <select className={styles.input} value={type} onChange={(e) => onChange({ type: e.target.value as QuestionType })}>
-            {QUESTION_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-        </div>
+      {hideType ? (
         <div className={styles.field}>
           <label className={styles.label}>Dica/exemplo (opcional)</label>
           <input className={styles.input} value={q.hint ?? ""} onChange={(e) => onChange({ hint: e.target.value })} />
         </div>
-      </div>
+      ) : (
+        <div className={styles.row2}>
+          <div className={styles.field}>
+            <label className={styles.label}>Tipo de resposta</label>
+            <select className={styles.input} value={type} onChange={(e) => onChange({ type: e.target.value as QuestionType })}>
+              {QUESTION_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label}>Dica/exemplo (opcional)</label>
+            <input className={styles.input} value={q.hint ?? ""} onChange={(e) => onChange({ hint: e.target.value })} />
+          </div>
+        </div>
+      )}
+
+      {type === "arquivo" && (
+        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 12 }}>
+          A resposta é <strong>só anexo</strong>: o cliente insere imagem(ns) e/ou PDF, sem caixa de texto.
+        </p>
+      )}
 
       {HAS_OPTIONS.includes(type) && (
         <div className={styles.field}>
@@ -249,6 +266,7 @@ export default function BriefingSectionEditor({
   justMovedId,
   isFirst,
   isLast,
+  hideType,
 }: {
   section: BriefingSection;
   index: number;
@@ -289,6 +307,8 @@ export default function BriefingSectionEditor({
   justMovedId: string | null;
   isFirst: boolean;
   isLast: boolean;
+  /** oculta o seletor "Tipo de resposta" nas perguntas (declutter) */
+  hideType: boolean;
 }) {
   const isAmbiente = section.kind === "ambiente";
   const isCont = isAmbiente && !!continuationInfo?.isCont;
@@ -551,6 +571,7 @@ export default function BriefingSectionEditor({
           q={q}
           index={qi}
           isAmbiente={isAmbiente}
+          hideType={hideType}
           selected={selectedIds.has(q.id)}
           onToggleSelect={() => onToggleQuestionSelect(qi)}
           onChange={(patch) => setQuestion(qi, patch)}

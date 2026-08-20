@@ -277,6 +277,15 @@ export default function BriefingEditor({
     });
   const collapseAll = () => setCollapsed(new Set((briefing?.sections ?? []).map((s) => s.id)));
   const expandAll = () => setCollapsed(new Set());
+  // Ocultar o seletor "Tipo de resposta" nas perguntas (declutter; lembrado no navegador).
+  const [hideType, setHideType] = useState<boolean>(() => {
+    try { return localStorage.getItem("ips_briefing_hide_type") === "1"; } catch { return false; }
+  });
+  const toggleHideType = () => setHideType((v) => {
+    const n = !v;
+    try { localStorage.setItem("ips_briefing_hide_type", n ? "1" : "0"); } catch { /* ignore */ }
+    return n;
+  });
   // Índice: expande (se recolhida) e rola até a seção.
   const jumpTo = (id: string) => {
     setCollapsed((prev) => { const n = new Set(prev); n.delete(id); return n; });
@@ -713,12 +722,17 @@ export default function BriefingEditor({
             </div>
           </div>
 
-          {briefing.sections.length > 1 && (
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
-              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
-            </div>
-          )}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={toggleHideType}>
+              {hideType ? "Mostrar tipo de resposta" : "Ocultar tipo de resposta"}
+            </button>
+            {briefing.sections.length > 1 && (
+              <>
+                <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
+                <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
+              </>
+            )}
+          </div>
 
           {briefing.sections.map((s, i) => {
             const secIds = s.questions.map((q) => q.id);
@@ -753,6 +767,7 @@ export default function BriefingEditor({
               justMovedId={justMovedId}
               isFirst={i === 0}
               isLast={i === briefing.sections.length - 1}
+              hideType={hideType}
             />
             );
           })}

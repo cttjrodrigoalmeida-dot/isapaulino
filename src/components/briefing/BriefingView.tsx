@@ -285,7 +285,9 @@ function QuestionItem({
   const [linkValue, setLinkValue] = useState("");
   const hasRefs = refItems.length > 0;
   const type = question.type ?? "longtext";
-  const allowReference = question.allowReference ?? sectionKind === "ambiente";
+  // "arquivo" = resposta é só anexo (sem caixa de texto) → sempre habilita anexar.
+  const isFileOnly = type === "arquivo";
+  const allowReference = isFileOnly || (question.allowReference ?? sectionKind === "ambiente");
   // Botões de resposta rápida: a lista da pergunta é a fonte da verdade (o admin
   // pode remover "À DEFINIR"/"NÃO SE APLICA" individualmente). Perguntas antigas
   // (sem a lista definida) caem no padrão. Maquete não tem quick-fills padrão.
@@ -355,6 +357,11 @@ function QuestionItem({
   )}`;
 
   const renderControl = () => {
+    // "arquivo": não há controle de texto — só a área de anexo (renderizada abaixo).
+    // No modo só-leitura sem anexo, mostra um traço discreto.
+    if (isFileOnly) {
+      return readOnly && !hasRefs ? <div className={styles.answerPrint}>— sem arquivo</div> : null;
+    }
     if (readOnly) {
       return <div className={styles.answerPrint}>{type === "multicheck" ? printAnswer(answer) : answer || " "}</div>;
     }
@@ -792,7 +799,7 @@ function QuestionItem({
             <>
               {hasRefs && refGallery}
               <button type="button" className={styles.refBtn} onClick={() => setRefModalOpen(true)}>
-                <span className={styles.plus}>+</span> {hasRefs ? "ANEXAR OUTRA" : "ANEXAR REFERÊNCIA"}
+                <span className={styles.plus}>+</span> {isFileOnly ? (hasRefs ? "ANEXAR OUTRO" : "ANEXAR ARQUIVO") : (hasRefs ? "ANEXAR OUTRA" : "ANEXAR REFERÊNCIA")}
               </button>
               {attachInput}
             </>
@@ -1094,6 +1101,16 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
     [b.sections]
   );
 
+  // "arquivo" (resposta só-anexo) conta como respondida quando há anexo — ou um
+  // preenchimento rápido ("À definir"). As demais seguem pela resposta em texto.
+  const qAnswered = useCallback(
+    (q: BriefingQuestion) =>
+      q.type === "arquivo"
+        ? (refs[q.id]?.length ?? 0) > 0 || isAnswered(q, answers)
+        : isAnswered(q, answers),
+    [refs, answers]
+  );
+
   // ── Progresso por seção (pergunta bloqueada não conta como obrigatória) ──
   const progress = useMemo(() => {
     const map: Record<string, { total: number; done: number; complete: boolean }> = {};
@@ -1101,11 +1118,11 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
       const req = s.questions.filter(
         (q) => isRequired(q) && !isLockedQuestion(q, allQuestions, answers)
       );
-      const done = req.filter((q) => isAnswered(q, answers)).length;
+      const done = req.filter(qAnswered).length;
       map[s.id] = { total: req.length, done, complete: req.length > 0 && done === req.length };
     });
     return map;
-  }, [b.sections, answers, allQuestions]);
+  }, [b.sections, answers, allQuestions, qAnswered]);
   const totalReq = Object.values(progress).reduce((s, p) => s + p.total, 0);
   const totalDone = Object.values(progress).reduce((s, p) => s + p.done, 0);
 
@@ -1183,13 +1200,13 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
         if (
           isRequired(q) &&
           !isLockedQuestion(q, allQuestions, answers) &&
-          !isAnswered(q, answers)
+          !qAnswered(q)
         )
           miss.push(q.id);
       })
     );
     return miss;
-  }, [b.sections, answers, allQuestions]);
+  }, [b.sections, answers, allQuestions, qAnswered]);
 
   const waLink = `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(
     `Olá, Isabela! Acabei de concluir e enviar o briefing da proposta Nº ${b.number}.`
@@ -1302,7 +1319,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
         onRemoveRef={(idx) => removeRef(q.id, idx)}
         pending={pending.has(q.id)}
         locked={isLockedQuestion(q, allQuestions, answers)}
-        answered={isAnswered(q, answers)}
+        answered={qAnswered(q)}
         flash={flashId === q.id}
         hasPin={section.kind === "ambiente" && !!q.pin}
         onGoToPin={() => goToPin(q.id)}

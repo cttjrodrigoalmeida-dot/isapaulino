@@ -406,7 +406,7 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
                               />
                             ) : val ? (
                               <div className={styles.answerView}>{val}</div>
-                            ) : (
+                            ) : refList(r, q.id).length ? null : (
                               <div
                                 className={styles.answerView}
                                 style={{ color: "var(--color-text-muted)", fontStyle: "italic" }}
