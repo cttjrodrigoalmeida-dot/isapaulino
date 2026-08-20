@@ -723,12 +723,14 @@
   color: var(--color-text-muted);
 }
 
-/* ── Brindes (cortesia) — faixa discreta abaixo do investimento ── */
+/* ── Brindes (cortesia) — faixa discreta abaixo do investimento ──
+   Creme (positivo/discreto). O vermelho fica reservado para negativo/atenção
+   (ex.: "não inclusos") — aqui só o VALOR RISCADO é vermelho. */
 .brindeCard {
   margin-top: 20px;
   padding: clamp(18px, 2.4vw, 26px);
-  background: rgba(240, 80, 110, 0.04);
-  border: 1px dashed rgba(240, 80, 110, 0.4);
+  background: rgba(212, 197, 176, 0.05);
+  border: 1px dashed rgba(212, 197, 176, 0.4);
   border-radius: var(--border-radius-standard);
 }
 .brindeHead {
@@ -752,8 +754,8 @@
   font-family: var(--font-mono);
   font-size: 0.58rem;
   letter-spacing: 0.14em;
-  color: #f0506e;
-  border: 1px solid rgba(240, 80, 110, 0.5);
+  color: #d4c5b0;
+  border: 1px solid rgba(212, 197, 176, 0.5);
   border-radius: 999px;
   padding: 2px 9px;
 }
@@ -781,15 +783,15 @@
 .brindeFrom {
   font-family: var(--font-mono);
   font-size: 0.76rem;
-  color: var(--color-text-muted);
+  color: #f0506e; /* valor riscado = vermelho (único acento vermelho da faixa) */
   text-decoration: line-through;
-  text-decoration-color: rgba(240, 80, 110, 0.7);
+  text-decoration-color: #f0506e;
   white-space: nowrap;
 }
 .brindeFree {
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  color: #f0506e;
+  color: #d4c5b0; /* "Cortesia" = creme (positivo/discreto) */
   white-space: nowrap;
   min-width: 66px;
   text-align: right;

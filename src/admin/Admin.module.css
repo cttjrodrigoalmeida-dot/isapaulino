@@ -1325,9 +1325,9 @@
 .brindeBox {
   margin: 12px 0 4px;
   padding: 12px 12px 6px;
-  border: 1px dashed rgba(240, 80, 110, 0.55);
+  border: 1px dashed rgba(212, 197, 176, 0.55); /* creme (cortesia = positivo) */
   border-radius: var(--border-radius-btn);
-  background: color-mix(in srgb, #f0506e 5%, transparent);
+  background: color-mix(in srgb, #d4c5b0 6%, transparent);
 }
 .lineRow {
   display: flex;
