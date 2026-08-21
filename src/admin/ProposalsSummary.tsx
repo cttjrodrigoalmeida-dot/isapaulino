@@ -2,13 +2,14 @@ import { useState } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Cell, LabelList } from "recharts";
 import { formatBRL, formatBRLShort } from "./dashboard/format";
 
-// Bloco de resumo das propostas por VALOR (aprovadas x não aprovadas).
-// Usado na tela de Propostas (rodapé) e no Resumo Geral.
-const GREEN = "#4ade80"; // mesmo verde do Financeiro (padronizado)
-const PINK = "#f0506e"; // melancia da marca (não aprovadas)
+// Bloco de resumo das propostas por VALOR (aprovadas x não aprovadas x canceladas).
+// Usado na tela de Propostas (rodapé).
+const GREEN = "#4ade80"; // mesmo verde do Financeiro (padronizado) — aprovadas
+const AMBER = "#b07a16"; // amarelo padrão do sistema — não aprovadas
+const PINK = "#f0506e"; // melancia da marca — canceladas
 const SLATE_SOFT = "#aab3c0"; // cinza claro (2ª série da comparação)
 
-type YearAgg = { approvedValue: number; lostValue: number; approvedCount: number; lostCount: number };
+type YearAgg = { approvedValue: number; lostValue: number; cancelledValue: number; approvedCount: number; lostCount: number; cancelledCount: number };
 
 const IcCheck = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1a2e05" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -16,8 +17,13 @@ const IcCheck = () => (
   </svg>
 );
 const IcX = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4a121f" strokeWidth="3" strokeLinecap="round" aria-hidden>
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3a2900" strokeWidth="3" strokeLinecap="round" aria-hidden>
     <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
+const IcMinus = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4a121f" strokeWidth="3" strokeLinecap="round" aria-hidden>
+    <path d="M6 12h12" />
   </svg>
 );
 const IcMoney = ({ color }: { color: string }) => (
@@ -35,8 +41,10 @@ export default function ProposalsSummary({
   totalValue,
   approvedValue,
   lostValue,
+  cancelledValue,
   approvedCount,
   lostCount,
+  cancelledCount,
   year,
   years,
   perYear,
@@ -44,14 +52,16 @@ export default function ProposalsSummary({
   totalValue: number;
   approvedValue: number;
   lostValue: number;
+  cancelledValue: number;
   approvedCount: number;
   lostCount: number;
+  cancelledCount: number;
   /** Ano selecionado + anos disponíveis + agregados por ano (comparação). */
   year?: string;
   years?: string[];
   perYear?: Record<string, YearAgg>;
 }) {
-  const total = totalValue || approvedValue + lostValue;
+  const total = totalValue || approvedValue + lostValue + cancelledValue;
 
   // ── Comparação entre anos ──
   const otherYears = (years ?? []).filter((y) => y !== year && y !== "Outros");
@@ -59,14 +69,16 @@ export default function ProposalsSummary({
   const cy = compareYear && otherYears.includes(compareYear) ? compareYear : "";
   const cmp = cy && perYear ? perYear[cy] : undefined;
   const cmpApproved = cmp?.approvedValue ?? 0;
-  const cmpTotal = cmp ? cmp.approvedValue + cmp.lostValue : 0;
+  const cmpTotal = cmp ? cmp.approvedValue + cmp.lostValue + cmp.cancelledValue : 0;
   const apprDelta = cmp && cmpApproved > 0 ? ((approvedValue - cmpApproved) / cmpApproved) * 100 : null;
   const pct = (v: number) => (total > 0 ? Math.round((v / total) * 1000) / 10 : 0);
   const approvedPct = pct(approvedValue);
   const lostPct = pct(lostValue);
+  const cancelledPct = pct(cancelledValue);
   const data = [
     { name: "Aprovadas", value: approvedValue },
     { name: "Não aprovadas", value: lostValue },
+    { name: "Canceladas", value: cancelledValue },
   ];
 
   const iconBox = (bg: string): React.CSSProperties => ({
@@ -129,24 +141,26 @@ export default function ProposalsSummary({
         <div style={cardStyle}>
           <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>Resumo das propostas (por valor)</div>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 2, marginBottom: 8 }}>
-            Comparativo do valor financeiro entre propostas aprovadas e não aprovadas.
+            Comparativo do valor financeiro entre propostas aprovadas, não aprovadas e canceladas.
           </div>
           <div style={{ height: 200 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 22, right: 8, bottom: 0, left: 6 }} barCategoryGap="30%">
+              <BarChart data={data} margin={{ top: 22, right: 8, bottom: 0, left: 6 }} barCategoryGap="26%">
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--color-text-secondary)" }} />
                 <YAxis tickFormatter={(v) => formatBRLShort(Number(v))} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} width={64} />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={90}>
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={80}>
                   <Cell fill={GREEN} />
+                  <Cell fill={AMBER} />
                   <Cell fill={PINK} />
                   <LabelList dataKey="value" position="top" formatter={(v) => formatBRL(Number(v))} style={{ fontSize: 12, fontWeight: 700, fill: "var(--color-text-primary)" }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ display: "flex", gap: 18, justifyContent: "center", marginTop: 4 }}>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 4, flexWrap: "wrap" }}>
             <Legend color={GREEN} label="Propostas aprovadas" />
-            <Legend color={PINK} label="Propostas não aprovadas" />
+            <Legend color={AMBER} label="Propostas não aprovadas" />
+            <Legend color={PINK} label="Propostas canceladas" />
           </div>
         </div>
 
@@ -163,13 +177,24 @@ export default function ProposalsSummary({
               <span style={moneyCircle(GREEN)}><IcMoney color={GREEN} /></span>
             </div>
           </div>
-          <div style={{ ...cardStyle, background: "rgba(240, 80, 110, 0.10)", border: "1px solid rgba(240, 80, 110, 0.35)" }}>
+          <div style={{ ...cardStyle, background: "rgba(176, 122, 22, 0.10)", border: "1px solid rgba(176, 122, 22, 0.38)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={iconBox(PINK)}><IcX /></span>
+              <span style={iconBox(AMBER)}><IcX /></span>
               <div style={{ flex: 1 }}>
                 <div style={{ ...miniLabel, color: "var(--color-text-secondary)" }}>PROPOSTAS NÃO APROVADAS</div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", marginTop: 3 }}>{formatBRL(lostValue)}</div>
                 <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 3 }}>{lostPct}% do valor total · {lostCount} proposta{lostCount === 1 ? "" : "s"}</div>
+              </div>
+              <span style={moneyCircle(AMBER)}><IcMoney color={AMBER} /></span>
+            </div>
+          </div>
+          <div style={{ ...cardStyle, background: "rgba(240, 80, 110, 0.10)", border: "1px solid rgba(240, 80, 110, 0.35)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={iconBox(PINK)}><IcMinus /></span>
+              <div style={{ flex: 1 }}>
+                <div style={{ ...miniLabel, color: "var(--color-text-secondary)" }}>PROPOSTAS CANCELADAS</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", marginTop: 3 }}>{formatBRL(cancelledValue)}</div>
+                <div style={{ fontSize: 11.5, color: "var(--color-text-muted)", marginTop: 3 }}>{cancelledPct}% do valor total · {cancelledCount} proposta{cancelledCount === 1 ? "" : "s"}</div>
               </div>
               <span style={moneyCircle(PINK)}><IcMoney color={PINK} /></span>
             </div>
@@ -184,7 +209,8 @@ export default function ProposalsSummary({
           <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--color-text-secondary)" }}>
             Clientes aprovaram <strong style={{ color: GREEN }}>{formatBRL(approvedValue)}</strong> em propostas este ano.
             <br />
-            <strong style={{ color: PINK }}>{formatBRL(lostValue)}</strong> em propostas não foram aprovadas.
+            <strong style={{ color: AMBER }}>{formatBRL(lostValue)}</strong> não foram aprovadas
+            {cancelledValue > 0 && <> · <strong style={{ color: PINK }}>{formatBRL(cancelledValue)}</strong> canceladas</>}.
           </div>
         </div>
         <div style={{ ...cardStyle, display: "flex", gap: 14, alignItems: "center" }}>

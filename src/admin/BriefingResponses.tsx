@@ -3,6 +3,7 @@ import type { BriefingSection } from "../components/briefing/types";
 import SectionFigure from "../components/briefing/SectionFigure";
 import { api, ApiError, type BriefingResponse } from "./api";
 import { exportElementToPdf, waitForRenderReady } from "../lib/pdfExport";
+import { confirmDialog } from "./confirmDialog";
 import styles from "./Admin.module.css";
 
 // Respostas no MESMO formato do template do cliente: seção por seção, com a
@@ -46,7 +47,13 @@ export default function BriefingResponses({
 
   const toggleLock = async () => {
     const next = !locked;
-    if (next && !confirm("Bloquear a edição deste briefing?\n\nO cliente continuará VISUALIZANDO, mas não poderá mais alterar as respostas. Você (admin) ainda pode editar por aqui. Use isso ao iniciar os trabalhos, para preservar o briefing que embasou o projeto.")) return;
+    if (next && !(await confirmDialog({
+      title: "Bloquear a edição do briefing?",
+      message: "O cliente continuará VISUALIZANDO, mas não poderá mais alterar as respostas. Você (admin) ainda pode editar por aqui. Use isso ao iniciar os trabalhos, para preservar o briefing que embasou o projeto.",
+      confirmLabel: "Bloquear edição",
+      cancelLabel: "Cancelar",
+      danger: false,
+    }))) return;
     setLockBusy(true); setError(null); setNotice(null);
     try {
       await api.lockBriefing(number, next);

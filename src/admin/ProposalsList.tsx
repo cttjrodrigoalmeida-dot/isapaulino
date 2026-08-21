@@ -142,18 +142,24 @@ export default function ProposalsList({
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Três grupos distintos p/ o resumo: aprovadas · não aprovadas · canceladas.
+  const isCancelled = (p: ProposalSummary) => p.status === "cancelled";
+  const isNotApproved = (p: ProposalSummary) => !isApproved(p) && !isCancelled(p);
   const approvedValue = yearItems.filter(isApproved).reduce((s, p) => s + (p.value || 0), 0);
-  const lostValue = yearItems.filter((p) => !isApproved(p)).reduce((s, p) => s + (p.value || 0), 0);
+  const lostValue = yearItems.filter(isNotApproved).reduce((s, p) => s + (p.value || 0), 0);
+  const cancelledValue = yearItems.filter(isCancelled).reduce((s, p) => s + (p.value || 0), 0);
   const approvedCount = yearItems.filter(isApproved).length;
-  const lostCount = yearItems.length - approvedCount;
+  const cancelledCount = yearItems.filter(isCancelled).length;
+  const lostCount = yearItems.length - approvedCount - cancelledCount;
 
   // Agregados por ano (comparação entre anos no resumo).
   const perYear = useMemo(() => {
-    const map: Record<string, { approvedValue: number; lostValue: number; approvedCount: number; lostCount: number }> = {};
+    const map: Record<string, { approvedValue: number; lostValue: number; cancelledValue: number; approvedCount: number; lostCount: number; cancelledCount: number }> = {};
     for (const p of items) {
       const y = yearOf(p.number);
-      const e = map[y] ?? { approvedValue: 0, lostValue: 0, approvedCount: 0, lostCount: 0 };
+      const e = map[y] ?? { approvedValue: 0, lostValue: 0, cancelledValue: 0, approvedCount: 0, lostCount: 0, cancelledCount: 0 };
       if (isApproved(p)) { e.approvedValue += p.value || 0; e.approvedCount += 1; }
+      else if (isCancelled(p)) { e.cancelledValue += p.value || 0; e.cancelledCount += 1; }
       else { e.lostValue += p.value || 0; e.lostCount += 1; }
       map[y] = e;
     }
@@ -280,7 +286,7 @@ export default function ProposalsList({
                             border: "1px solid",
                             ...(p.outcome === "aprovada"
                               ? { color: "#4ade80", background: "rgba(74,222,128,0.16)", borderColor: "rgba(74,222,128,0.45)" }
-                              : { color: "#c92d4f", background: "rgba(240,80,110,0.16)", borderColor: "rgba(240,80,110,0.5)" }),
+                              : { color: "#d19a2e", background: "rgba(176,122,22,0.16)", borderColor: "rgba(176,122,22,0.5)" }),
                           }}
                         >
                           {p.outcome === "aprovada" ? "Aprovada" : "Não aprovada"}
@@ -333,11 +339,13 @@ export default function ProposalsList({
           {/* Resumo por valor (rodapé) */}
           <div style={{ marginTop: 26 }}>
             <ProposalsSummary
-              totalValue={approvedValue + lostValue}
+              totalValue={approvedValue + lostValue + cancelledValue}
               approvedValue={approvedValue}
               lostValue={lostValue}
+              cancelledValue={cancelledValue}
               approvedCount={approvedCount}
               lostCount={lostCount}
+              cancelledCount={cancelledCount}
               year={year}
               years={years}
               perYear={perYear}
