@@ -4,6 +4,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth } from "../_lib/auth";
+import { conflictingClientForNumber } from "../_lib/project-number";
 
 // Espelha o tipo Proposal do front (campos usados aqui). O objeto inteiro
 // é guardado em `data`; só extraímos alguns campos para indexar/listar.
@@ -59,6 +60,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .bind(proposal.number)
       .first();
     if (exists) return error(409, `Já existe uma proposta com o número ${proposal.number}.`);
+
+    // O número é a identidade do projeto: não pode pertencer a outro cliente
+    // (proposta/contrato/briefing de outro projeto), para não confundir a Área.
+    const owner = await conflictingClientForNumber(env, proposal.number, proposal.client ?? "");
+    if (owner) {
+      return error(409, `O número ${proposal.number} já pertence ao projeto de "${owner}". Use um número diferente para não repetir na Área do Cliente.`);
+    }
 
     await env.DB.prepare(
       `INSERT INTO proposals (number, client, service_title, date, status, access_password, data)

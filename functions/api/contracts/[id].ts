@@ -6,7 +6,29 @@ import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth } from "../_lib/auth";
 import { approveProposalForSignedContract } from "../_lib/contractSync";
+import { conflictingClientForNumber } from "../_lib/project-number";
 import { type ContractInput, optContractData } from "./index";
+
+/** Bloqueia o nº do contrato se pertencer a outro cliente. Aditivo é liberado
+ *  (repete de propósito o nº do contrato original — mesmo projeto/cliente). */
+async function assertContractNumberFree(
+  env: Env,
+  data: string | null,
+  clientId: string,
+  contractId: string | null,
+): Promise<Response | null> {
+  if (!data) return null;
+  let doc: { contractNumber?: unknown; kind?: unknown };
+  try { doc = JSON.parse(data); } catch { return null; }
+  const num = typeof doc.contractNumber === "string" ? doc.contractNumber.trim() : "";
+  if (!num || doc.kind === "aditivo") return null;
+  const cl = await env.DB.prepare("SELECT name FROM clients WHERE id = ?").bind(clientId).first<{ name: string | null }>();
+  const owner = await conflictingClientForNumber(env, num, cl?.name ?? "", contractId ? { contractId } : {});
+  if (owner) {
+    return error(409, `O número ${num} já pertence ao projeto de "${owner}". Use um número diferente para não confundir na Área do Cliente.`);
+  }
+  return null;
+}
 
 const COLS = `c.id, c.client_id AS clientId, cl.name AS clientName, c.title, c.content, c.data,
   c.value, c.deadline, c.status, c.slug, c.access_password AS accessPassword, c.autentique_url AS autentiqueUrl,
@@ -62,6 +84,8 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     const status = body.status && STATUSES.includes(body.status) ? body.status : existing.status;
     const value = typeof body.value === "number" && Number.isFinite(body.value) ? body.value : null;
     const data = optContractData(body.data);
+    const numBlock = await assertContractNumberFree(env, data, clientId, id);
+    if (numBlock) return numBlock;
     // Apoio pessoal do admin: se veio no corpo, atualiza; senão mantém o atual.
     const editorNotes = "editorNotes" in body ? String(body.editorNotes ?? "") : existing.editor_notes;
     const editorDone = "editorDone" in body ? JSON.stringify(body.editorDone ?? []) : existing.editor_done;

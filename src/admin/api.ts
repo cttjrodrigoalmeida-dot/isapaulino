@@ -49,6 +49,33 @@ export interface DocumentLinks {
   briefing: { number: string; status: string } | null;
 }
 
+// Um uso de número no sistema (proposta/contrato/briefing) com o cliente dono.
+export interface NumberUse {
+  number: string;
+  client: string | null;
+  kind: "proposta" | "briefing" | "contrato";
+  aditivo?: boolean;
+}
+
+/** Nome do cliente que já é dono deste número (em qualquer documento), quando é
+ *  DIFERENTE de `myClient`; senão null (livre ou mesmo projeto/cliente). Usado
+ *  para avisar ao vivo nos editores. Comparação por nome (trim + minúsculas). */
+export function numberOwnerConflict(
+  numbers: NumberUse[],
+  number: string,
+  myClient: string,
+): string | null {
+  const n = number.trim();
+  const me = myClient.trim().toLowerCase();
+  if (!n || !me) return null;
+  for (const u of numbers) {
+    if (u.number.trim() !== n) continue;
+    const on = (u.client ?? "").trim().toLowerCase();
+    if (on && on !== me) return u.client;
+  }
+  return null;
+}
+
 export interface BriefingSummary {
   number: string;
   proposalNumber: string | null;
@@ -526,6 +553,10 @@ export const api = {
   // ── documentos vinculados (proposta ↔ contrato ↔ briefing) ──
   documentLinks: (proposal: string) =>
     req<DocumentLinks>(`/api/documents/links?proposal=${encodeURIComponent(proposal)}`),
+
+  // Todos os números de projeto em uso (com cliente dono) — para avisar ao vivo
+  // se a numeração colidir com o projeto de OUTRO cliente.
+  documentNumbers: () => req<{ numbers: NumberUse[] }>("/api/documents/numbers"),
 
   // ── briefings ──
   listBriefings: () => req<{ briefings: BriefingSummary[] }>("/api/briefings"),

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import type { Proposal } from "../components/proposal/types";
 import { SAMPLE_PROPOSAL } from "../components/proposal/sampleProposal";
 import ProposalView from "../components/proposal/ProposalView";
-import { api, ApiError } from "./api";
+import { api, ApiError, numberOwnerConflict, type NumberUse } from "./api";
 // Numeração com prefixo de ano (AANN): os 2 primeiros dígitos são sempre o ano.
 import { nextProposalNumber, duplicateNumber } from "../components/proposal/proposalNumber";
 import RelatedDocs from "./RelatedDocs";
@@ -105,6 +105,9 @@ export default function ProposalEditor({
   const [proposal, setProposal] = useState<Proposal | null>(null);
   // Números já usados — para avisar se a numeração colidir (a URL é o número).
   const [existingNumbers, setExistingNumbers] = useState<string[]>([]);
+  // Números em uso no sistema todo (com cliente dono) — o número é a identidade
+  // do projeto e não pode pertencer a outro cliente.
+  const [usedNumbers, setUsedNumbers] = useState<NumberUse[]>([]);
   const [status, setStatus] = useState<Status>("draft");
   // Senha de acesso da proposta (vazio = link público). Fica fora do JSON da
   // proposta (nunca vai para a página pública) — é uma coluna própria no banco.
@@ -165,6 +168,13 @@ export default function ProposalEditor({
       recomputePayment(recomputeInvestment(p, c.enabled, c.percent), pay.pixDiscount, pay.maxInstallments),
     [comboEnabled, comboPercent, pixDiscount, maxInstallments]
   );
+
+  // Números de projeto em uso (cross-documento) para o aviso de colisão.
+  useEffect(() => {
+    let alive = true;
+    api.documentNumbers().then(({ numbers }) => { if (alive) setUsedNumbers(numbers); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   // Carrega (editar) ou prepara nova proposta clonando a mais recente.
   useEffect(() => {
@@ -299,6 +309,12 @@ export default function ProposalEditor({
     // A URL é o próprio número — não dá para ter duas propostas iguais.
     if (isNew && existingNumbers.includes(proposal.number.trim())) {
       setError(`O número ${proposal.number.trim()} já está em uso. Escolha outro (ex.: ${duplicateNumber(proposal.number, existingNumbers)}).`);
+      return;
+    }
+    // O número é a identidade do projeto: não pode ser de OUTRO cliente.
+    const clash = numberOwnerConflict(usedNumbers, proposal.number, proposal.client ?? "");
+    if (isNew && clash) {
+      setError(`O número ${proposal.number.trim()} já pertence ao projeto de "${clash}". Use um número diferente para não confundir na Área do Cliente.`);
       return;
     }
     const num = proposal.number.trim();
@@ -530,6 +546,15 @@ export default function ProposalEditor({
                     ⚠ Atenção: este número já está vinculado a outro projeto. Use outro (ex.: {duplicateNumber(proposal.number, existingNumbers)}) para não repetir a URL.
                   </span>
                 )}
+                {(() => {
+                  if (!isNew || proposal.number.trim() === "" || existingNumbers.includes(proposal.number.trim())) return null;
+                  const owner = numberOwnerConflict(usedNumbers, proposal.number, proposal.client ?? "");
+                  return owner ? (
+                    <span className={styles.fieldWarn}>
+                      ⚠ O número {proposal.number.trim()} já pertence ao projeto de <strong>{owner}</strong>. Use outro para não confundir na Área do Cliente.
+                    </span>
+                  ) : null;
+                })()}
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>Data</label>

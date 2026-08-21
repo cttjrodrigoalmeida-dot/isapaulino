@@ -4,6 +4,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth } from "../_lib/auth";
+import { conflictingClientForNumber } from "../_lib/project-number";
 
 interface BriefingLike {
   number?: string;
@@ -46,6 +47,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .bind(briefing.number)
       .first();
     if (exists) return error(409, `Já existe um briefing com o número ${briefing.number}.`);
+
+    // O número é a identidade do projeto. O dono do briefing é o cliente da
+    // proposta vinculada; se esse número já for de OUTRO cliente, bloqueia.
+    let ownerName = "";
+    if (typeof briefing.proposalNumber === "string" && briefing.proposalNumber.trim()) {
+      const p = await env.DB.prepare("SELECT client FROM proposals WHERE number = ? AND deleted_at IS NULL")
+        .bind(briefing.proposalNumber.trim())
+        .first<{ client: string | null }>();
+      ownerName = p?.client ?? "";
+    }
+    const owner = await conflictingClientForNumber(env, briefing.number, ownerName);
+    if (owner) {
+      return error(409, `O número ${briefing.number} já pertence ao projeto de "${owner}". Use um número diferente para não confundir na Área do Cliente.`);
+    }
 
     await env.DB.prepare(
       `INSERT INTO briefings (number, proposal_number, title, status, data)

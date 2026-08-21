@@ -5,6 +5,7 @@ import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse, HttpError } from "../_lib/http";
 import { requireAuth } from "../_lib/auth";
 import { contractValueFromData } from "../_lib/contractValue";
+import { conflictingClientForNumber } from "../_lib/project-number";
 
 export interface ContractInput {
   client_id?: string;
@@ -95,6 +96,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     const value = typeof body.value === "number" && Number.isFinite(body.value) ? body.value : null;
     const data = optContractData(body.data);
+
+    // Se já vier com número no documento, ele não pode ser de outro cliente
+    // (o número é a identidade do projeto). Aditivo é exceção (repete o original).
+    if (data) {
+      try {
+        const doc = JSON.parse(data) as { contractNumber?: unknown; kind?: unknown };
+        const num = typeof doc.contractNumber === "string" ? doc.contractNumber.trim() : "";
+        if (num && doc.kind !== "aditivo") {
+          const cl = await env.DB.prepare("SELECT name FROM clients WHERE id = ?").bind(clientId).first<{ name: string | null }>();
+          const owner = await conflictingClientForNumber(env, num, cl?.name ?? "");
+          if (owner) return error(409, `O número ${num} já pertence ao projeto de "${owner}". Use um número diferente para não confundir na Área do Cliente.`);
+        }
+      } catch { /* JSON já validado por optContractData */ }
+    }
+
     const id = crypto.randomUUID();
 
     await env.DB.prepare(

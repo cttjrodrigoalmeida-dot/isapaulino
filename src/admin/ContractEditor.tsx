@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { api, ApiError, type Client, type ContractInput, type ContractStatus, type ContractSummary, type ProposalSummary } from "./api";
+import { api, ApiError, numberOwnerConflict, type Client, type ContractInput, type ContractStatus, type ContractSummary, type NumberUse, type ProposalSummary } from "./api";
 import type { ContractDoc, SignatureStatus, SixTabelaCustos } from "../components/contract/types";
 import { blankContractDoc, blankAditivoDoc } from "../components/contract/newContractDoc";
 import { DEFAULT_TABELA_CUSTOS, DEFAULT_VALIDADE_CARDS } from "../components/contract/contractDefaults";
@@ -132,6 +132,9 @@ export default function ContractEditor({
   const [principals, setPrincipals] = useState<ContractSummary[]>([]);
   // Números de contrato já usados — para avisar se a numeração colidir.
   const [existingNumbers, setExistingNumbers] = useState<string[]>([]);
+  // Números em uso no sistema todo (com cliente dono) — o número é a identidade
+  // do projeto; só o aditivo repete o nº do contrato original (mesmo cliente).
+  const [usedNumbers, setUsedNumbers] = useState<NumberUse[]>([]);
 
   const [doc, setDoc] = useState<ContractDoc | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -189,15 +192,17 @@ export default function ContractEditor({
     let alive = true;
     (async () => {
       try {
-        const [{ clients }, { proposals }, { contracts }, loaded] = await Promise.all([
+        const [{ clients }, { proposals }, { contracts }, { numbers }, loaded] = await Promise.all([
           api.listClients(),
           api.listProposals(),
           api.listContracts(),
+          api.documentNumbers().catch(() => ({ numbers: [] as NumberUse[] })),
           isNew ? Promise.resolve(null) : api.getContract(id!),
         ]);
         if (!alive) return;
         setClients(clients);
         setProposals(proposals);
+        setUsedNumbers(numbers);
         // Só contratos principais (exclui aditivos e o próprio, se estiver editando).
         setPrincipals(contracts.filter((c) => c.kind !== "aditivo" && c.id !== id));
         const existingNums = contracts.map((c) => c.contractNumber ?? "").filter(Boolean);
@@ -484,9 +489,19 @@ export default function ContractEditor({
     accessPassword: accessPassword.trim() || null,
   });
 
+  // Cliente dono deste contrato (nome), para checar a unicidade do número.
+  const ownerName = clients.find((x) => x.id === clientId)?.name ?? doc?.clientName ?? "";
+  // Conflito do número com o projeto de OUTRO cliente (aditivo é liberado — repete
+  // de propósito o nº do contrato original, que é do mesmo cliente).
+  const numberClash =
+    doc?.kind === "aditivo"
+      ? null
+      : numberOwnerConflict(usedNumbers, doc?.contractNumber ?? "", ownerName);
+
   const validate = (): string | null => {
     if (!clientId) return doc?.kind === "aditivo" ? "Selecione o contrato principal (base do aditivo)." : "Selecione o cliente do contrato.";
     if (!title.trim() && !doc?.documentTitle) return "Informe o título do contrato.";
+    if (numberClash) return `O número ${(doc?.contractNumber ?? "").trim()} já pertence ao projeto de "${numberClash}". Use um número diferente para não confundir na Área do Cliente.`;
     return null;
   };
 
@@ -989,6 +1004,11 @@ export default function ContractEditor({
                 {isNew && (doc.contractNumber ?? "").trim() !== "" && existingNumbers.includes((doc.contractNumber ?? "").trim()) && (
                   <span className={styles.fieldWarn}>
                     ⚠ Atenção: já existe um contrato com o Nº {(doc.contractNumber ?? "").trim()}. Sugestão: {duplicateNumber(doc.contractNumber ?? "", existingNumbers)}.
+                  </span>
+                )}
+                {numberClash && (
+                  <span className={styles.fieldWarn}>
+                    ⚠ O número {(doc.contractNumber ?? "").trim()} já pertence ao projeto de <strong>{numberClash}</strong>. Use outro para não confundir na Área do Cliente.
                   </span>
                 )}
               </div>

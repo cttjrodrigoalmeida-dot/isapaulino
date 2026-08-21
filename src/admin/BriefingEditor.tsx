@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, BriefingSection, BriefingQuestion } from "../components/briefing/types";
 import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
-import { api, ApiError, type ProposalSummary, type LibraryQuestion } from "./api";
+import { api, ApiError, numberOwnerConflict, type ProposalSummary, type LibraryQuestion, type NumberUse } from "./api";
 import BriefingSectionEditor from "./BriefingSectionEditor";
 import QuestionLibraryPicker from "./QuestionLibraryPicker";
 import BackToTop from "./BackToTop";
@@ -35,6 +35,8 @@ export default function BriefingEditor({
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
   // Briefings já existentes — para avisar se a proposta escolhida já tem um.
   const [existingNumbers, setExistingNumbers] = useState<string[]>([]);
+  // Números em uso no sistema (com cliente dono) — o número identifica o projeto.
+  const [usedNumbers, setUsedNumbers] = useState<NumberUse[]>([]);
   const [status, setStatus] = useState<Status>("draft");
   const [tab, setTab] = useState<"campos" | "json">("campos");
   const [showPreview, setShowPreview] = useState(false);
@@ -96,6 +98,12 @@ export default function BriefingEditor({
     });
     clearSelQ();
   };
+
+  useEffect(() => {
+    let alive = true;
+    api.documentNumbers().then(({ numbers }) => { if (alive) setUsedNumbers(numbers); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -508,6 +516,13 @@ export default function BriefingEditor({
       setError(`A proposta Nº ${briefing.number.trim()} já tem um briefing. Escolha outra proposta.`);
       return;
     }
+    // O número é a identidade do projeto: não pode ser de OUTRO cliente.
+    const bClient = usedNumbers.find((u) => u.kind === "proposta" && u.number.trim() === briefing.number.trim())?.client ?? "";
+    const bClash = numberOwnerConflict(usedNumbers, briefing.number, bClient);
+    if (isNew && bClash) {
+      setError(`O número ${briefing.number.trim()} já pertence ao projeto de "${bClash}". Use um número diferente para não confundir na Área do Cliente.`);
+      return;
+    }
     savingRef.current = true; setSaving(true);
     try {
       if (isNew) { await api.createBriefing(briefing, finalStatus); onSaved(); return; }
@@ -695,6 +710,16 @@ export default function BriefingEditor({
                     ⚠ Atenção: a proposta Nº {briefing.number.trim()} já tem um briefing. Escolha outra proposta (cada briefing usa a URL /briefing/{briefing.number.trim()}).
                   </span>
                 )}
+                {(() => {
+                  if (!isNew || briefing.number.trim() === "" || existingNumbers.includes(briefing.number.trim())) return null;
+                  const bClient = usedNumbers.find((u) => u.kind === "proposta" && u.number.trim() === briefing.number.trim())?.client ?? "";
+                  const owner = numberOwnerConflict(usedNumbers, briefing.number, bClient);
+                  return owner ? (
+                    <span className={styles.fieldWarn}>
+                      ⚠ O número {briefing.number.trim()} já pertence ao projeto de <strong>{owner}</strong>. Use outro para não confundir na Área do Cliente.
+                    </span>
+                  ) : null;
+                })()}
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>Título</label>
