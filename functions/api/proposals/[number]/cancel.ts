@@ -2,14 +2,15 @@
 import type { Env } from "../../_lib/types";
 import { json, toErrorResponse } from "../../_lib/http";
 import { requireAuth } from "../../_lib/auth";
+import { cancelProject } from "../../_lib/contractSync";
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
     await requireAuth(request, env);
     const number = String(params.number || "");
-    await env.DB.prepare(
-      "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
-    ).bind(number).run();
+    // Cancela a proposta e, em cascata, todos os documentos da mesma numeração
+    // (contrato/aditivos e briefing vinculados).
+    await cancelProject(env, number);
     return json({ ok: true });
   } catch (e) {
     return toErrorResponse(e);

@@ -5,7 +5,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth } from "../_lib/auth";
-import { approveProposalForSignedContract } from "../_lib/contractSync";
+import { approveProposalForSignedContract, cancelLinkedForContract } from "../_lib/contractSync";
 import { conflictingClientForNumber } from "../_lib/project-number";
 import { type ContractInput, optContractData } from "./index";
 
@@ -117,35 +117,14 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
       .run();
 
     // Sincronização de status pelo nº da proposta vinculada:
-    //  • contrato CANCELADO → cancela o briefing e a proposta vinculados;
+    //  • contrato CANCELADO → cancela em cascata todos os documentos da numeração;
     //  • contrato ASSINADO  → marca a proposta vinculada como APROVADA (outcome).
     const becameCancelled = status === "cancelled" && existing.status !== "cancelled";
     const becameSigned = status === "signed" && existing.status !== "signed";
-    if (becameCancelled || becameSigned) {
-      // nº da proposta vinculada (do JSON enviado ou do que está salvo).
-      let proposalNumber: string | null = null;
-      let src = data;
-      if (!src) {
-        const c = await env.DB.prepare("SELECT data FROM contracts WHERE id = ?").bind(id).first<{ data: string | null }>();
-        src = c?.data ?? null;
-      }
-      if (src) {
-        try { proposalNumber = JSON.parse(src)?.proposalNumber || null; } catch { /* ignora */ }
-      }
-      if (proposalNumber) {
-        if (becameCancelled) {
-          // Cancela o briefing e a proposta vinculados.
-          await env.DB.prepare(
-            "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled'"
-          ).bind(proposalNumber).run();
-          await env.DB.prepare(
-            "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
-          ).bind(proposalNumber).run();
-        } else if (becameSigned) {
-          // Contrato assinado → proposta aprovada.
-          await approveProposalForSignedContract(env, id);
-        }
-      }
+    if (becameCancelled) {
+      await cancelLinkedForContract(env, id);
+    } else if (becameSigned) {
+      await approveProposalForSignedContract(env, id);
     }
 
     return json({ ok: true, id, status });

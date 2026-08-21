@@ -7,6 +7,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth, getSession } from "../_lib/auth";
+import { cancelProject } from "../_lib/contractSync";
 import { hasAccess } from "../_lib/proposal-access";
 import { verifiedClientId } from "../_lib/client-auth";
 
@@ -139,6 +140,11 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
         number
       )
       .run();
+
+    // Cancelou por aqui → cascata para todos os documentos da mesma numeração.
+    if (status === "cancelled" && existing.status !== "cancelled") {
+      await cancelProject(env, number);
+    }
 
     return json({ ok: true, number, status });
   } catch (e) {

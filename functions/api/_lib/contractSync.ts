@@ -20,23 +20,43 @@ export async function approveProposalForSignedContract(env: Env, contractId: str
   ).bind(proposalNumber).run();
 }
 
-/** Contrato CANCELADO → cancela o briefing e a proposta vinculados (pelo nº). */
-export async function cancelLinkedForContract(env: Env, contractId: string): Promise<void> {
+/** Cancela TODOS os documentos do projeto (mesma numeração), pelo nº da proposta:
+ *  a proposta, os briefings e os contratos (principal + aditivos) vinculados.
+ *  O elo é sempre o nº da proposta (proposals.number, briefings.proposal_number,
+ *  contracts.data.proposalNumber). Idempotente e não mexe na Lixeira. */
+export async function cancelProject(env: Env, proposalNumber: string): Promise<void> {
+  const n = (proposalNumber || "").trim();
+  if (!n) return;
+  await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled' AND deleted_at IS NULL"
+    ).bind(n),
+    env.DB.prepare(
+      "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled' AND deleted_at IS NULL"
+    ).bind(n),
+    env.DB.prepare(
+      "UPDATE contracts SET status = 'cancelled', updated_at = datetime('now') WHERE json_extract(data, '$.proposalNumber') = ? AND status != 'cancelled' AND deleted_at IS NULL"
+    ).bind(n),
+  ]);
+}
+
+/** Nº da proposta vinculada a um contrato (do JSON `data`), ou null. Usa o
+ *  `proposalNumber`; se faltar, cai no `contractNumber` como âncora do projeto. */
+export async function proposalNumberOfContract(env: Env, contractId: string): Promise<string | null> {
   const row = await env.DB.prepare("SELECT data FROM contracts WHERE id = ?")
     .bind(contractId)
     .first<{ data: string | null }>();
-  if (!row?.data) return;
-  let proposalNumber: string | null = null;
+  if (!row?.data) return null;
   try {
-    proposalNumber = (JSON.parse(row.data) as { proposalNumber?: string })?.proposalNumber || null;
+    const doc = JSON.parse(row.data) as { proposalNumber?: string; contractNumber?: string };
+    return (doc.proposalNumber || doc.contractNumber || "").trim() || null;
   } catch {
-    return;
+    return null;
   }
-  if (!proposalNumber) return;
-  await env.DB.prepare(
-    "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled'"
-  ).bind(proposalNumber).run();
-  await env.DB.prepare(
-    "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
-  ).bind(proposalNumber).run();
+}
+
+/** Contrato CANCELADO → cancela em cascata todos os documentos do projeto. */
+export async function cancelLinkedForContract(env: Env, contractId: string): Promise<void> {
+  const proposalNumber = await proposalNumberOfContract(env, contractId);
+  if (proposalNumber) await cancelProject(env, proposalNumber);
 }

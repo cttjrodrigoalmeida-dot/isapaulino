@@ -5,6 +5,7 @@
 import type { Env } from "../_lib/types";
 import { json, error, readJson, toErrorResponse } from "../_lib/http";
 import { requireAuth, getSession } from "../_lib/auth";
+import { cancelProject } from "../_lib/contractSync";
 
 interface BriefingLike {
   number?: string;
@@ -67,6 +68,11 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     )
       .bind(briefing.proposalNumber ?? null, briefing.title ?? null, status, JSON.stringify(briefing), editorNotes, editorDone, number)
       .run();
+
+    // Cancelou por aqui → cascata para todos os documentos da mesma numeração.
+    if (status === "cancelled" && existing.status !== "cancelled") {
+      await cancelProject(env, (briefing.proposalNumber || number || "").toString().trim());
+    }
 
     return json({ ok: true, number, status });
   } catch (e) {
