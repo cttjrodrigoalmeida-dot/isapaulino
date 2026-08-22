@@ -149,19 +149,11 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
         <div style={card}>
           <PanelTitle title="Briefings por status" sub="Distribuição no ano." />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <RadialGauge data={donut} center={m.total} centerLabel="total" />
-            <div style={{ display: "grid", gap: 8, flex: 1 }}>
-              {donut.map((d) => {
-                const p = m.total ? Math.round((d.value / m.total) * 100) : 0;
-                return (
-                  <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
-                    <span style={{ color: "var(--color-text-secondary)", flex: 1 }}>{d.name}</span>
-                    <span style={{ color: "var(--color-text-primary)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{d.value}</span>
-                    <span style={{ color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums", minWidth: 38, textAlign: "right" }}>{p}%</span>
-                  </div>
-                );
-              })}
+            <RadialGauge data={donut} center={m.total} centerLabel="total" size={132} />
+            <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 0 }}>
+              {donut.map((d) => (
+                <LegendRow key={d.name} color={d.color} name={d.name} value={d.value} pct={m.total ? Math.round((d.value / m.total) * 100) : 0} />
+              ))}
             </div>
           </div>
         </div>
@@ -223,20 +215,12 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
         <div style={card}>
           <PanelTitle title="Taxa de respostas" sub="Respondidos ÷ (respondidos + pendentes)." />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <RadialGauge data={taxa} center={`${m.taxaPct}%`} centerLabel="respondidos" />
-            <div style={{ display: "grid", gap: 8, flex: 1 }}>
-              {taxa.map((d) => {
-                // % sobre o total (inclui cancelados) — coerente com os arcos.
-                const p = m.total ? Math.round((d.value / m.total) * 100) : 0;
-                return (
-                  <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
-                    <span style={{ color: "var(--color-text-secondary)", flex: 1 }}>{d.name}</span>
-                    <span style={{ color: "var(--color-text-primary)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{d.value}</span>
-                    <span style={{ color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums", minWidth: 38, textAlign: "right" }}>{p}%</span>
-                  </div>
-                );
-              })}
+            <RadialGauge data={taxa} center={`${m.taxaPct}%`} centerLabel="respondidos" size={132} />
+            <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 0 }}>
+              {/* % sobre o total (inclui cancelados) — coerente com os arcos. */}
+              {taxa.map((d) => (
+                <LegendRow key={d.name} color={d.color} name={d.name} value={d.value} pct={m.total ? Math.round((d.value / m.total) * 100) : 0} />
+              ))}
             </div>
           </div>
           {onSeeDetails && (
@@ -255,19 +239,11 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <RadialGauge data={deviceData} center={devAnswered} centerLabel="respostas" />
-              <div style={{ display: "grid", gap: 8, flex: 1 }}>
-                {deviceData.map((d) => {
-                  const p = devAnswered ? Math.round((d.value / devAnswered) * 100) : 0;
-                  return (
-                    <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
-                      <span style={{ color: "var(--color-text-secondary)", flex: 1 }}>{d.name}</span>
-                      <span style={{ color: "var(--color-text-primary)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{d.value}</span>
-                      <span style={{ color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums", minWidth: 38, textAlign: "right" }}>{p}%</span>
-                    </div>
-                  );
-                })}
+              <RadialGauge data={deviceData} center={devAnswered} centerLabel="respostas" size={132} />
+              <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 0 }}>
+                {deviceData.map((d) => (
+                  <LegendRow key={d.name} color={d.color} name={d.name} value={d.value} pct={devAnswered ? Math.round((d.value / devAnswered) * 100) : 0} />
+                ))}
               </div>
             </div>
           )}
@@ -288,6 +264,19 @@ function YearTotal({ year, value, color }: { year: string; value: number; color:
       <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>{year}</span>
       <strong style={{ fontSize: 15, color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>{value}</strong>
     </span>
+  );
+}
+
+// Linha de legenda dos anéis: rótulo trunca (…) e os números ficam fixos à
+// direita — assim nada "vaza" do card quando a coluna fica estreita.
+function LegendRow({ color, name, value, pct }: { color: string; name: string; value: number; pct: number }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, minWidth: 0 }}>
+      <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
+      <span style={{ color: "var(--color-text-secondary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+      <span style={{ color: "var(--color-text-primary)", fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{value}</span>
+      <span style={{ color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums", minWidth: 34, textAlign: "right", flexShrink: 0 }}>{pct}%</span>
+    </div>
   );
 }
 
