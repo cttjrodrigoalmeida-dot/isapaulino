@@ -845,16 +845,21 @@
 .shell[data-theme="light"] .btnPrimary {
   color: #ffffff;
 }
-/* Tema escuro: campos de edição BRANCOS (a pedido — igual à imagem). */
-.shell[data-theme="dark"] .input,
-.shell[data-theme="dark"] .textarea {
-  background: #ffffff;
-  color: #171717;
-  border-color: rgba(0, 0, 0, 0.18);
+/* Campos de edição seguem o TEMA (padrão): fundo surface-2, texto primário —
+   nada de forçar branco no escuro (deixava o texto ilegível). */
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--color-text-muted);
 }
-.shell[data-theme="dark"] .input::placeholder,
-.shell[data-theme="dark"] .textarea::placeholder {
-  color: #8f8f8f;
+/* Autofill do Chrome não pinta o campo de branco no tema escuro. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.textarea:-webkit-autofill,
+.textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface-2) inset;
+  caret-color: var(--color-text-primary);
 }
 .tabs {
   display: flex;
