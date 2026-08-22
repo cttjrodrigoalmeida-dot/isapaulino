@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError, type ClientSheetRow, type ClientPanoramaProject } from "./api";
 import { formatBRL } from "./dashboard/format";
 import { confirmDialog } from "./confirmDialog";
@@ -65,6 +65,9 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
   const [notice, setNotice] = useState<string | null>(null);
   const [paint, setPaint] = useState(false);
   const [paintColor, setPaintColor] = useState<string>(PALETTE[0]);
+  // Desfazer: pilha de snapshots (rows/colColors são imutáveis, guardo a referência).
+  const [history, setHistory] = useState<{ rows: ClientSheetRow[]; colColors: Record<string, string> }[]>([]);
+  const lastEditRef = useRef<string | null>(null); // agrupa digitação numa mesma célula num único passo
 
   useEffect(() => {
     let alive = true;
@@ -87,12 +90,29 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
   }, [clientId]);
 
   const markDirty = () => { setDirty(true); setNotice(null); };
+  // Guarda o estado atual na pilha de desfazer (máx. 60 passos).
+  const pushSnapshot = () => setHistory((h) => [...h.slice(-59), { rows, colColors }]);
+  // Passo estrutural (linha, cor, colar): sempre um snapshot novo.
+  const snapStructural = () => { lastEditRef.current = null; pushSnapshot(); };
+  const undo = () => {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1];
+      setRows(prev.rows); setColColors(prev.colColors);
+      setDirty(true); setNotice(null); lastEditRef.current = null;
+      return h.slice(0, -1);
+    });
+  };
 
   const setCell = (rowId: string, key: ColKey, val: string) => {
+    // Digitação contínua na MESMA célula = 1 passo de desfazer.
+    const editKey = `${rowId}|${key}`;
+    if (lastEditRef.current !== editKey) { pushSnapshot(); lastEditRef.current = editKey; }
     setRows((rs) => rs.map((r) => (r.id === rowId ? { ...r, [key]: val } : r)));
     markDirty();
   };
   const paintCell = (rowId: string, key: ColKey) => {
+    snapStructural();
     setRows((rs) => rs.map((r) => {
       if (r.id !== rowId) return r;
       const cc = { ...(r.cellColors || {}) };
@@ -102,20 +122,23 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
     markDirty();
   };
   const paintCol = (key: ColKey) => {
+    snapStructural();
     setColColors((c) => { const n = { ...c }; if (!paintColor) delete n[key]; else n[key] = paintColor; return n; });
     markDirty();
   };
 
-  const addRow = () => { setRows((rs) => [...rs, newRow()]); markDirty(); };
+  const addRow = () => { snapStructural(); setRows((rs) => [...rs, newRow()]); markDirty(); };
   const pullProjects = () => {
     const have = new Set(rows.map((r) => r.projectId).filter(Boolean));
     const add = projects.filter((p) => !have.has(p.id)).map(rowFromProject);
     if (add.length === 0) { setNotice("Nenhum projeto novo para puxar."); return; }
+    snapStructural();
     setRows((rs) => [...rs, ...add]);
     markDirty();
   };
   const delRow = async (rowId: string) => {
     if (!(await confirmDialog({ title: "Excluir linha", message: "Remover esta linha da planilha?", confirmLabel: "Excluir" }))) return;
+    snapStructural();
     setRows((rs) => rs.filter((r) => r.id !== rowId));
     markDirty();
   };
@@ -132,7 +155,7 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
   const pasteStyle = () => {
     try {
       const s = JSON.parse(localStorage.getItem(STYLE_CLIP) || "null");
-      if (s && typeof s === "object") { setColColors(s); markDirty(); setNotice("Estilo aplicado (lembre de Salvar)."); }
+      if (s && typeof s === "object") { snapStructural(); setColColors(s); markDirty(); setNotice("Estilo aplicado (lembre de Salvar)."); }
       else setNotice("Nenhum estilo copiado ainda.");
     } catch { setNotice("Nenhum estilo copiado ainda."); }
   };
@@ -156,6 +179,7 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
           <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Linhas nascem dos projetos; edite e adicione o que quiser.</div>
         </div>
         <span style={{ flex: 1 }} />
+        <button className={styles.btn} onClick={undo} disabled={history.length === 0} title="Desfazer a última alteração">↩ Desfazer</button>
         <button className={styles.btn} onClick={addRow}>+ Linha</button>
         <button className={styles.btn} onClick={pullProjects} title="Adiciona linhas dos projetos ainda não listados">↻ Puxar projetos</button>
         <button className={`${styles.btn} ${paint ? styles.btnPrimary : ""}`} onClick={() => setPaint((p) => !p)} title="Ative e clique nas células ou nos cabeçalhos para pintar">🎨 Pintar</button>
@@ -214,8 +238,15 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
                     style={{ padding: 0, background: cellBg(r, c.key), cursor: paint ? "pointer" : "text" }}
                   >
                     {c.key === "status" ? (
-                      <select value={r.status} onChange={(e) => setCell(r.id, "status", e.target.value)} style={{ ...inputStyle, cursor: paint ? "pointer" : "pointer" }} disabled={paint}>
-                        {STATUS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+                      <select
+                        value={r.status}
+                        onChange={(e) => setCell(r.id, "status", e.target.value)}
+                        style={{ ...inputStyle, color: "var(--color-text-primary)", cursor: "pointer" }}
+                        disabled={paint}
+                      >
+                        {STATUS_OPTS.map((o) => (
+                          <option key={o.v} value={o.v} style={{ background: "var(--color-surface)", color: "var(--color-text-primary)" }}>{o.label}</option>
+                        ))}
                       </select>
                     ) : (
                       <input
