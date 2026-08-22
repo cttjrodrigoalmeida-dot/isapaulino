@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { api, ApiError, type Client } from "./api";
+import { toast } from "./toast";
 import { formatCpfCnpj, formatPhone, onlyDigits } from "./validation";
 import { AvatarSVG, avatarById } from "../avatars";
 import styles from "./Admin.module.css";
@@ -48,7 +49,7 @@ export default function ClientsList({
       await api.deleteClient(c.id);
       setItems((prev) => prev.filter((x) => x.id !== c.id));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao excluir.");
+      toast(err instanceof ApiError ? err.message : "Erro ao excluir.");
     } finally {
       setBusy(null);
     }

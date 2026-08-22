@@ -10,7 +10,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     // Pode vir o número OU a URL personalizada (custom_slug) na rota.
     const key = String(params.number);
     const body = await readJson<{ password?: string }>(request);
-    const attempt = (body.password ?? "").toString();
+    const attempt = (body.password ?? "").toString().trim();
 
     const row = await env.DB.prepare(
       "SELECT status, access_password FROM proposals WHERE (number = ? OR custom_slug = ?) AND deleted_at IS NULL"
@@ -21,7 +21,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     // Sem senha configurada: nada a desbloquear (proposta é pública).
     if (!pw) return json({ ok: true });
 
-    if (attempt !== pw) return error(401, "Senha incorreta.");
+    // Comparação sem diferenciar maiúsculas/minúsculas (mais amigável).
+    if (attempt.toLowerCase() !== pw.toLowerCase()) return error(401, "Senha incorreta.");
 
     // O cookie é por-URL: assina a mesma chave usada na rota (número ou slug).
     const token = await signAccess(key, env.SESSION_SECRET);

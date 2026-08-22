@@ -11,7 +11,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   try {
     const slug = String(params.slug);
     const body = await readJson<{ password?: string }>(request);
-    const attempt = (body.password ?? "").toString();
+    const attempt = (body.password ?? "").toString().trim();
 
     const row = await env.DB.prepare(
       "SELECT status, access_password FROM contracts WHERE slug = ?"
@@ -23,7 +23,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const pw = (row.access_password ?? "").trim();
     if (!pw) return json({ ok: true }); // sem senha: nada a desbloquear
 
-    if (attempt !== pw) return error(401, "Senha incorreta.");
+    // Sem diferenciar maiúsculas/minúsculas (mais amigável).
+    if (attempt.toLowerCase() !== pw.toLowerCase()) return error(401, "Senha incorreta.");
 
     const token = await signAccess(slug, env.SESSION_SECRET);
     return json({ ok: true }, { headers: { "Set-Cookie": accessCookie(slug, token, CONTRACT_ACCESS_PREFIX) } });

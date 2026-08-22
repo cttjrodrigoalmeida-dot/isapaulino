@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api, ApiError, type DocumentFile, type Client } from "../api";
+import { toast } from "../toast";
 import UploadHint from "../UploadHint";
 import s from "./Dashboard.module.css";
 import admin from "../Admin.module.css";
@@ -110,7 +111,7 @@ export default function Arquivos({ initialFolder }: { initialFolder?: string | n
       await api.deleteDocument(f.key);
       setFiles((prev) => prev.filter((x) => x.key !== f.key));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao excluir.");
+      toast(err instanceof ApiError ? err.message : "Erro ao excluir.");
     } finally {
       setBusy(false);
     }

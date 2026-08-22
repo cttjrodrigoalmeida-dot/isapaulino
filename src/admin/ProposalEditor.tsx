@@ -153,9 +153,9 @@ export default function ProposalEditor({
   const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   // Clientes cadastrados — para "puxar" o cliente no seletor (evita erro de nome no Ranking/Dashboard).
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; role: string | null }[]>([]);
   useEffect(() => {
-    api.listClients().then(({ clients }) => setClients(clients.map((c) => ({ id: c.id, name: c.name })))).catch(() => {});
+    api.listClients().then(({ clients }) => setClients(clients.map((c) => ({ id: c.id, name: c.name, role: c.role ?? null })))).catch(() => {});
   }, []);
 
   // Recálculo central: investimento → total → pagamento.
@@ -584,7 +584,14 @@ export default function ProposalEditor({
                       const c = clients.find((x) => x.id === e.target.value);
                       if (!c) return;
                       const first = c.name.trim().split(/\s+/)[0] || c.name;
-                      setProposal((prev) => (prev ? { ...prev, client: c.name, clientFirstName: first } : prev));
+                      // Puxa o papel/profissão do cadastro (ex.: "Arq.") + nome:
+                      // "Arq. Isabella Serrano". (Cadastre "Arquiteta" p/ o nome por extenso.)
+                      const role = (c.role ?? "").trim();
+                      const fullName = role ? `${role} ${c.name}`.trim() : c.name;
+                      setProposal((prev) => (prev ? { ...prev, client: fullName, clientFirstName: first } : prev));
+                      // Senha de acesso sugerida = primeiro nome (fácil de comunicar);
+                      // só preenche se ainda estiver vazia (não sobrescreve senha própria).
+                      setAccessPassword((pw) => (pw.trim() ? pw : first));
                     }}
                   >
                     <option value="">— Puxar cliente cadastrado —</option>

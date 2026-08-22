@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type ProposalSummary, type ProposalOutcome } from "./api";
+import { toast } from "./toast";
 import { formatBRL } from "./dashboard/format";
 import ProposalsSummary from "./ProposalsSummary";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
@@ -93,7 +94,7 @@ export default function ProposalsList({
       await api.deleteProposal(number);
       setItems((prev) => prev.filter((p) => p.number !== number));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao excluir.");
+      toast(err instanceof ApiError ? err.message : "Erro ao excluir.");
     } finally {
       setBusy(null);
     }
@@ -108,11 +109,11 @@ export default function ProposalsList({
       await api.cancelProposal(p.number);
       setItems((prev) => prev.map((x) => (x.number === p.number ? { ...x, status: "cancelled" } : x)));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao cancelar.");
+      toast(err instanceof ApiError ? err.message : "Erro ao cancelar.");
     } finally { setBusy(null); }
   };
   const copyLink = async (url: string) => {
-    try { await navigator.clipboard.writeText(url); alert("Link copiado!"); }
+    try { await navigator.clipboard.writeText(url); toast("Link copiado!", { type: "success" }); }
     catch { window.prompt("Copie o link:", url); }
   };
 
@@ -123,7 +124,7 @@ export default function ProposalsList({
       await api.setProposalOutcome(p.number, outcome);
       setItems((prev) => prev.map((x) => (x.number === p.number ? { ...x, outcome } : x)));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao alterar o resultado.");
+      toast(err instanceof ApiError ? err.message : "Erro ao alterar o resultado.");
     } finally {
       setBusy(null);
     }

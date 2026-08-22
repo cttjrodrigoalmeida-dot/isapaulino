@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, type HistoryItem, type HistoryKind, type HistoryStatus } from "./api";
+import { toast } from "./toast";
 import { formatBRL } from "./dashboard/format";
 import CurrencyInput from "./CurrencyInput";
 import styles from "./Admin.module.css";
@@ -89,7 +90,7 @@ export default function ClientHistory({
       await api.deleteClientHistory(clientId, it.id);
       await load();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao excluir.");
+      toast(err instanceof ApiError ? err.message : "Erro ao excluir.");
     } finally {
       setBusy(null);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type BriefingSummary } from "./api";
+import { toast } from "./toast";
 import BriefingsAnalytics from "./BriefingsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
 import { confirmDialog } from "./confirmDialog";
@@ -110,7 +111,7 @@ export default function BriefingsList({
     if (!(await confirmDialog({ message: `Excluir o briefing Nº ${number}? Esta ação não pode ser desfeita.`, confirmLabel: "Excluir" }))) return;
     setBusy(number);
     try { await api.deleteBriefing(number); setItems((prev) => prev.filter((b) => b.number !== number)); }
-    catch (err) { alert(err instanceof ApiError ? err.message : "Erro ao excluir."); }
+    catch (err) { toast(err instanceof ApiError ? err.message : "Erro ao excluir."); }
     finally { setBusy(null); }
   };
 
@@ -122,11 +123,11 @@ export default function BriefingsList({
     try {
       await api.cancelBriefing(b.number);
       setItems((prev) => prev.map((x) => (x.number === b.number ? { ...x, status: "cancelled" } : x)));
-    } catch (err) { alert(err instanceof ApiError ? err.message : "Erro ao cancelar."); }
+    } catch (err) { toast(err instanceof ApiError ? err.message : "Erro ao cancelar."); }
     finally { setBusy(null); }
   };
   const copyLink = async (url: string) => {
-    try { await navigator.clipboard.writeText(url); alert("Link copiado!"); }
+    try { await navigator.clipboard.writeText(url); toast("Link copiado!", { type: "success" }); }
     catch { window.prompt("Copie o link:", url); }
   };
 

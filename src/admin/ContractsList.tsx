@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, ApiError, type ContractSummary, type ContractStatus } from "./api";
+import { toast } from "./toast";
 import { formatBRL, formatDate } from "./dashboard/format";
 import ContractsAnalytics from "./ContractsAnalytics";
 import ActionMenu, { type MenuAction } from "./ActionMenu";
@@ -130,7 +131,7 @@ export default function ContractsList({
       await api.deleteContract(c.id);
       setItems((prev) => prev.filter((x) => x.id !== c.id));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao excluir.");
+      toast(err instanceof ApiError ? err.message : "Erro ao excluir.");
     } finally { setBusy(null); }
   };
 
@@ -140,14 +141,14 @@ export default function ContractsList({
       const r = await api.refreshSignature(c.id);
       if (r.status === "signed") {
         setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "signed" } : x)));
-        alert("Contrato assinado por todas as partes! ✅");
+        toast("Contrato assinado por todas as partes!", { type: "success" });
       } else {
         const pend = r.signers.filter((s) => !s.signed).length;
         const done = r.signers.filter((s) => s.signed).map((s) => s.name || s.email).join(", ");
-        alert(`Ainda faltam ${pend} assinatura(s) para concluir.` + (done ? `\nJá assinaram: ${done}` : ""));
+        toast(`Ainda faltam ${pend} assinatura(s) para concluir.` + (done ? `\nJá assinaram: ${done}` : ""));
       }
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao consultar a Autentique.");
+      toast(err instanceof ApiError ? err.message : "Erro ao consultar a Autentique.");
     } finally { setBusy(null); }
   };
 
@@ -160,11 +161,11 @@ export default function ContractsList({
       await api.cancelContract(c.id);
       setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "cancelled" } : x)));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Erro ao cancelar.");
+      toast(err instanceof ApiError ? err.message : "Erro ao cancelar.");
     } finally { setBusy(null); }
   };
   const copyLink = async (url: string) => {
-    try { await navigator.clipboard.writeText(url); alert("Link copiado!"); }
+    try { await navigator.clipboard.writeText(url); toast("Link copiado!", { type: "success" }); }
     catch { window.prompt("Copie o link:", url); }
   };
 
