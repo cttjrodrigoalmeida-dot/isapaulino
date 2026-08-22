@@ -65,7 +65,22 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
         ORDER BY ph.date DESC, ph.created_at DESC LIMIT 8`
     ).bind(id).all();
 
-    return json({ client, projects, hf, parcelas, atividades: atividades ?? [] });
+    // Briefings do cliente: ligados pelo nº da proposta cujo cliente (nome) é este.
+    const clientName = (client as { name?: string }).name ?? "";
+    const { results: briefings } = await env.DB.prepare(
+      `SELECT b.number, b.title, b.status, b.proposal_number AS proposalNumber,
+              b.updated_at AS updatedAt,
+              (SELECT COUNT(*) FROM briefing_responses r WHERE r.briefing_number = b.number) AS responseCount,
+              (SELECT MAX(r.submitted_at) FROM briefing_responses r WHERE r.briefing_number = b.number) AS lastResponseAt
+         FROM briefings b
+        WHERE b.deleted_at IS NULL
+          AND b.proposal_number IN (
+            SELECT number FROM proposals
+             WHERE deleted_at IS NULL AND lower(trim(client)) = lower(trim(?)))
+        ORDER BY b.updated_at DESC`
+    ).bind(clientName).all();
+
+    return json({ client, projects, hf, parcelas, atividades: atividades ?? [], briefings: briefings ?? [] });
   } catch (e) {
     return toErrorResponse(e);
   }

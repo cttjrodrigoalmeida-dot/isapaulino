@@ -150,6 +150,16 @@ export interface ClientPanorama {
   hf: { total: number; pago: number; pendente: number; n: number };
   parcelas: { recebido: number; atraso: number; aReceber: number; n: number };
   atividades: { date: string; type: string; description: string; phase: string | null; contractTitle: string }[];
+  briefings: ClientPanoramaBriefing[];
+}
+export interface ClientPanoramaBriefing {
+  number: string;
+  title: string | null;
+  status: string;
+  proposalNumber: string | null;
+  updatedAt: string | null;
+  responseCount: number;
+  lastResponseAt: string | null;
 }
 
 export interface Client {

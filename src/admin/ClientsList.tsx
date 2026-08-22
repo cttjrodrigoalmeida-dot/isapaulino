@@ -123,26 +123,28 @@ export default function ClientsList({
           </thead>
           <tbody>
             {filtered.map((c) => (
-              <tr key={c.id}>
+              <tr
+                key={c.id}
+                onClick={() => onPanorama(c.id)}
+                title="Abrir central do cliente"
+                style={{ cursor: "pointer" }}
+              >
                 <td>
-                  <button
-                    type="button"
+                  <span
                     className={styles.clientNameCell}
-                    onClick={() => onPanorama(c.id)}
-                    title="Abrir central do cliente"
-                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}
+                    style={{ textAlign: "left", color: "inherit", font: "inherit" }}
                   >
                     <span className={styles.clientAvatar}>
                       {avatarById(c.avatar) ? <AvatarSVG id={c.avatar} size={36} /> : c.photo_url ? <img src={c.photo_url} alt={c.name} /> : initials(c.name)}
                     </span>
                     <span style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>{c.name}</span>
-                  </button>
+                  </span>
                 </td>
                 <td className={styles.mono}>{c.cpf_cnpj ? formatCpfCnpj(c.cpf_cnpj) : "—"}</td>
                 <td>{c.email || "—"}</td>
                 <td>{c.phone ? formatPhone(c.phone) : "—"}</td>
                 <td>{[c.city, c.state].filter(Boolean).join(" / ") || "—"}</td>
-                <td>
+                <td onClick={(e) => e.stopPropagation()}>
                   <div className={styles.rowActions}>
                     <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onPanorama(c.id)}>
                       Abrir

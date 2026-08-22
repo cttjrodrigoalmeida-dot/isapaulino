@@ -4,7 +4,7 @@ import {
   BarChart, Bar, LabelList, Tooltip,
 } from "recharts";
 import RadialGauge from "./RadialGauge";
-import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject } from "./api";
+import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject, type ClientPanoramaBriefing } from "./api";
 import { formatBRL, formatBRLShort, formatDate } from "./dashboard/format";
 import { formatPhone, formatCpfCnpj } from "./validation";
 import { AvatarSVG, avatarById } from "../avatars";
@@ -30,6 +30,17 @@ const SIT_META: Record<Situacao, { label: string; color: string; soft: string }>
   andamento: { label: "Em andamento", color: C.amber, soft: SOFT.amber },
 };
 
+// Situação do briefing (para a aba Briefings).
+const BRIEF_META = {
+  respondido: { label: "Respondido", color: C.green, soft: SOFT.green },
+  aguardando: { label: "Aguardando", color: C.amber, soft: SOFT.amber },
+  cancelado: { label: "Cancelado", color: C.red, soft: SOFT.red },
+} as const;
+function briefSit(b: ClientPanoramaBriefing): keyof typeof BRIEF_META {
+  if (b.status === "cancelled") return "cancelado";
+  return b.responseCount > 0 ? "respondido" : "aguardando";
+}
+
 function situacaoOf(p: ClientPanoramaProject): Situacao {
   if (p.status === "cancelled") return "cancelado";
   if (p.status === "signed" && p.signedAt) {
@@ -52,6 +63,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
   const [data, setData] = useState<Panorama | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"resumo" | "projetos" | "briefings" | "contratos">("resumo");
 
   useEffect(() => {
     let alive = true;
@@ -139,7 +151,21 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
         <Kpi label="A RECEBER" value={formatBRLShort(data.parcelas.aReceber + data.parcelas.atraso)} color={C.amber} soft={SOFT.amber} big />
       </div>
 
-      {/* ── Financeiro + situação + evolução ── */}
+      {/* ── Abas ── */}
+      <div className={styles.tabs} style={{ marginBottom: 16 }}>
+        {(["resumo", "projetos", "briefings", "contratos"] as const).map((id) => {
+          const label = { resumo: "Resumo", projetos: "Projetos", briefings: "Briefings", contratos: "Contratos" }[id];
+          const count = id === "briefings" ? data.briefings.length : id === "contratos" || id === "projetos" ? m.projects.length : 0;
+          return (
+            <button key={id} className={`${styles.tab} ${tab === id ? styles.tabActive : ""}`} onClick={() => setTab(id)}>
+              {label}{count > 0 && <span style={{ opacity: 0.6 }}> · {count}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Resumo (financeiro + situação + evolução) ── */}
+      {tab === "resumo" && (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
         <div style={card}>
           <PanelTitle title="Resumo financeiro" />
@@ -195,8 +221,10 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Projetos + atividades ── */}
+      {tab === "projetos" && (
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1fr)", gap: 16, marginBottom: 16 }}>
         <div style={card}>
           <PanelTitle title="Projetos vinculados" sub="Cada contrato do cliente e sua situação." />
@@ -272,6 +300,73 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
           )}
         </div>
       </div>
+      )}
+
+      {/* ── Briefings do cliente ── */}
+      {tab === "briefings" && (
+        <div style={card}>
+          <PanelTitle title="Briefings do cliente" sub="Respondidos, aguardando e cancelados." />
+          {data.briefings.length === 0 ? <Empty>Nenhum briefing para este cliente ainda.</Empty> : (
+            <div className={styles.tableScroll}>
+              <table className={styles.table}>
+                <thead><tr><th>Nº</th><th>Título</th><th>Situação</th><th>Respostas</th><th style={{ textAlign: "right" }}>Ações</th></tr></thead>
+                <tbody>
+                  {data.briefings.map((b) => {
+                    const bm = BRIEF_META[briefSit(b)];
+                    return (
+                      <tr key={b.number}>
+                        <td className={styles.mono}>{b.number}</td>
+                        <td>{b.title || `Briefing Nº ${b.number}`}</td>
+                        <td><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 999, color: bm.color, background: bm.soft, border: `1px solid ${bm.color}55` }}>{bm.label}</span></td>
+                        <td className={styles.mono}>{b.responseCount}</td>
+                        <td style={{ textAlign: "right" }}>
+                          <a className={styles.btn} style={{ padding: "4px 10px" }} href={`/briefing/${b.number}`} target="_blank" rel="noopener noreferrer">Abrir</a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Contratos do cliente ── */}
+      {tab === "contratos" && (
+        <div style={card}>
+          <PanelTitle title="Contratos do cliente" sub="Cada contrato/aditivo, valor e situação." />
+          {m.projects.length === 0 ? <Empty>Nenhum contrato para este cliente ainda.</Empty> : (
+            <div className={styles.tableScroll}>
+              <table className={styles.table}>
+                <thead><tr><th>Nº</th><th>Projeto</th><th>Situação</th><th>Valor</th><th>Assinado em</th><th style={{ textAlign: "right" }}>Ações</th></tr></thead>
+                <tbody>
+                  {m.projects.map((p) => {
+                    const sit = SIT_META[situacaoOf(p)];
+                    const isAditivo = p.kind === "aditivo";
+                    return (
+                      <tr key={p.id}>
+                        <td className={styles.mono}>
+                          {p.number || "—"}
+                          {isAditivo && <span style={{ marginLeft: 6, fontSize: 9, fontFamily: "var(--font-mono)", padding: "2px 6px", borderRadius: 6, color: "#8a5a00", background: SOFT.amber, border: `1px solid ${C.amber}66` }}>ADITIVO</span>}
+                        </td>
+                        <td>{p.projectName || p.title || "—"}</td>
+                        <td><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 999, color: sit.color, background: sit.soft, border: `1px solid ${sit.color}55` }}>{sit.label}</span></td>
+                        <td className={styles.mono}>{p.value != null ? formatBRL(p.value) : "—"}</td>
+                        <td className={styles.mono}>{p.signedAt ? formatDate(p.signedAt) : "—"}</td>
+                        <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                          {p.slug && p.status !== "draft" && <a className={styles.btn} style={{ padding: "4px 10px", marginRight: 6 }} href={`/contrato/${p.slug}`} target="_blank" rel="noopener noreferrer">Ver</a>}
+                          <button className={styles.btn} style={{ padding: "4px 10px" }} onClick={() => onOpenHistory(p.id, `${p.number ? `Nº ${p.number} · ` : ""}${p.projectName || p.title || "Projeto"}`, p.status === "signed", cl.name)}>Histórico</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
