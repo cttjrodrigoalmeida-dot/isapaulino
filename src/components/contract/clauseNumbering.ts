@@ -74,16 +74,21 @@ export function renumberClauses(clauses: ContractClause[], kind: ContractDoc["ki
 /**
  * Reescreve o prefixo numérico das SUBCLÁUSULAS (parágrafos) conforme a ordem:
  * cada parágrafo vira "7.1.", "7.2."… usando o número (já derivado) da cláusula.
- * As listas (bullets) não são numeradas. A cláusula de ESCOPO é pulada porque tem
- * sub-numeração especial (o "2.2" dos serviços vive num card à parte).
+ * As listas (bullets) não são numeradas.
+ *
+ * A cláusula de ESCOPO também é numerada automaticamente, mas RESERVA o ".2"
+ * para o card de serviços ("2.2. Os serviços incluem:", renderizado à parte):
+ * o 1º parágrafo vira ".1" e os demais começam em ".3", ".4"…
  */
 export function renumberSubclauses(clause: ContractClause, kind: ContractDoc["kind"]): ContractClause {
-  if (clauseRole(clause, kind) === "escopo") return clause;
   const base = plainNumber(clause.number);
-  let k = 0;
+  const isEscopo = clauseRole(clause, kind) === "escopo";
+  let pIdx = 0; // posição do parágrafo entre os parágrafos (0-based)
   const blocks = clause.blocks.map((b) => {
     if (b.type !== "p") return b;
-    k += 1;
+    // escopo: 1º parágrafo = .1; do 2º em diante pula o .2 (card de serviços).
+    const k = isEscopo ? (pIdx === 0 ? 1 : pIdx + 2) : pIdx + 1;
+    pIdx += 1;
     const bare = b.text.replace(SUB_PREFIX, "").trimStart();
     return { type: "p" as const, text: bare ? `${base}.${k}. ${bare}` : `${base}.${k}.` };
   });

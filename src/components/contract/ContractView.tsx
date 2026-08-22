@@ -10,7 +10,7 @@ import type {
 } from "./types";
 import CustomCursor from "../CustomCursor";
 import { DEFAULT_VALIDADE_CARDS } from "./contractDefaults";
-import { clauseRole, renumberClauses, paymentNumber } from "./clauseNumbering";
+import { clauseRole, renumberClauses, paymentNumber, plainNumber } from "./clauseNumbering";
 import { exportElementToPdf, waitForRenderReady } from "../../lib/pdfExport";
 import styles from "./ContractView.module.css";
 
@@ -329,7 +329,7 @@ function EscopoCard({ clause, doc }: { clause: ContractClause; doc: ContractDoc 
       {escopoNote && <InfoBox>{escopoNote}</InfoBox>}
       {doc.escopoServicos.length > 0 && (
         <>
-          <span className={styles.blockLabel}>2.2. Os serviços incluem:</span>
+          <span className={styles.blockLabel}>{plainNumber(clause.number)}.2. Os serviços incluem:</span>
           <ul className={styles.clauseList}>
             {doc.escopoServicos.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
