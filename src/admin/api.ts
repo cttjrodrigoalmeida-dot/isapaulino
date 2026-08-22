@@ -152,6 +152,29 @@ export interface ClientPanorama {
   atividades: { date: string; type: string; description: string; phase: string | null; contractTitle: string }[];
   briefings: ClientPanoramaBriefing[];
 }
+/** Planilha do cliente (aba Planilha) — linhas editáveis + cores por coluna. */
+export interface ClientSheetRow {
+  id: string;
+  /** Contrato/projeto de origem (se a linha nasceu de um projeto). */
+  projectId?: string | null;
+  date: string;
+  description: string;
+  categories: string;
+  unit: string;
+  unitValue: string;
+  discount: string;
+  finalValue: string;
+  /** "" | "pendente" | "gratuito" | "pago" */
+  status: string;
+  phase: string;
+  /** Cor de fundo por célula desta linha: { [coluna]: cor }. */
+  cellColors?: Record<string, string>;
+}
+export interface ClientSheetData {
+  rows: ClientSheetRow[];
+  /** Cor de fundo por COLUNA (estilo copiável entre clientes). */
+  colColors: Record<string, string>;
+}
 export interface ClientPanoramaBriefing {
   number: string;
   title: string | null;
@@ -668,6 +691,10 @@ export const api = {
   getClient: (id: string) => req<{ client: Client }>(`/api/clients/${encodeURIComponent(id)}`),
   clientPanorama: (id: string) =>
     req<ClientPanorama>(`/api/clients/${encodeURIComponent(id)}/panorama`),
+  getClientSheet: (id: string) =>
+    req<{ sheet: ClientSheetData | null }>(`/api/clients/${encodeURIComponent(id)}/sheet`),
+  saveClientSheet: (id: string, sheet: ClientSheetData) =>
+    req<{ ok: true }>(`/api/clients/${encodeURIComponent(id)}/sheet`, { method: "PUT", body: JSON.stringify(sheet) }),
   createClient: (client: ClientInput) =>
     req<{ ok: true; id: string }>("/api/clients", {
       method: "POST",

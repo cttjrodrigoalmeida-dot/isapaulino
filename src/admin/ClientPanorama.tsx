@@ -4,6 +4,7 @@ import {
   BarChart, Bar, LabelList, Tooltip,
 } from "recharts";
 import RadialGauge from "./RadialGauge";
+import ClientSheet from "./ClientSheet";
 import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject, type ClientPanoramaBriefing } from "./api";
 import { formatBRL, formatBRLShort, formatDate } from "./dashboard/format";
 import { formatPhone, formatCpfCnpj } from "./validation";
@@ -63,7 +64,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
   const [data, setData] = useState<Panorama | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"resumo" | "projetos" | "briefings" | "contratos">("resumo");
+  const [tab, setTab] = useState<"resumo" | "projetos" | "briefings" | "contratos" | "planilha">("resumo");
 
   useEffect(() => {
     let alive = true;
@@ -153,8 +154,8 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
 
       {/* ── Abas ── */}
       <div className={styles.tabs} style={{ marginBottom: 16 }}>
-        {(["resumo", "projetos", "briefings", "contratos"] as const).map((id) => {
-          const label = { resumo: "Resumo", projetos: "Projetos", briefings: "Briefings", contratos: "Contratos" }[id];
+        {(["resumo", "projetos", "briefings", "contratos", "planilha"] as const).map((id) => {
+          const label = { resumo: "Resumo", projetos: "Projetos", briefings: "Briefings", contratos: "Contratos", planilha: "Planilha" }[id];
           const count = id === "briefings" ? data.briefings.length : id === "contratos" || id === "projetos" ? m.projects.length : 0;
           return (
             <button key={id} className={`${styles.tab} ${tab === id ? styles.tabActive : ""}`} onClick={() => setTab(id)}>
@@ -367,6 +368,11 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
           )}
         </div>
       )}
+
+      {/* ── Planilha (montada sempre p/ não perder edições ao trocar de aba) ── */}
+      <div style={{ display: tab === "planilha" ? "block" : "none" }}>
+        <ClientSheet clientId={cl.id} projects={m.mains} />
+      </div>
     </div>
   );
 }
