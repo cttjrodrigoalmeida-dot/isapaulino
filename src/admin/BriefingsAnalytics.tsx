@@ -99,7 +99,9 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
   }));
 
   return (
-    <div style={{ marginTop: 22, display: "grid", gap: 16 }}>
+    // Dashboard mais largo que a lista: recupera o padding lateral do container
+    // (28px de cada lado) p/ os painéis terem mais espaço e os rótulos caberem.
+    <div style={{ marginTop: 22, display: "grid", gap: 16, width: "calc(100% + 56px)", marginInline: -28 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)" }}>Dashboard de briefings · {year}</h3>
         {otherYears.length > 0 ? (
@@ -144,12 +146,12 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
       </div>
 
       {/* Painéis */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
         {/* Briefings por status */}
         <div style={card}>
           <PanelTitle title="Briefings por status" sub="Distribuição no ano." />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <RadialGauge data={donut} center={m.total} centerLabel="total" size={132} />
+            <RadialGauge data={donut} center={m.total} centerLabel="total" />
             <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 0 }}>
               {donut.map((d) => (
                 <LegendRow key={d.name} color={d.color} name={d.name} value={d.value} pct={m.total ? Math.round((d.value / m.total) * 100) : 0} />
@@ -215,7 +217,7 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
         <div style={card}>
           <PanelTitle title="Taxa de respostas" sub="Respondidos ÷ (respondidos + pendentes)." />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <RadialGauge data={taxa} center={`${m.taxaPct}%`} centerLabel="respondidos" size={132} />
+            <RadialGauge data={taxa} center={`${m.taxaPct}%`} centerLabel="respondidos" />
             <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 0 }}>
               {/* % sobre o total (inclui cancelados) — coerente com os arcos. */}
               {taxa.map((d) => (
@@ -239,7 +241,7 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <RadialGauge data={deviceData} center={devAnswered} centerLabel="respostas" size={132} />
+              <RadialGauge data={deviceData} center={devAnswered} centerLabel="respostas" />
               <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 0 }}>
                 {deviceData.map((d) => (
                   <LegendRow key={d.name} color={d.color} name={d.name} value={d.value} pct={devAnswered ? Math.round((d.value / devAnswered) * 100) : 0} />
@@ -267,13 +269,13 @@ function YearTotal({ year, value, color }: { year: string; value: number; color:
   );
 }
 
-// Linha de legenda dos anéis: rótulo trunca (…) e os números ficam fixos à
-// direita — assim nada "vaza" do card quando a coluna fica estreita.
+// Linha de legenda dos anéis: rótulo por extenso (sem cortar) e os números fixos
+// à direita. Os painéis são largos o bastante (grid abaixo) p/ caber tudo.
 function LegendRow({ color, name, value, pct }: { color: string; name: string; value: number; pct: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
       <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
-      <span style={{ color: "var(--color-text-secondary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+      <span style={{ color: "var(--color-text-secondary)", flex: 1, whiteSpace: "nowrap" }}>{name}</span>
       <span style={{ color: "var(--color-text-primary)", fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{value}</span>
       <span style={{ color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums", minWidth: 34, textAlign: "right", flexShrink: 0 }}>{pct}%</span>
     </div>
