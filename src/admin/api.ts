@@ -558,6 +558,12 @@ export const api = {
   // se a numeração colidir com o projeto de OUTRO cliente.
   documentNumbers: () => req<{ numbers: NumberUse[] }>("/api/documents/numbers"),
 
+  // Distribuição das respostas da pergunta "QUAL DISPOSITIVO…" (anel no dashboard).
+  briefingDeviceStats: (year?: string) =>
+    req<{ questionText: string; devices: { name: string; count: number }[]; answered: number; briefings: number }>(
+      `/api/dashboard/briefing-devices${year ? `?year=${encodeURIComponent(year)}` : ""}`
+    ),
+
   // ── briefings ──
   listBriefings: () => req<{ briefings: BriefingSummary[] }>("/api/briefings"),
   getBriefing: (number: string) =>

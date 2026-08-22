@@ -1,13 +1,13 @@
 // Dashboard analítico da aba Briefings — mesmo modelo do de contratos, calculado
 // do ano selecionado. Cores padronizadas (paleta do layout).
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   ResponsiveContainer, AreaChart, Area,
   LineChart, Line,
   XAxis, YAxis, Tooltip,
 } from "recharts";
 import RadialGauge from "./RadialGauge";
-import type { BriefingSummary } from "./api";
+import { api, type BriefingSummary } from "./api";
 
 // Verde/vermelho reservados p/ positivo/negativo (mesmas cores dos selos).
 // Restante em CINZA (slate); slateSoft = 2ª série da comparação entre anos.
@@ -17,6 +17,9 @@ const SOFT = {
   red: "rgba(240, 80, 110, 0.12)", slate: "rgba(124, 134, 152, 0.14)",
 };
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+// Dispositivo é dado NEUTRO → rampa de CINZA (disciplina de cor do sistema),
+// do mais escuro ao mais claro; cada opção recebe um tom distinto no anel.
+const DEVICE_RAMP = ["#5b6472", "#8b94a3", "#b4bcc8", "#d6dbe2", "#7c8698"];
 // Ano derivado do número (AANN): "2624" → "2026".
 const yearOf = (number: string) => (/^\d{2}/.test(number) ? `20${number.slice(0, 2)}` : "Outros");
 
@@ -52,6 +55,17 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
 }) {
   const m = useMemo(() => computeMetrics(items), [items]);
 
+  // ── Dispositivo usado para responder (pergunta específica, agregada no servidor) ──
+  const [devices, setDevices] = useState<{ name: string; count: number }[]>([]);
+  const [devAnswered, setDevAnswered] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    api.briefingDeviceStats(year)
+      .then((r) => { if (alive) { setDevices(r.devices); setDevAnswered(r.answered); } })
+      .catch(() => { if (alive) { setDevices([]); setDevAnswered(0); } });
+    return () => { alive = false; };
+  }, [year]);
+
   // ── Comparação entre anos ──
   const otherYears = (years ?? []).filter((y) => y !== year && y !== "Outros");
   const [compareYear, setCompareYear] = useState<string>("");
@@ -76,6 +90,8 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
     { name: "Pendentes", value: m.pendentes, color: C.amber },
     { name: "Cancelados", value: m.cancelados, color: C.red },
   ];
+  // Anel de dispositivos: uma cor de cinza por opção (na ordem do documento).
+  const deviceData = devices.map((d, i) => ({ name: d.name, value: d.count, color: DEVICE_RAMP[i % DEVICE_RAMP.length] }));
   const porMes = MONTHS.map((name, i) => ({
     name,
     value: m.monthly.total[i],
@@ -227,6 +243,33 @@ export default function BriefingsAnalytics({ items, year, allItems, years, onSee
             <button onClick={onSeeDetails} style={{ marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer", color: C.green, fontSize: 12.5, fontWeight: 600 }}>
               Ver detalhes →
             </button>
+          )}
+        </div>
+
+        {/* Dispositivo usado para responder o briefing */}
+        <div style={card}>
+          <PanelTitle title="Dispositivo dos clientes" sub="Como responderam ao briefing — para otimizar a experiência." />
+          {devAnswered === 0 ? (
+            <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", padding: "24px 0", textAlign: "center" }}>
+              Ainda sem respostas para esta pergunta em {year}.
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <RadialGauge data={deviceData} center={devAnswered} centerLabel="respostas" />
+              <div style={{ display: "grid", gap: 8, flex: 1 }}>
+                {deviceData.map((d) => {
+                  const p = devAnswered ? Math.round((d.value / devAnswered) * 100) : 0;
+                  return (
+                    <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
+                      <span style={{ color: "var(--color-text-secondary)", flex: 1 }}>{d.name}</span>
+                      <span style={{ color: "var(--color-text-primary)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{d.value}</span>
+                      <span style={{ color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums", minWidth: 38, textAlign: "right" }}>{p}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       </div>
