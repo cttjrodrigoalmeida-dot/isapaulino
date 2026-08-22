@@ -117,6 +117,7 @@ export interface ProjectHistoryEntry {
   type: string;
   description: string;
   phase: string | null;
+  categories: string | null;
   createdAt: string;
 }
 export interface ProjectHistoryInput {
@@ -124,6 +125,7 @@ export interface ProjectHistoryInput {
   type: string;
   description: string;
   phase?: string;
+  categories?: string;
 }
 
 /** Panorama do cliente (Central do Cliente). */

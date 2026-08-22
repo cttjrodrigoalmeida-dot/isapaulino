@@ -29,6 +29,21 @@ const STATUS_OPTS: { v: string; label: string }[] = [
   { v: "pago", label: "Pago" },
 ];
 
+// Colunas de valor que oferecem "criar cobrança".
+const CHARGE_COLS = new Set<ColKey>(["unitValue", "finalValue"]);
+
+// "R$ 3.000,00" → 3000 (aceita também "3000", "3.000,50").
+function parseMoney(s: string): number {
+  const cleaned = String(s || "").replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+// "01/08/2026" → "2026-08-01" (ou undefined se não bater).
+function brToISO(s: string): string | undefined {
+  const m = String(s || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : undefined;
+}
+
 function newRow(partial?: Partial<ClientSheetRow>): ClientSheetRow {
   return {
     id: crypto.randomUUID(), projectId: null, date: "", description: "", categories: "",
@@ -68,6 +83,9 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
   // Desfazer: pilha de snapshots (rows/colColors são imutáveis, guardo a referência).
   const [history, setHistory] = useState<{ rows: ClientSheetRow[]; colColors: Record<string, string> }[]>([]);
   const lastEditRef = useRef<string | null>(null); // agrupa digitação numa mesma célula num único passo
+  // Menu de cobrança na célula de valor.
+  const [chargeMenu, setChargeMenu] = useState<{ row: ClientSheetRow; col: ColKey; label: string; x: number; y: number } | null>(null);
+  const [charging, setCharging] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -160,6 +178,36 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
     } catch { setNotice("Nenhum estilo copiado ainda."); }
   };
 
+  // Cria a cobrança (no sistema = lançamento no Histórico Financeiro; ASAAS =
+  // gera a cobrança de verdade a partir desse lançamento). Usa o valor da célula.
+  const doCharge = async (target: "system" | "asaas") => {
+    if (!chargeMenu) return;
+    const { row, col } = chargeMenu;
+    const amount = parseMoney(row[col]);
+    if (amount <= 0) { setNotice("Informe um valor válido na célula antes de cobrar."); setChargeMenu(null); return; }
+    setCharging(true); setNotice(null);
+    try {
+      const { id } = await api.createClientHistory(clientId, {
+        description: row.description?.trim() || `Planilha — ${chargeMenu.label}`,
+        amount, kind: "adicional",
+        contract_id: row.projectId || null,
+        date: brToISO(row.date),
+      });
+      if (target === "asaas") {
+        const r = await api.generateHistoryAsaas(clientId, id);
+        setNotice(r.url ? `Cobrança ASAAS gerada: ${r.url}` : "Cobrança ASAAS gerada.");
+      } else {
+        setNotice("Cobrança criada no sistema (Histórico Financeiro).");
+      }
+      // Se a linha ainda não tinha status, marca como pendente.
+      if (!row.status) setRows((rs) => rs.map((x) => (x.id === row.id ? { ...x, status: "pendente" } : x)));
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Erro ao criar cobrança.");
+    } finally {
+      setCharging(false); setChargeMenu(null);
+    }
+  };
+
   const cellBg = (r: ClientSheetRow, key: ColKey): string | undefined => r.cellColors?.[key] || colColors[key] || undefined;
 
   if (loading) return <div style={card}><div className={styles.loading}>Carregando planilha…</div></div>;
@@ -248,6 +296,22 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
                           <option key={o.v} value={o.v} style={{ background: "var(--color-surface)", color: "var(--color-text-primary)" }}>{o.label}</option>
                         ))}
                       </select>
+                    ) : CHARGE_COLS.has(c.key) ? (
+                      <div style={{ position: "relative" }}>
+                        <input
+                          value={r[c.key]}
+                          onChange={(e) => setCell(r.id, c.key, e.target.value)}
+                          readOnly={paint}
+                          style={{ ...inputStyle, paddingRight: paint ? 8 : 24 }}
+                        />
+                        {!paint && (
+                          <button
+                            title="Criar cobrança com este valor"
+                            onClick={(e) => { e.stopPropagation(); setChargeMenu({ row: r, col: c.key, label: c.label, x: e.clientX, y: e.clientY }); }}
+                            style={{ position: "absolute", right: 3, top: "50%", transform: "translateY(-50%)", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, opacity: 0.5, lineHeight: 1, padding: 2 }}
+                          >💲</button>
+                        )}
+                      </div>
                     ) : (
                       <input
                         value={r[c.key]}
@@ -267,8 +331,32 @@ export default function ClientSheet({ clientId, projects }: { clientId: string; 
           </tbody>
         </table>
       </div>
+
+      {/* Menu de cobrança (célula de valor) */}
+      {chargeMenu && (
+        <>
+          <div onClick={() => setChargeMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 60 }} />
+          <div style={{
+            position: "fixed", left: Math.min(chargeMenu.x, window.innerWidth - 240), top: Math.min(chargeMenu.y, window.innerHeight - 140), zIndex: 61,
+            background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10,
+            boxShadow: "0 12px 34px rgba(0,0,0,0.32)", padding: 6, minWidth: 220,
+          }}>
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)", padding: "4px 8px 6px" }}>
+              Cobrança · {chargeMenu.label}: <strong style={{ color: "var(--color-text-secondary)" }}>{formatBRL(parseMoney(chargeMenu.row[chargeMenu.col]))}</strong>
+            </div>
+            <button onClick={() => doCharge("system")} disabled={charging} style={menuItem}>💼 Cobrança no sistema</button>
+            <button onClick={() => doCharge("asaas")} disabled={charging} style={menuItem}>🔗 Cobrança no ASAAS</button>
+            <button onClick={() => setChargeMenu(null)} disabled={charging} style={{ ...menuItem, color: "var(--color-text-muted)" }}>Cancelar</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+const menuItem: React.CSSProperties = {
+  display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 7,
+  border: "none", background: "transparent", color: "var(--color-text-primary)", cursor: "pointer", fontSize: 13,
+};
 
 const card: React.CSSProperties = { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 14, padding: 18 };

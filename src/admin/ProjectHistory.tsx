@@ -6,8 +6,10 @@ import styles from "./Admin.module.css";
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (iso: string) => { try { return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR"); } catch { return iso; } };
 
-type Draft = { date: string; type: string; description: string; phase: string };
-const emptyDraft = (): Draft => ({ date: today(), type: "reuniao", description: "", phase: "" });
+type Draft = { date: string; type: string; description: string; phase: string; categories: string };
+const emptyDraft = (): Draft => ({ date: today(), type: "reuniao", description: "", phase: "", categories: "" });
+// "Marcenaria, 3D" → ["Marcenaria", "3D"]
+const splitCats = (s: string | null | undefined) => (s || "").split(",").map((c) => c.trim()).filter(Boolean);
 
 export default function ProjectHistory({ contractId, projectLabel, clientName, signed, onBack }: {
   contractId: string;
@@ -35,7 +37,7 @@ export default function ProjectHistory({ contractId, projectLabel, clientName, s
     if (!draft.description.trim()) { setError("Descreva o que aconteceu."); return; }
     setBusy(true); setError(null);
     try {
-      const payload = { date: draft.date, type: draft.type, description: draft.description.trim(), phase: draft.phase.trim() };
+      const payload = { date: draft.date, type: draft.type, description: draft.description.trim(), phase: draft.phase.trim(), categories: draft.categories.trim() };
       if (editId) await api.updateProjectHistory(contractId, editId, payload);
       else await api.addProjectHistory(contractId, payload);
       setDraft(emptyDraft()); setEditId(null);
@@ -46,7 +48,7 @@ export default function ProjectHistory({ contractId, projectLabel, clientName, s
 
   const startEdit = (h: ProjectHistoryEntry) => {
     setEditId(h.id);
-    setDraft({ date: h.date, type: h.type, description: h.description, phase: h.phase ?? "" });
+    setDraft({ date: h.date, type: h.type, description: h.description, phase: h.phase ?? "", categories: h.categories ?? "" });
   };
   const cancelEdit = () => { setEditId(null); setDraft(emptyDraft()); };
 
@@ -94,9 +96,15 @@ export default function ProjectHistory({ contractId, projectLabel, clientName, s
           <label className={styles.label}>Descrição (o que aconteceu)</label>
           <textarea className={styles.input} rows={3} value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} placeholder="Ex.: Reunião de alinhamento — definidos os ambientes e o estilo." />
         </div>
-        <div className={styles.field}>
-          <label className={styles.label}>Status / fase (opcional)</label>
-          <input className={styles.input} value={draft.phase} onChange={(e) => setDraft((d) => ({ ...d, phase: e.target.value }))} placeholder="Ex.: Anteprojeto, Detalhamento, Entrega final…" />
+        <div className={styles.row2}>
+          <div className={styles.field}>
+            <label className={styles.label}>Status / fase (opcional)</label>
+            <input className={styles.input} value={draft.phase} onChange={(e) => setDraft((d) => ({ ...d, phase: e.target.value }))} placeholder="Ex.: Anteprojeto, Detalhamento, Entrega final…" />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label}>Categorias (separe por vírgula)</label>
+            <input className={styles.input} value={draft.categories} onChange={(e) => setDraft((d) => ({ ...d, categories: e.target.value }))} placeholder="Ex.: Marcenaria, 3D, Iluminação" />
+          </div>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={save} disabled={busy}>{editId ? "Salvar alterações" : "+ Adicionar ao histórico"}</button>
@@ -137,6 +145,13 @@ export default function ProjectHistory({ contractId, projectLabel, clientName, s
                     <button className={`${styles.btn} ${styles.btnDanger}`} style={{ padding: "3px 9px", fontSize: 12 }} onClick={() => remove(h)} disabled={busy}>Excluir</button>
                   </div>
                   <div style={{ fontSize: 13.5, color: "var(--color-text-primary)", marginTop: 6, whiteSpace: "pre-wrap" }}>{h.description}</div>
+                  {splitCats(h.categories).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                      {splitCats(h.categories).map((cat, i) => (
+                        <span key={i} style={{ fontSize: 11, padding: "2px 9px", borderRadius: 999, background: `${meta.color}1e`, color: meta.color, border: `1px solid ${meta.color}44` }}>{cat}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
