@@ -65,6 +65,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
         ORDER BY ph.date DESC, ph.created_at DESC LIMIT 8`
     ).bind(id).all();
 
+    // Histórico completo do projeto (todos os eventos, agrupável por projeto).
+    const { results: history } = await env.DB.prepare(
+      `SELECT ph.id, ph.contract_id AS contractId, ph.date, ph.type, ph.description, ph.phase, ph.categories,
+              json_extract(c.data, '$.contractNumber') AS number,
+              json_extract(c.data, '$.projectName') AS projectName,
+              c.title AS contractTitle, c.status AS contractStatus
+         FROM project_history ph JOIN contracts c ON c.id = ph.contract_id
+        WHERE c.client_id = ? AND c.deleted_at IS NULL
+        ORDER BY ph.date DESC, ph.created_at DESC`
+    ).bind(id).all();
+
     // Briefings do cliente: ligados pelo nº da proposta cujo cliente (nome) é este.
     const clientName = (client as { name?: string }).name ?? "";
     const { results: briefings } = await env.DB.prepare(
@@ -80,7 +91,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
         ORDER BY b.updated_at DESC`
     ).bind(clientName).all();
 
-    return json({ client, projects, hf, parcelas, atividades: atividades ?? [], briefings: briefings ?? [] });
+    return json({ client, projects, hf, parcelas, atividades: atividades ?? [], briefings: briefings ?? [], history: history ?? [] });
   } catch (e) {
     return toErrorResponse(e);
   }

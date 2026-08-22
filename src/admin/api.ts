@@ -153,6 +153,20 @@ export interface ClientPanorama {
   parcelas: { recebido: number; atraso: number; aReceber: number; n: number };
   atividades: { date: string; type: string; description: string; phase: string | null; contractTitle: string }[];
   briefings: ClientPanoramaBriefing[];
+  history: ClientPanoramaHistory[];
+}
+export interface ClientPanoramaHistory {
+  id: string;
+  contractId: string;
+  date: string;
+  type: string;
+  description: string;
+  phase: string | null;
+  categories: string | null;
+  number: string | null;
+  projectName: string | null;
+  contractTitle: string | null;
+  contractStatus: string | null;
 }
 /** Planilha do cliente (aba Planilha) — linhas editáveis + cores por coluna. */
 export interface ClientSheetRow {

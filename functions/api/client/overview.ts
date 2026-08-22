@@ -36,11 +36,18 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     // Histórico do Projeto (timeline): eventos dos contratos ASSINADOS do cliente
     // — a área de histórico é liberada após a assinatura. Agrupado por contrato no front.
     const projectHistory = (await env.DB.prepare(
-      `SELECT ph.id, ph.contract_id AS contractId, ph.date, ph.type, ph.description, ph.phase, c.title AS contractTitle
+      `SELECT ph.id, ph.contract_id AS contractId, ph.date, ph.type, ph.description, ph.phase, ph.categories, c.title AS contractTitle
          FROM project_history ph JOIN contracts c ON c.id = ph.contract_id
         WHERE c.client_id = ? AND c.status = 'signed' AND c.deleted_at IS NULL
         ORDER BY ph.date DESC, ph.created_at DESC`
     ).bind(clientId).all()).results ?? [];
+
+    // Planilha do cliente (somente leitura na Área). Tabela pode não existir ainda.
+    let sheet: unknown = null;
+    try {
+      const sr = await env.DB.prepare("SELECT data FROM client_sheet WHERE client_id = ?").bind(clientId).first<{ data: string | null }>();
+      if (sr?.data) { try { sheet = JSON.parse(sr.data); } catch { sheet = null; } }
+    } catch { sheet = null; }
 
     // Arquivos compartilhados com este cliente (docs/ com clientId no metadata).
     const files: { key: string; name: string; size: number; uploaded: string }[] = [];
@@ -62,7 +69,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     } while (cursor);
     files.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
 
-    return json({ client, contracts, installments, history, files, projectHistory });
+    return json({ client, contracts, installments, history, files, projectHistory, sheet });
   } catch (e) {
     return toErrorResponse(e);
   }

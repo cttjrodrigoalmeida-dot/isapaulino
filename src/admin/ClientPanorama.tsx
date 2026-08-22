@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import RadialGauge from "./RadialGauge";
 import ClientSheet from "./ClientSheet";
-import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject, type ClientPanoramaBriefing } from "./api";
+import { api, ApiError, type ClientPanorama as Panorama, type ClientPanoramaProject, type ClientPanoramaBriefing, type ClientPanoramaHistory } from "./api";
 import { formatBRL, formatBRLShort, formatDate } from "./dashboard/format";
 import { formatPhone, formatCpfCnpj } from "./validation";
 import { AvatarSVG, avatarById } from "../avatars";
@@ -64,7 +64,7 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
   const [data, setData] = useState<Panorama | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"resumo" | "projetos" | "briefings" | "contratos" | "planilha">("resumo");
+  const [tab, setTab] = useState<"resumo" | "projetos" | "briefings" | "contratos" | "historico" | "planilha">("resumo");
 
   useEffect(() => {
     let alive = true;
@@ -154,9 +154,9 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
 
       {/* ── Abas ── */}
       <div className={styles.tabs} style={{ marginBottom: 16 }}>
-        {(["resumo", "projetos", "briefings", "contratos", "planilha"] as const).map((id) => {
-          const label = { resumo: "Resumo", projetos: "Projetos", briefings: "Briefings", contratos: "Contratos", planilha: "Planilha" }[id];
-          const count = id === "briefings" ? data.briefings.length : id === "contratos" || id === "projetos" ? m.projects.length : 0;
+        {(["resumo", "projetos", "briefings", "contratos", "historico", "planilha"] as const).map((id) => {
+          const label = { resumo: "Resumo", projetos: "Projetos", briefings: "Briefings", contratos: "Contratos", historico: "Histórico", planilha: "Planilha" }[id];
+          const count = id === "briefings" ? data.briefings.length : id === "historico" ? data.history.length : id === "contratos" || id === "projetos" ? m.projects.length : 0;
           return (
             <button key={id} className={`${styles.tab} ${tab === id ? styles.tabActive : ""}`} onClick={() => setTab(id)}>
               {label}{count > 0 && <span style={{ opacity: 0.6 }}> · {count}</span>}
@@ -366,6 +366,60 @@ export default function ClientPanorama({ clientId, onBack, onEdit, onOpenHistory
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Histórico (todos os eventos do projeto, agrupados por projeto) ── */}
+      {tab === "historico" && (
+        <div style={{ display: "grid", gap: 16 }}>
+          {data.history.length === 0 ? (
+            <div style={card}><Empty>Nenhum registro de histórico ainda. Abra um projeto e adicione eventos.</Empty></div>
+          ) : (() => {
+            const groups = new Map<string, ClientPanoramaHistory[]>();
+            for (const h of data.history) { const arr = groups.get(h.contractId) || []; arr.push(h); groups.set(h.contractId, arr); }
+            return [...groups.entries()].map(([cid, evs]) => {
+              const first = evs[0];
+              const label = `${first.number ? `Nº ${first.number} · ` : ""}${first.projectName || first.contractTitle || "Projeto"}`;
+              const signed = first.contractStatus === "signed";
+              return (
+                <div key={cid} style={card}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>{label}</div>
+                    <span style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>{evs.length} registro{evs.length === 1 ? "" : "s"}</span>
+                    <span style={{ flex: 1 }} />
+                    <button className={styles.btn} onClick={() => onOpenHistory(cid, label, signed, cl.name)}>Gerenciar histórico</button>
+                  </div>
+                  <div style={{ display: "grid", gap: 2 }}>
+                    {evs.map((h, i) => {
+                      const meta = eventTypeMeta(h.type);
+                      const cats = (h.categories || "").split(",").map((c) => c.trim()).filter(Boolean);
+                      return (
+                        <div key={h.id} style={{ display: "flex", gap: 12, paddingBottom: 14 }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <span style={{ width: 11, height: 11, borderRadius: "50%", background: meta.color, marginTop: 4, flexShrink: 0, boxShadow: `0 0 0 3px ${meta.color}22` }} />
+                            {i < evs.length - 1 && <span style={{ flex: 1, width: 2, background: "var(--color-border)", marginTop: 3 }} />}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: meta.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>{meta.label}</span>
+                              <span style={{ fontSize: 11.5, color: "var(--color-text-muted)" }}>{formatDate(h.date)}</span>
+                              {h.phase && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "var(--color-border)", color: "var(--color-text-secondary)" }}>{h.phase}</span>}
+                            </div>
+                            <div style={{ fontSize: 12.5, color: "var(--color-text-primary)", marginTop: 2, whiteSpace: "pre-wrap" }}>{h.description}</div>
+                            {cats.length > 0 && (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                                {cats.map((cat, j) => <span key={j} style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 999, background: `${meta.color}1e`, color: meta.color, border: `1px solid ${meta.color}44` }}>{cat}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
 

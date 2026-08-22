@@ -45,7 +45,7 @@ interface ClientFile {
 }
 interface ProjectHistoryItem {
   id: string; contractId: string; date: string; type: string; description: string;
-  phase: string | null; contractTitle: string;
+  phase: string | null; categories: string | null; contractTitle: string;
 }
 interface Overview {
   client: { name: string; email: string | null; phone: string | null; cpfCnpj: string | null; address: string | null; city: string | null; state: string | null; photoUrl: string | null; avatar: string | null; gender: string | null };
@@ -54,7 +54,26 @@ interface Overview {
   history: HistoryItem[];
   files: ClientFile[];
   projectHistory: ProjectHistoryItem[];
+  sheet: ClientSheetView | null;
 }
+interface SheetRowView {
+  id: string; date: string; description: string; categories: string; unit: string;
+  unitValue: string; discount: string; finalValue: string; status: string; phase: string;
+  cellColors?: Record<string, string>;
+}
+interface ClientSheetView { rows: SheetRowView[]; colColors: Record<string, string> }
+const SHEET_COLS: { key: keyof SheetRowView; label: string }[] = [
+  { key: "date", label: "Data" },
+  { key: "description", label: "Projeto" },
+  { key: "categories", label: "Categorias" },
+  { key: "unit", label: "Unidade" },
+  { key: "unitValue", label: "Valor inicial/un" },
+  { key: "discount", label: "Desconto" },
+  { key: "finalValue", label: "Valor final" },
+  { key: "status", label: "Situação" },
+  { key: "phase", label: "Fase" },
+];
+const SHEET_STATUS_LABEL: Record<string, string> = { pendente: "Pendente", gratuito: "Gratuito", pago: "Pago" };
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const fmtBRL = (n: number | null) => (n == null ? "—" : BRL.format(n));
@@ -446,12 +465,49 @@ export default function AreaCliente() {
                           {h.phase && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.06)", opacity: 0.85 }}>{h.phase}</span>}
                         </div>
                         <div style={{ marginTop: 4, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>
+                        {(h.categories || "").split(",").map((c) => c.trim()).filter(Boolean).length > 0 && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                            {(h.categories || "").split(",").map((c) => c.trim()).filter(Boolean).map((cat, j) => (
+                              <span key={j} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: `${meta.color}1e`, color: meta.color, border: `1px solid ${meta.color}44` }}>{cat}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             ))}
+          </section>
+        )}
+
+        {d.sheet && d.sheet.rows.length > 0 && (
+          <section className={styles.section}>
+            <h2 className={styles.h2}>Planilha do projeto</h2>
+            <div className={styles.card} style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {SHEET_COLS.map((c) => (
+                      <th key={c.key} style={{ textAlign: "left", padding: "8px 10px", whiteSpace: "nowrap", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", opacity: 0.7, borderBottom: "1px solid rgba(0,0,0,0.12)", background: d.sheet!.colColors[c.key] || undefined }}>{c.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.sheet.rows.map((r) => (
+                    <tr key={r.id}>
+                      {SHEET_COLS.map((c) => {
+                        const bg = r.cellColors?.[c.key] || d.sheet!.colColors[c.key] || undefined;
+                        const val = c.key === "status" ? (SHEET_STATUS_LABEL[r.status] || "") : (r[c.key] as string);
+                        return (
+                          <td key={c.key} style={{ padding: "8px 10px", borderBottom: "1px solid rgba(0,0,0,0.06)", background: bg, whiteSpace: c.key === "description" || c.key === "categories" ? "normal" : "nowrap" }}>{val || "—"}</td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
 
