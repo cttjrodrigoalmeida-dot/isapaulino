@@ -65,6 +65,24 @@ export const AVATARS: AvatarSpec[] = [
   { id: "a14", bg: "#ef6f9b", skin: "#d99a6c", hair: "#c74a1a", style: "ondulado", beard: true, gender: "m", shirt: "#3a4a6a" },
   { id: "a15", bg: "#8bd35a", skin: "#ffd9b8", hair: "#e0b04a", style: "buzz", gender: "f", shirt: "#c05a7a" },
   { id: "a16", bg: "#f4a63b", skin: "#d99a6c", hair: "#5a3a22", style: "curto", glasses: true, gender: "n", shirt: "#333333" },
+  // ── Leva de diversidade: mais tons de pele (incl. bem escuros), cabelos
+  //    expressivos/coloridos e mais representações não-binárias. ──
+  { id: "a17", bg: "#5b8def", skin: "#4a2f1e", hair: "#241d1a", style: "afro", gender: "n", shirt: "#2b2b33" },
+  { id: "a18", bg: "#3ec6a0", skin: "#6b4326", hair: "#ff5fa2", style: "cacheado", gender: "f", shirt: "#3a3550" },
+  { id: "a19", bg: "#a97bf0", skin: "#f0c19a", hair: "#4aa3ff", style: "curto", gender: "n", shirt: "#2f2f38" },
+  { id: "a20", bg: "#ef6f9b", skin: "#8a5a34", hair: "#9b5de5", style: "coque", gender: "f", shirt: "#3a4a6a" },
+  { id: "a21", bg: "#57c1e8", skin: "#a86b45", hair: "#22c1a8", style: "buzz", gender: "m", shirt: "#2b2b33" },
+  { id: "a22", bg: "#8bd35a", skin: "#d99a6c", hair: "#7bd452", style: "ondulado", gender: "n", shirt: "#333333" },
+  { id: "a23", bg: "#f4a63b", skin: "#6b4326", hair: "#241d1a", style: "buzz", beard: true, gender: "m", shirt: "#2c2c34" },
+  { id: "a24", bg: "#6c8cff", skin: "#4a2f1e", hair: "#c77dff", style: "longo", gender: "f", shirt: "#3a3550" },
+  { id: "a25", bg: "#ff8a5c", skin: "#c98a5a", hair: "#ff8a3d", style: "curto", glasses: true, gender: "n", shirt: "#2b2b33" },
+  { id: "a26", bg: "#f2c14e", skin: "#ffe0c4", hair: "#ff5fa2", style: "rabo", gender: "f", shirt: "#c05a7a" },
+  { id: "a27", bg: "#a97bf0", skin: "#8a5a34", hair: "#4aa3ff", style: "cacheado", gender: "n", shirt: "#2f2f38" },
+  { id: "a28", bg: "#3ec6a0", skin: "#6b4326", hair: "#e0b04a", style: "coque", gender: "f", shirt: "#e26a8a" },
+  { id: "a29", bg: "#5b8def", skin: "#a86b45", hair: "#9b5de5", style: "curto", glasses: true, beard: true, gender: "m", shirt: "#2b2b33" },
+  { id: "a30", bg: "#ef6f9b", skin: "#4a2f1e", hair: "#241d1a", style: "afro", glasses: true, gender: "n", shirt: "#3a4a6a" },
+  { id: "a31", bg: "#8bd35a", skin: "#d99a6c", hair: "#22c1a8", style: "coque", gender: "n", shirt: "#333333" },
+  { id: "a32", bg: "#f4a63b", skin: "#f0c19a", hair: "#7bd452", style: "buzz", gender: "f", shirt: "#c05a7a" },
 ];
 
 export const avatarById = (id?: string | null): AvatarSpec | undefined =>
