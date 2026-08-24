@@ -374,6 +374,15 @@ export function ClausesEditor({
     clearSel();
     commit(next);
   };
+  // Substitui TODAS as cláusulas marcadas pela(s) copiada(s) — cada uma ocupa o lugar da selecionada.
+  const replaceSelected = () => {
+    const items = readClauseClip();
+    if (!items.length || !selected.size) return;
+    const next: ContractClause[] = [];
+    norm.forEach((c, i) => { if (selected.has(i)) items.forEach((it) => next.push(structuredClone(it))); else next.push(c); });
+    clearSel();
+    commit(next);
+  };
 
   // Arrastar-e-soltar: reordena cláusulas.
   const onDrop = (to: number) => {
@@ -412,6 +421,7 @@ export function ClausesEditor({
           <span className={styles.selectionCount}>{selected.size} selecionada{selected.size === 1 ? "" : "s"}</span>
           <button type="button" className={styles.btn} onClick={copySelected} title="Copiar as cláusulas marcadas — depois use “⤵ Colar” em qualquer cláusula (inclusive em outro contrato).">⧉ Copiar selecionadas</button>
           <button type="button" className={styles.btn} onClick={duplicateSelected} title="Duplicar as cláusulas marcadas">⧉ Duplicar selecionadas</button>
+          {hasClip && <button type="button" className={styles.btn} onClick={replaceSelected} title="Substituir as cláusulas marcadas pela copiada (cada uma ocupa o lugar da selecionada). Copie uma cláusula antes.">⇄ Substituir selecionadas</button>}
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={deleteSelected} title="Excluir as cláusulas marcadas">🗑 Excluir selecionadas</button>
           <button type="button" className={styles.btn} onClick={clearSel} style={{ marginLeft: "auto" }}>Limpar seleção</button>
         </div>

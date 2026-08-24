@@ -378,6 +378,28 @@ export default function BriefingEditor({
     flashQuestion(withIds[0].id);
     setNotice("Pergunta substituída pela copiada.");
   };
+  // Substitui TODAS as perguntas marcadas pela(s) copiada(s) — cada uma ocupa o lugar da selecionada.
+  const replaceSelectedQ = () => {
+    const items = readClip();
+    if (!items.length || !selectedQ.size) return;
+    const stamp = Date.now();
+    let counter = 0;
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const sections = prev.sections.map((s) => {
+        const out: BriefingQuestion[] = [];
+        s.questions.forEach((q) => {
+          if (selectedQ.has(q.id)) {
+            items.forEach((it) => out.push({ ...structuredClone(it), id: `q-${stamp}-${counter++}` }));
+          } else out.push(q);
+        });
+        return { ...s, questions: out };
+      });
+      return { ...prev, sections };
+    });
+    clearSelQ();
+    setNotice("Perguntas selecionadas substituídas pela copiada.");
+  };
 
   // ── Copiar/colar/substituir BLOCOS (seções) — clipboard em localStorage ──
   const readSecClip = (): BriefingSection | null => {
@@ -711,6 +733,7 @@ export default function BriefingEditor({
             <span className={styles.selectionCount}>{selectedQ.size} pergunta{selectedQ.size === 1 ? "" : "s"} selecionada{selectedQ.size === 1 ? "" : "s"}</span>
             <button type="button" className={styles.btn} onClick={copySelectedQ} title="Copiar as perguntas marcadas — depois use “Colar pergunta” na seção desejada (inclusive em outro briefing).">⧉ Copiar selecionadas</button>
             <button type="button" className={styles.btn} onClick={duplicateSelectedQ} title="Duplicar as perguntas marcadas (cada uma logo abaixo dela).">⧉ Duplicar selecionadas</button>
+            {hasClip && <button type="button" className={styles.btn} onClick={replaceSelectedQ} title="Substituir as perguntas marcadas pela pergunta copiada (cada uma ocupa o lugar da selecionada). Copie uma pergunta antes.">⇄ Substituir selecionadas</button>}
             <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={deleteSelectedQ} title="Excluir as perguntas marcadas.">🗑 Excluir selecionadas</button>
             <button type="button" className={styles.btn} onClick={clearSelQ} style={{ marginLeft: "auto" }}>Limpar seleção</button>
           </div>

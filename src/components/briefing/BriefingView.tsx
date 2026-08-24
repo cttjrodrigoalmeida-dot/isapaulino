@@ -285,6 +285,13 @@ function QuestionItem({
   const [linkValue, setLinkValue] = useState("");
   const hasRefs = refItems.length > 0;
   const type = question.type ?? "longtext";
+  // Data: hoje (no fuso local, formato YYYY-MM-DD) é o mínimo E o padrão do campo.
+  // Assim o cliente não consegue escolher datas passadas e já parte de hoje.
+  const todayISO = new Date().toLocaleDateString("en-CA");
+  useEffect(() => {
+    if (type === "date" && !readOnly && !locked && !answer) onAnswer(todayISO);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, readOnly, locked, answer]);
   // "arquivo" = resposta é só anexo (sem caixa de texto) → sempre habilita anexar.
   const isFileOnly = type === "arquivo";
   const allowReference = isFileOnly || (question.allowReference ?? sectionKind === "ambiente");
@@ -401,9 +408,10 @@ function QuestionItem({
         return (
           <input
             type="date"
+            min={todayISO}
             className={`${styles.answerInput} ${pending ? styles.answerPending : ""}`}
-            value={answer}
-            onChange={(e) => onAnswer(e.target.value)}
+            value={answer || todayISO}
+            onChange={(e) => { const v = e.target.value; onAnswer(v && v < todayISO ? todayISO : v); }}
             aria-invalid={pending}
             style={{ maxWidth: 240 }}
           />
