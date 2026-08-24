@@ -999,10 +999,16 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
     await waitForRenderReady();
     try {
       if (pageRef.current) {
-        await exportElementToPdf(pageRef.current, `Contrato-${doc.contractNumber || doc.clientName || "documento"}`, { background: "#ffffff" });
+        const name = `Contrato-${doc.contractNumber || doc.clientName || "documento"}`;
+        try {
+          await exportElementToPdf(pageRef.current, name, { background: "#ffffff" });
+        } catch {
+          // Tenta de novo SEM as imagens (evita nova janela por imagem "tainted").
+          await exportElementToPdf(pageRef.current, name, { background: "#ffffff", skipImages: true });
+        }
       }
     } catch {
-      window.print();
+      /* desiste em silêncio — nunca abre nova janela */
     } finally {
       setPrinting(false);
       setExporting(false);

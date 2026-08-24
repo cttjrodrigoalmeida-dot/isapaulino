@@ -9,7 +9,7 @@
 export async function exportElementToPdf(
   el: HTMLElement,
   filename: string,
-  opts: { background?: string } = {}
+  opts: { background?: string; skipImages?: boolean } = {}
 ): Promise<void> {
   const [{ default: html2canvas }, jspdf] = await Promise.all([
     import("html2canvas"),
@@ -29,32 +29,51 @@ export async function exportElementToPdf(
     useCORS: true,
     logging: false,
     windowWidth: el.scrollWidth,
+    imageTimeout: 15000,
     ignoreElements: (node) => {
       if (node.hasAttribute?.("data-pdf-ignore")) return true;
+      // Retry sem imagens: pula <img> (evita canvas "tainted" por imagem externa).
+      if (opts.skipImages && node.tagName === "IMG") return true;
       const pos = getComputedStyle(node).position;
       return pos === "fixed" || pos === "sticky";
     },
   });
 
-  const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
-  const imgW = pageW;
-  const imgH = (canvas.height * imgW) / canvas.width;
-  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+  // A4 retrato em mm. Fatiamos o canvas em páginas de altura de página; a ÚLTIMA
+  // página é recortada na altura exata do conteúdo — assim não sobra aquele espaço
+  // de fundo (preto/branco) embaixo. Páginas cheias mantêm A4; só a última encurta.
+  const pageWmm = 210;
+  const pageHmm = 297;
+  const pxPerMm = canvas.width / pageWmm;
+  const pageHpx = Math.max(1, Math.floor(pageHmm * pxPerMm));
 
-  let position = 0;
-  let heightLeft = imgH;
-  pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-  heightLeft -= pageH;
-  while (heightLeft > 0) {
-    position -= pageH;
-    pdf.addPage();
-    pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-    heightLeft -= pageH;
+  let pdf: InstanceType<typeof JsPDF> | null = null;
+  let y = 0;
+  while (y < canvas.height) {
+    const sliceHpx = Math.min(pageHpx, canvas.height - y);
+    const sliceHmm = sliceHpx / pxPerMm;
+
+    const slice = document.createElement("canvas");
+    slice.width = canvas.width;
+    slice.height = sliceHpx;
+    const ctx = slice.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(canvas, 0, y, canvas.width, sliceHpx, 0, 0, canvas.width, sliceHpx);
+    }
+    const data = slice.toDataURL("image/jpeg", 0.92);
+
+    if (!pdf) {
+      pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: [pageWmm, sliceHmm] });
+    } else {
+      pdf.addPage([pageWmm, sliceHmm], "portrait");
+    }
+    pdf.addImage(data, "JPEG", 0, 0, pageWmm, sliceHmm);
+    y += sliceHpx;
   }
 
-  pdf.save(filename.toLowerCase().endsWith(".pdf") ? filename : `${filename}.pdf`);
+  if (pdf) pdf.save(filename.toLowerCase().endsWith(".pdf") ? filename : `${filename}.pdf`);
 }
 
 // Aguarda fontes + 2 frames para garantir o layout final antes de capturar.

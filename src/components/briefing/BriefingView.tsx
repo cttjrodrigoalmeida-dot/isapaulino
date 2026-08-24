@@ -1182,10 +1182,16 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
     try {
       if (pageRef.current) {
         const bg = theme === "light" ? "#f3f4f6" : "#0a0a0a";
-        await exportElementToPdf(pageRef.current, `Briefing-${b.number}`, { background: bg });
+        try {
+          await exportElementToPdf(pageRef.current, `Briefing-${b.number}`, { background: bg });
+        } catch {
+          // Falhou (ex.: imagem externa "tainta" o canvas) → tenta de novo SEM as
+          // imagens, em vez de abrir a tela de impressão numa nova janela.
+          await exportElementToPdf(pageRef.current, `Briefing-${b.number}`, { background: bg, skipImages: true });
+        }
       }
     } catch {
-      window.print();
+      /* desiste em silêncio — nunca abre nova janela */
     } finally {
       setPrinting(false);
       setExporting(false);

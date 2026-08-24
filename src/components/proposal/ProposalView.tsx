@@ -309,10 +309,15 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
     await waitForRenderReady();
     try {
       if (pageRef.current) {
-        await exportElementToPdf(pageRef.current, `Proposta-${p.number}`, { background: "#0a0a0a" });
+        try {
+          await exportElementToPdf(pageRef.current, `Proposta-${p.number}`, { background: "#0a0a0a" });
+        } catch {
+          // Tenta de novo SEM as imagens (evita nova janela por imagem "tainted").
+          await exportElementToPdf(pageRef.current, `Proposta-${p.number}`, { background: "#0a0a0a", skipImages: true });
+        }
       }
     } catch {
-      window.print();
+      /* desiste em silêncio — nunca abre nova janela */
     } finally {
       setPrinting(false);
       setExporting(false);
