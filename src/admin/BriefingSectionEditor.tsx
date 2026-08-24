@@ -39,6 +39,7 @@ function QuestionEditor({
   onCopy,
   onSaveToLibrary,
   onPasteAfter,
+  onReplace,
   hasClipboard,
   onDndStart,
   onDndOver,
@@ -65,6 +66,8 @@ function QuestionEditor({
   onSaveToLibrary: () => void;
   /** cola a pergunta copiada logo abaixo desta */
   onPasteAfter: () => void;
+  /** substitui ESTA pergunta pela copiada (ocupa o lugar dela) */
+  onReplace: () => void;
   hasClipboard: boolean;
   onDndStart: () => void;
   onDndOver: () => void;
@@ -114,6 +117,9 @@ function QuestionEditor({
           <button type="button" className={styles.btn} onClick={onCopy} title="Copiar esta pergunta para colar em outra seção (ou em outro briefing).">⧉ Copiar</button>
           {hasClipboard && (
             <button type="button" className={styles.btn} onClick={onPasteAfter} title="Colar a pergunta copiada logo abaixo desta.">⤵ Colar aqui</button>
+          )}
+          {hasClipboard && (
+            <button type="button" className={styles.btn} onClick={onReplace} title="Substituir ESTA pergunta pela copiada (ocupa o lugar dela).">⇄ Substituir</button>
           )}
           <button type="button" className={styles.btn} onClick={onSaveToLibrary} title="Abrir a biblioteca — salvar esta pergunta, criar uma nova ou inserir uma salva.">☆ Biblioteca</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover</button>
@@ -253,6 +259,7 @@ export default function BriefingSectionEditor({
   hasClipboard,
   onCopyQuestion,
   onPasteQuestion,
+  onReplaceQuestion,
   onOpenLibrary,
   onSaveQuestionToLibrary,
   onChange,
@@ -261,6 +268,10 @@ export default function BriefingSectionEditor({
   onReorderSection,
   onDuplicate,
   onContinuar,
+  hasSectionClip,
+  onCopySection,
+  onPasteSection,
+  onReplaceSection,
   onQuestionDragStart,
   onQuestionDrop,
   justMovedId,
@@ -288,6 +299,8 @@ export default function BriefingSectionEditor({
   onCopyQuestion: (qi: number) => void;
   /** cola a pergunta copiada na posição `at` (ou no fim se ausente) */
   onPasteQuestion: (at?: number) => void;
+  /** substitui a pergunta `qi` pela copiada (ocupa o lugar dela) */
+  onReplaceQuestion: (qi: number) => void;
   onOpenLibrary: () => void;
   onSaveQuestionToLibrary: (q: BriefingQuestion) => void;
   onChange: (next: BriefingSection) => void;
@@ -299,6 +312,14 @@ export default function BriefingSectionEditor({
   onDuplicate: () => void;
   /** nova seção do MESMO ambiente, logo abaixo, começando em branco */
   onContinuar: () => void;
+  /** há um bloco (seção) copiado no clipboard */
+  hasSectionClip: boolean;
+  /** copia ESTE bloco (seção) inteiro para o clipboard */
+  onCopySection: () => void;
+  /** cola o bloco copiado logo abaixo deste */
+  onPasteSection: () => void;
+  /** substitui ESTE bloco pelo copiado (ocupa o lugar dele) */
+  onReplaceSection: () => void;
   /** DnD: registra a pergunta arrastada (índice) desta seção */
   onQuestionDragStart: (qi: number) => void;
   /** DnD: solta a pergunta arrastada nesta seção, na posição toQ */
@@ -463,6 +484,13 @@ export default function BriefingSectionEditor({
           <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
           <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
           <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo (imagem + perguntas) — é só trocar a imagem.">⧉ Duplicar seção</button>
+          <button type="button" className={styles.btn} onClick={onCopySection} title="Copiar este bloco (seção) inteiro — para colar/substituir em outra seção (ou outro briefing).">⧉ Copiar</button>
+          {hasSectionClip && (
+            <button type="button" className={styles.btn} onClick={onPasteSection} title="Colar o bloco copiado logo abaixo deste.">⤵ Colar</button>
+          )}
+          {hasSectionClip && (
+            <button type="button" className={styles.btn} onClick={onReplaceSection} title="Substituir ESTE bloco pelo copiado (ocupa o lugar dele).">⇄ Substituir</button>
+          )}
           {isAmbiente && (
             <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={onContinuar} title="Nova seção do mesmo ambiente logo abaixo, começando em branco (sem repetir as perguntas).">+ Continuação</button>
           )}
@@ -581,6 +609,7 @@ export default function BriefingSectionEditor({
           onCopy={() => onCopyQuestion(qi)}
           onSaveToLibrary={() => onSaveQuestionToLibrary(section.questions[qi])}
           onPasteAfter={() => onPasteQuestion(qi + 1)}
+          onReplace={() => onReplaceQuestion(qi)}
           hasClipboard={hasClipboard}
           onDndStart={() => onQuestionDragStart(qi)}
           onDndOver={() => setDropIdx(qi)}

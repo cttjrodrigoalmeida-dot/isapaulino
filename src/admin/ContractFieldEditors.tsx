@@ -350,6 +350,15 @@ export function ClausesEditor({
     clearSel();
     commit(next);
   };
+  // Substitui a cláusula `i` pela(s) copiada(s) — ocupa o lugar dela.
+  const replaceClause = (i: number) => {
+    const items = readClauseClip();
+    if (!items.length) return;
+    const next = norm.slice();
+    next.splice(i, 1, ...items.map((c) => structuredClone(c)));
+    clearSel();
+    commit(next);
+  };
   const addClause = () => { clearSel(); commit([...norm, { number: "", title: "Nova cláusula", blocks: [{ type: "p", text: "" }] }]); };
 
   // Ações em massa (sobre as cláusulas marcadas).
@@ -453,6 +462,7 @@ export function ClausesEditor({
                 <button type="button" className={styles.iconBtn} onClick={() => move(ci, 1)} disabled={ci === norm.length - 1} aria-label="Descer">↓</button>
                 <button type="button" className={styles.btn} onClick={() => copyClause(ci)} title="Copiar cláusula">⧉ Copiar</button>
                 {hasClip && <button type="button" className={styles.btn} onClick={() => pasteAfter(ci)} title="Colar a cláusula copiada aqui">⤵ Colar</button>}
+                {hasClip && <button type="button" className={styles.btn} onClick={() => replaceClause(ci)} title="Substituir ESTA cláusula pela copiada (ocupa o lugar dela).">⇄ Substituir</button>}
                 <button type="button" className={styles.btn} onClick={() => duplicateClause(ci)} title="Duplicar cláusula">⧉ Duplicar</button>
                 <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeClause(ci)}>Excluir</button>
               </div>

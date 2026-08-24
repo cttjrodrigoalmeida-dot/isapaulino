@@ -12,9 +12,18 @@ import styles from "./Admin.module.css";
 
 // Pergunta reutilizável (clipboard/biblioteca): sem id/pin (posição é do ambiente).
 const CLIP_KEY = "ips_briefing_qclip";
+const SEC_CLIP_KEY = "ips_briefing_secclip"; // bloco (seção) copiado
 function stripQuestion(q: BriefingQuestion): BriefingQuestion {
   const { id: _id, pin: _pin, ...rest } = q;
   return rest as BriefingQuestion;
+}
+// Clona uma seção com ids novos (seção + perguntas) — para colar/substituir.
+function freshSection(sec: BriefingSection): BriefingSection {
+  const c = structuredClone(sec);
+  const stamp = Date.now();
+  c.id = `sec-${stamp}-${Math.random().toString(36).slice(2, 6)}`;
+  c.questions = (c.questions ?? []).map((q, qi) => ({ ...q, id: `q-${stamp}-${qi}` }));
+  return c;
 }
 
 type Status = "draft" | "published";
@@ -348,6 +357,61 @@ export default function BriefingEditor({
       return { ...prev, sections };
     });
     flashQuestion(withIds[0].id); // destaca a primeira cópia recém-colada
+  };
+  // Substitui a pergunta (si, qi) pela(s) copiada(s) — ocupa o lugar dela.
+  const replaceQuestion = (si: number, qi: number) => {
+    const items = readClip();
+    if (!items.length) return;
+    const stamp = Date.now();
+    const withIds = items.map((q, k) => ({ ...q, id: `q-${stamp}-${k}` }));
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const sections = prev.sections.map((s, idx) => {
+        if (idx !== si) return s;
+        const qs = s.questions.slice();
+        if (qi < 0 || qi >= qs.length) return s;
+        qs.splice(qi, 1, ...withIds); // tira a atual, põe a(s) copiada(s) no lugar
+        return { ...s, questions: qs };
+      });
+      return { ...prev, sections };
+    });
+    flashQuestion(withIds[0].id);
+    setNotice("Pergunta substituída pela copiada.");
+  };
+
+  // ── Copiar/colar/substituir BLOCOS (seções) — clipboard em localStorage ──
+  const readSecClip = (): BriefingSection | null => {
+    try { const raw = window.localStorage.getItem(SEC_CLIP_KEY); if (!raw) return null; const v = JSON.parse(raw); return v && typeof v === "object" ? (v as BriefingSection) : null; } catch { return null; }
+  };
+  const [hasSecClip, setHasSecClip] = useState<boolean>(() => !!readSecClip());
+  const copySection = (i: number) => {
+    const s = briefing?.sections[i];
+    if (!s) return;
+    try { window.localStorage.setItem(SEC_CLIP_KEY, JSON.stringify(s)); setHasSecClip(true); } catch { /* localStorage indisponível */ }
+    setNotice("Bloco (seção) copiado. Use “Colar bloco” ou “Substituir” em outra seção.");
+  };
+  const pasteSection = (at: number) => {
+    const s = readSecClip();
+    if (!s) return;
+    const copy = freshSection(s);
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const list = prev.sections.slice();
+      list.splice(Math.max(0, Math.min(at, list.length)), 0, copy);
+      return { ...prev, sections: list };
+    });
+  };
+  const replaceSection = (i: number) => {
+    const s = readSecClip();
+    if (!s) return;
+    const copy = freshSection(s);
+    setBriefing((prev) => {
+      if (!prev || i < 0 || i >= prev.sections.length) return prev;
+      const list = prev.sections.slice();
+      list.splice(i, 1, copy);
+      return { ...prev, sections: list };
+    });
+    setNotice("Bloco (seção) substituído pelo copiado.");
   };
 
   // ── Biblioteca de perguntas (D1) ──
@@ -783,6 +847,11 @@ export default function BriefingEditor({
               hasClipboard={hasClip}
               onCopyQuestion={(qi) => copyQuestion(i, qi)}
               onPasteQuestion={(at) => pasteQuestion(i, at)}
+              onReplaceQuestion={(qi) => replaceQuestion(i, qi)}
+              hasSectionClip={hasSecClip}
+              onCopySection={() => copySection(i)}
+              onPasteSection={() => pasteSection(i + 1)}
+              onReplaceSection={() => replaceSection(i)}
               onOpenLibrary={() => setPickerFor(i)}
               onSaveQuestionToLibrary={(q) => { setPendingSave(q); setPickerFor(i); }}
               onChange={(next) => setSection(i, next)}
