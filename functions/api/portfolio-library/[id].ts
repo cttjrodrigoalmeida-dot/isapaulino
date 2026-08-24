@@ -10,11 +10,17 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   try {
     await requireAuth(request, env);
     const id = String(params.id);
-    const body = await readJson<{ caption?: string }>(request);
+    const body = await readJson<{ caption?: string; clientTag?: string }>(request);
     const caption = (body.caption ?? "").toString().trim();
-    const res = await env.DB.prepare(
-      "UPDATE portfolio_library SET caption = ?, updated_at = datetime('now') WHERE id = ?"
-    ).bind(caption || null, id).run();
+    const clientTag = (body.clientTag ?? "").toString().trim();
+    // Atualiza a tag só quando o campo veio no corpo (não zera sem querer).
+    const res = "clientTag" in body
+      ? await env.DB.prepare(
+          "UPDATE portfolio_library SET caption = ?, client_tag = ?, updated_at = datetime('now') WHERE id = ?"
+        ).bind(caption || null, clientTag || null, id).run()
+      : await env.DB.prepare(
+          "UPDATE portfolio_library SET caption = ?, updated_at = datetime('now') WHERE id = ?"
+        ).bind(caption || null, id).run();
     if (!res.meta.changes) return error(404, "Item não encontrado.");
     return json({ ok: true });
   } catch (e) {

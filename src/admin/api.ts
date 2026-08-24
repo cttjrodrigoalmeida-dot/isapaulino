@@ -17,6 +17,16 @@ export interface LibraryPortfolioItem {
   id: string;
   image: string;   // /api/files/uploads/... (mesmo objeto no R2)
   caption: string;
+  clientTag?: string;  // cliente/projeto p/ agrupar (opcional)
+}
+
+// Nota reutilizável da biblioteca do estúdio.
+export interface LibraryNote {
+  id: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  updatedAt: string;
 }
 
 // Bloco de investimento salvo na biblioteca (reutilizável entre propostas).
@@ -673,18 +683,33 @@ export const api = {
 
   // ── Biblioteca de portfólio (imagens reutilizáveis entre propostas) ──
   listPortfolioLibrary: () => req<{ items: LibraryPortfolioItem[] }>("/api/portfolio-library"),
-  addToPortfolioLibrary: (image: string, caption?: string) =>
+  addToPortfolioLibrary: (image: string, caption?: string, clientTag?: string) =>
     req<{ ok: true; id: string }>("/api/portfolio-library", {
       method: "POST",
-      body: JSON.stringify({ image, caption: caption ?? "" }),
+      body: JSON.stringify({ image, caption: caption ?? "", clientTag: clientTag ?? "" }),
     }),
-  updatePortfolioLibraryItem: (id: string, caption: string) =>
+  updatePortfolioLibraryItem: (id: string, caption: string, clientTag?: string) =>
     req<{ ok: true }>(`/api/portfolio-library/${encodeURIComponent(id)}`, {
       method: "PUT",
-      body: JSON.stringify({ caption }),
+      body: JSON.stringify(clientTag === undefined ? { caption } : { caption, clientTag }),
     }),
   deletePortfolioLibraryItem: (id: string) =>
     req<{ ok: true }>(`/api/portfolio-library/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // ── Biblioteca de notas do estúdio ──
+  listNoteLibrary: () => req<{ items: LibraryNote[] }>("/api/note-library"),
+  createNote: (title: string, body: string, pinned = false) =>
+    req<{ ok: true; id: string }>("/api/note-library", {
+      method: "POST",
+      body: JSON.stringify({ title, body, pinned }),
+    }),
+  updateNote: (id: string, title: string, body: string, pinned: boolean) =>
+    req<{ ok: true }>(`/api/note-library/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ title, body, pinned }),
+    }),
+  deleteNote: (id: string) =>
+    req<{ ok: true }>(`/api/note-library/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   // ── Biblioteca de blocos de investimento (reutilizáveis entre propostas) ──
   listBlockLibrary: () => req<{ items: LibraryBlock[] }>("/api/block-library"),

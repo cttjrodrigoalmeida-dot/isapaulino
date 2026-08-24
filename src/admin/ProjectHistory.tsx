@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api, ApiError, type ProjectHistoryEntry } from "./api";
 import { PROJECT_EVENT_TYPES, eventTypeMeta } from "../projectEvents";
+import { confirmDialog } from "./confirmDialog";
 import styles from "./Admin.module.css";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -53,7 +54,7 @@ export default function ProjectHistory({ contractId, projectLabel, clientName, s
   const cancelEdit = () => { setEditId(null); setDraft(emptyDraft()); };
 
   const remove = async (h: ProjectHistoryEntry) => {
-    if (!confirm("Excluir este registro do histórico?")) return;
+    if (!(await confirmDialog({ title: "Excluir registro", message: "Excluir este registro do histórico?" }))) return;
     setBusy(true);
     try { await api.deleteProjectHistory(contractId, h.id); await load(); }
     catch (e) { setError(e instanceof ApiError ? e.message : "Erro ao excluir."); }

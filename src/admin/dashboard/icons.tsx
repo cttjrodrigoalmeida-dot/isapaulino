@@ -20,6 +20,7 @@ export const IcContrato = () => <S><path d="M6 3h8l4 4v12a1 1 0 0 1-1 1H6a1 1 0 
 export const IcTarefas = () => <S><rect x="3.5" y="4" width="6" height="6" rx="1.5" /><path d="M5 7l1.2 1.2L8 6" /><rect x="3.5" y="14" width="6" height="6" rx="1.5" /><path d="M13 6.5h8M13 17.5h8" /></S>;
 export const IcTabela = () => <S><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9.5h18M3 15h18M9 4v16" /></S>;
 export const IcBiblioteca = () => <S><path d="M12 5.5c-1.6-1.1-3.6-1.5-6-1.5v13c2.4 0 4.4.4 6 1.5 1.6-1.1 3.6-1.5 6-1.5V4c-2.4 0-4.4.4-6 1.5Z" /><path d="M12 5.5v13" /></S>;
+export const IcHistorico = () => <S><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" /><path d="M5.5 3v3.5H9" /><path d="M12 8v4.2l2.8 1.8" /></S>;
 
 export const IcSearch = () => <S size={16}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></S>;
 export const IcBell = () => <S size={18}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" /><path d="M10 19a2 2 0 0 0 4 0" /></S>;

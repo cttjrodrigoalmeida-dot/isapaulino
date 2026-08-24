@@ -12,6 +12,7 @@ import {
   IcTarefas,
   IcTabela,
   IcBiblioteca,
+  IcHistorico,
 } from "./icons";
 
 export type SectionId =
@@ -22,6 +23,7 @@ export type SectionId =
   // mas não aparece mais como item do menu lateral.
   | "contratos"
   | "projetos"
+  | "historico"
   | "tarefas"
   | "financeiro"
   | "tabela"
@@ -55,12 +57,13 @@ export const SECTIONS: SectionDef[] = [
   { id: "tarefas", label: "Tarefas", sub: "Lista de tarefas", icon: IcTarefas, category: "Produção", ready: false },
   { id: "calendario", label: "Calendário", sub: "Compromissos e agendas", icon: IcCalendario, category: "Produção", ready: true },
 
+  { id: "historico", label: "Histórico do projeto", sub: "Linha do tempo dos projetos", icon: IcHistorico, category: "Gestão", ready: true },
   { id: "financeiro", label: "Financeiro", sub: "Receitas, custos e parcelas", icon: IcFinanceiro, category: "Gestão", ready: true },
   { id: "tabela", label: "Tabela de custos", sub: "Custos e preços do estúdio", icon: IcTabela, category: "Gestão", ready: false },
   { id: "relatorios", label: "Relatórios", sub: "Desempenho e métricas", icon: IcRelatorios, category: "Gestão", ready: true },
 
   { id: "arquivos", label: "Arquivos", sub: "Pastas e documentos", icon: IcArquivos, category: "Recursos", ready: true },
-  { id: "biblioteca", label: "Biblioteca", sub: "Blocos, templates e referências", icon: IcBiblioteca, category: "Recursos", ready: false },
+  { id: "biblioteca", label: "Biblioteca", sub: "Imagens, perguntas, blocos e notas", icon: IcBiblioteca, category: "Recursos", ready: true },
 
   { id: "auditoria", label: "Auditoria", sub: "Registro de ações", icon: IcRelatorios, category: "Sistema", ready: true },
   { id: "lixeira", label: "Lixeira", sub: "Restaurar excluídos", icon: IcArquivos, category: "Sistema", ready: true },

@@ -19,6 +19,8 @@ import Arquivos from "./dashboard/Arquivos";
 import Auditoria from "./dashboard/Auditoria";
 import Lixeira from "./dashboard/Lixeira";
 import Armazenamento from "./dashboard/Armazenamento";
+import Biblioteca from "./Biblioteca";
+import HistoricoProjetos from "./HistoricoProjetos";
 import Placeholder from "./dashboard/Placeholder";
 import MinhaConta from "./dashboard/MinhaConta";
 import { SECTIONS, type SectionId } from "./dashboard/sections";
@@ -132,6 +134,10 @@ export default function AdminApp() {
         return <Contratos requestNew={contratosNew} />;
       case "projetos":
         return <Projetos onGoComercial={() => setSection("comercial")} />;
+      case "historico":
+        return <HistoricoProjetos />;
+      case "biblioteca":
+        return <Biblioteca />;
       case "financeiro":
         return <Financeiro />;
       case "relatorios":
