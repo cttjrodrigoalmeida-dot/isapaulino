@@ -44,8 +44,8 @@
 
   --border-radius-standard: 40px 0 40px 0;
   --border-radius-mirror: 0 40px 0 40px;
-  --border-radius-btn: 14px 0 14px 0;
-  --border-radius-sm: 8px 0 8px 0;
+  --border-radius-btn: 7px 0 7px 0;
+  --border-radius-sm: 4px 0 4px 0;
 
   --clip-corner: 18px;
   --clip-corner-sm: 10px;
