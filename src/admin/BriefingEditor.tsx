@@ -624,6 +624,10 @@ export default function BriefingEditor({
             </span>
             <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
           </div>
+          {/* Nº + nome do projeto, fixo na rolagem — evita confundir entre janelas. */}
+          <span className={styles.editorDocId} style={{ margin: "0 auto" }} title="Briefing que você está editando agora">
+            ✎ Nº&nbsp;{(briefing.number || "").trim() || "—"}{briefing.title?.trim() ? ` · ${briefing.title.trim()}` : (briefing.serviceTitle?.trim() ? ` · ${briefing.serviceTitle.trim()}` : "")}
+          </span>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 150 }}>
               <option value="draft">Rascunho (oculto)</option>

@@ -906,6 +906,10 @@ export default function ContractEditor({
             </span>
             <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
           </div>
+          {/* Nº + nome do projeto, fixo na rolagem — evita confundir entre janelas. */}
+          <span className={styles.editorDocId} style={{ margin: "0 auto" }} title="Contrato que você está editando agora">
+            ✎ Nº&nbsp;{(doc?.contractNumber || "").trim() || "—"}{doc?.projectName?.trim() ? ` · ${doc.projectName.trim()}` : (doc?.serviceTitle?.trim() ? ` · ${doc.serviceTitle.trim()}` : "")}
+          </span>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
             <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
