@@ -121,7 +121,7 @@ function QuestionEditor({
           {hasClipboard && (
             <button type="button" className={styles.btn} onClick={onReplace} title="Substituir ESTA pergunta pela copiada (ocupa o lugar dela).">⇄ Substituir</button>
           )}
-          <button type="button" className={styles.btn} onClick={onSaveToLibrary} title="Abrir a biblioteca — salvar esta pergunta, criar uma nova ou inserir uma salva.">☆ Biblioteca</button>
+          <button type="button" className={styles.btn} onClick={onSaveToLibrary} title="Biblioteca — salvar esta pergunta, criar uma nova ou inserir uma salva." aria-label="Biblioteca" style={{ padding: "6px 9px" }}>☆</button>
           <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover</button>
         </div>
       </div>
