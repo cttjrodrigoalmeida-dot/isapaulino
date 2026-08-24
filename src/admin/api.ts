@@ -26,6 +26,7 @@ export interface LibraryNote {
   title: string;
   body: string;
   pinned: boolean;
+  contractId?: string;   // projeto (contrato) vinculado, opcional
   updatedAt: string;
 }
 
@@ -698,15 +699,15 @@ export const api = {
 
   // ── Biblioteca de notas do estúdio ──
   listNoteLibrary: () => req<{ items: LibraryNote[] }>("/api/note-library"),
-  createNote: (title: string, body: string, pinned = false) =>
+  createNote: (title: string, body: string, pinned = false, contractId = "") =>
     req<{ ok: true; id: string }>("/api/note-library", {
       method: "POST",
-      body: JSON.stringify({ title, body, pinned }),
+      body: JSON.stringify({ title, body, pinned, contractId }),
     }),
-  updateNote: (id: string, title: string, body: string, pinned: boolean) =>
+  updateNote: (id: string, title: string, body: string, pinned: boolean, contractId?: string) =>
     req<{ ok: true }>(`/api/note-library/${encodeURIComponent(id)}`, {
       method: "PUT",
-      body: JSON.stringify({ title, body, pinned }),
+      body: JSON.stringify(contractId === undefined ? { title, body, pinned } : { title, body, pinned, contractId }),
     }),
   deleteNote: (id: string) =>
     req<{ ok: true }>(`/api/note-library/${encodeURIComponent(id)}`, { method: "DELETE" }),

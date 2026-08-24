@@ -6,6 +6,7 @@ import {
   type LibraryBlock,
   type LibraryPortfolioItem,
   type LibraryNote,
+  type ContractSummary,
 } from "./api";
 import type { BriefingQuestion } from "../components/briefing/types";
 import type { InvestmentBlock } from "../components/proposal/types";
@@ -343,34 +344,54 @@ function LibraryList({ loading, empty, hint, rows, onStartEdit, onEditChange, on
 }
 
 /* ════════════════════ NOTAS ════════════════════ */
+const projLabel = (c: ContractSummary) => (c.projectName || c.title || c.proposalTitle || "Projeto").trim();
+const projOptionLabel = (c: ContractSummary) => {
+  const nome = projLabel(c);
+  const cli = (c.clientName || "").trim();
+  const num = (c.contractNumber || "").trim();
+  return `${cli ? cli + " — " : ""}${nome}${num ? ` (Nº ${num})` : ""}`;
+};
+
 function NotasTab() {
   const [items, setItems] = useState<LibraryNote[]>([]);
+  const [projects, setProjects] = useState<ContractSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [project, setProject] = useState("");   // contractId escolhido no formulário
+  const [filter, setFilter] = useState("");     // filtro da lista por projeto
   const [editId, setEditId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { items } = await api.listNoteLibrary(); setItems(items); }
-    catch (e) { toast(e instanceof ApiError ? e.message : "Erro ao carregar notas.", { type: "error" }); }
+    try {
+      const [{ items }, { contracts }] = await Promise.all([api.listNoteLibrary(), api.listContracts()]);
+      setItems(items);
+      setProjects(contracts.filter((c) => c.status !== "cancelled"));
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Erro ao carregar notas.", { type: "error" }); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const reset = () => { setEditId(null); setTitle(""); setBody(""); };
+  const labelFor = useCallback((contractId?: string) => {
+    if (!contractId) return "";
+    const c = projects.find((p) => p.id === contractId);
+    return c ? projOptionLabel(c) : "Projeto";
+  }, [projects]);
+
+  const reset = () => { setEditId(null); setTitle(""); setBody(""); setProject(""); };
   const save = async () => {
     if (!title.trim() && !body.trim()) { toast("Escreva um título ou o conteúdo.", { type: "error" }); return; }
     setBusy(true);
     try {
-      if (editId) await api.updateNote(editId, title.trim(), body, items.find((n) => n.id === editId)?.pinned ?? false);
-      else await api.createNote(title.trim(), body);
+      if (editId) await api.updateNote(editId, title.trim(), body, items.find((n) => n.id === editId)?.pinned ?? false, project);
+      else await api.createNote(title.trim(), body, false, project);
       reset(); await load();
     } catch (e) { toast(e instanceof ApiError ? e.message : "Erro ao salvar.", { type: "error" }); }
     finally { setBusy(false); }
   };
-  const startEdit = (n: LibraryNote) => { setEditId(n.id); setTitle(n.title); setBody(n.body); };
+  const startEdit = (n: LibraryNote) => { setEditId(n.id); setTitle(n.title); setBody(n.body); setProject(n.contractId ?? ""); };
   const togglePin = async (n: LibraryNote) => {
     try { await api.updateNote(n.id, n.title, n.body, !n.pinned); await load(); }
     catch (e) { toast(e instanceof ApiError ? e.message : "Erro ao fixar.", { type: "error" }); }
@@ -381,6 +402,8 @@ function NotasTab() {
     catch (e) { toast(e instanceof ApiError ? e.message : "Erro ao excluir.", { type: "error" }); }
   };
 
+  const shown = filter ? items.filter((n) => (n.contractId ?? "") === filter) : items;
+
   return (
     <div>
       <div className={styles.card} style={{ marginBottom: 18 }}>
@@ -388,6 +411,13 @@ function NotasTab() {
         <div className={styles.field}>
           <label className={styles.label}>Título</label>
           <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Texto padrão de follow-up" />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Projeto do cliente (opcional)</label>
+          <select className={styles.input} value={project} onChange={(e) => setProject(e.target.value)}>
+            <option value="">— Sem projeto (nota geral) —</option>
+            {projects.map((c) => <option key={c.id} value={c.id}>{projOptionLabel(c)}</option>)}
+          </select>
         </div>
         <div className={styles.field}>
           <label className={styles.label}>Conteúdo</label>
@@ -399,25 +429,45 @@ function NotasTab() {
         </div>
       </div>
 
+      {!loading && items.length > 0 && (
+        <div className={styles.field} style={{ maxWidth: 360, marginBottom: 14 }}>
+          <label className={styles.label}>Filtrar por projeto</label>
+          <select className={styles.input} value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="">Todos os projetos</option>
+            {projects.map((c) => <option key={c.id} value={c.id}>{projOptionLabel(c)}</option>)}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <div className={styles.loading}>Carregando…</div>
       ) : items.length === 0 ? (
         <div className={styles.empty}>Nenhuma nota ainda. Crie a primeira acima.</div>
+      ) : shown.length === 0 ? (
+        <div className={styles.empty}>Nenhuma nota neste projeto.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
-          {items.map((n) => (
-            <div key={n.id} className={styles.card} style={{ padding: "12px 14px", borderColor: n.pinned ? "var(--color-accent)" : undefined }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--color-text-primary)", flex: 1 }}>{n.title || "Sem título"}</div>
-                <button className={styles.btn} title={n.pinned ? "Desafixar" : "Fixar no topo"} onClick={() => togglePin(n)} style={{ padding: "3px 8px", opacity: n.pinned ? 1 : 0.6 }}>📌</button>
+          {shown.map((n) => {
+            const proj = labelFor(n.contractId);
+            return (
+              <div key={n.id} className={styles.card} style={{ padding: "12px 14px", borderColor: n.pinned ? "var(--color-accent)" : undefined }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--color-text-primary)", flex: 1 }}>{n.title || "Sem título"}</div>
+                  <button className={styles.btn} title={n.pinned ? "Desafixar" : "Fixar no topo"} onClick={() => togglePin(n)} style={{ padding: "3px 8px", opacity: n.pinned ? 1 : 0.6 }}>📌</button>
+                </div>
+                {proj && (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 7, fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 999, background: "var(--color-accent-soft, rgba(180,150,90,0.14))", color: "var(--color-accent)", border: "1px solid var(--color-accent)", maxWidth: "100%" }}>
+                    <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>📁 {proj}</span>
+                  </div>
+                )}
+                {n.body && <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)", marginTop: 6, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{n.body}</div>}
+                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                  <button className={styles.btn} onClick={() => startEdit(n)} style={{ padding: "4px 10px" }}>✎ Editar</button>
+                  <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => remove(n)} style={{ padding: "4px 10px", marginLeft: "auto" }}>Excluir</button>
+                </div>
               </div>
-              {n.body && <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)", marginTop: 6, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{n.body}</div>}
-              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                <button className={styles.btn} onClick={() => startEdit(n)} style={{ padding: "4px 10px" }}>✎ Editar</button>
-                <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => remove(n)} style={{ padding: "4px 10px", marginLeft: "auto" }}>Excluir</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

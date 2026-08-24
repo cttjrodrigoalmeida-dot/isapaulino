@@ -121,12 +121,13 @@ CREATE INDEX IF NOT EXISTS idx_plib_created ON portfolio_library(created_at DESC
 
 -- Biblioteca de NOTAS reutilizáveis do estúdio (lembretes, textos-modelo…).
 CREATE TABLE IF NOT EXISTS note_library (
-  id         TEXT PRIMARY KEY,               -- uuid
-  title      TEXT NOT NULL DEFAULT '',       -- título curto
-  body       TEXT NOT NULL DEFAULT '',       -- conteúdo da nota
-  pinned     INTEGER NOT NULL DEFAULT 0,     -- 1 = fixada no topo
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  id          TEXT PRIMARY KEY,              -- uuid
+  title       TEXT NOT NULL DEFAULT '',      -- título curto
+  body        TEXT NOT NULL DEFAULT '',      -- conteúdo da nota
+  pinned      INTEGER NOT NULL DEFAULT 0,    -- 1 = fixada no topo
+  contract_id TEXT,                          -- projeto (contrato) vinculado (opcional)
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_nlib_updated ON note_library(updated_at DESC);
 
