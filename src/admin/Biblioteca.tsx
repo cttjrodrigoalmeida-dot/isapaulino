@@ -8,12 +8,22 @@ import {
   type LibraryNote,
   type ContractSummary,
 } from "./api";
-import type { BriefingQuestion } from "../components/briefing/types";
+import type { BriefingQuestion, QuestionType } from "../components/briefing/types";
 import type { InvestmentBlock } from "../components/proposal/types";
 import { toast } from "./toast";
 import { confirmDialog } from "./confirmDialog";
+import ListEditor from "./ListEditor";
 import UploadHint from "./UploadHint";
 import styles from "./Admin.module.css";
+
+const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
+  { value: "text", label: "Texto curto" },
+  { value: "longtext", label: "Texto longo" },
+  { value: "radio", label: "Escolha única (botões)" },
+  { value: "checklist", label: "Lista selecionável" },
+  { value: "select", label: "Seleção" },
+];
+const HAS_OPTIONS: QuestionType[] = ["radio", "checklist", "select"];
 
 // Página central da BIBLIOTECA: reúne, em abas, tudo o que o estúdio reaproveita
 // (imagens de portfólio, perguntas de briefing, blocos de proposta e notas). O
@@ -208,6 +218,16 @@ function PerguntasTab() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
 
+  // Compor uma pergunta NOVA direto na biblioteca (para usar depois).
+  const [busy, setBusy] = useState(false);
+  const [cLabel, setCLabel] = useState("");
+  const [cText, setCText] = useState("");
+  const [cType, setCType] = useState<QuestionType>("longtext");
+  const [cOptions, setCOptions] = useState<string[]>([]);
+  const [cQuick, setCQuick] = useState<string[]>([]);
+  const [cOther, setCOther] = useState(false);
+  const resetCompose = () => { setCLabel(""); setCText(""); setCType("longtext"); setCOptions([]); setCQuick([]); setCOther(false); };
+
   const load = useCallback(async () => {
     setLoading(true);
     try { const { items } = await api.listQuestionLibrary(); setItems(items); }
@@ -215,6 +235,19 @@ function PerguntasTab() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const create = async () => {
+    const label = (cLabel || cText).trim();
+    if (!cText.trim()) { toast("Escreva o enunciado da pergunta.", { type: "error" }); return; }
+    const q: BriefingQuestion = { id: "", text: cText.trim(), type: cType };
+    if (HAS_OPTIONS.includes(cType) && cOptions.length) q.options = cOptions;
+    if (cOther && (cType === "radio" || cType === "checklist")) q.allowOther = true;
+    if (cQuick.length) q.quickFills = cQuick;
+    setBusy(true);
+    try { await api.saveQuestionToLibrary(label, q); toast("Pergunta adicionada à biblioteca.", { type: "success" }); resetCompose(); await load(); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Erro ao salvar.", { type: "error" }); }
+    finally { setBusy(false); }
+  };
 
   const rename = async () => {
     if (!editId) return;
@@ -230,20 +263,63 @@ function PerguntasTab() {
   };
 
   return (
-    <LibraryList
-      loading={loading}
-      empty="Nenhuma pergunta salva ainda. No editor de briefing, use ☆ na barra da pergunta para salvar aqui."
-      hint="Perguntas de briefing reutilizáveis. Para inserir numa seção, use ☆ Biblioteca no editor de briefing."
-      rows={items.map((it) => ({
-        id: it.id, label: it.label, meta: questionMeta(it.question), preview: it.question.text || "",
-        editing: editId === it.id, editValue: editLabel,
-      }))}
-      onStartEdit={(id) => { const it = items.find((x) => x.id === id); if (it) { setEditId(id); setEditLabel(it.label); } }}
-      onEditChange={setEditLabel}
-      onCommitEdit={rename}
-      onCancelEdit={() => setEditId(null)}
-      onDelete={(id) => { const it = items.find((x) => x.id === id); if (it) remove(it); }}
-    />
+    <div>
+      <div className={styles.card} style={{ marginBottom: 18 }}>
+        <div className={styles.cardTitle}>Nova pergunta</div>
+        <p className={styles.pageHint} style={{ marginTop: 2 }}>
+          Crie perguntas aqui para reutilizar depois — no editor de briefing, use <strong>+ da biblioteca</strong> para inseri-las em qualquer seção.
+        </p>
+        <div className={styles.field}>
+          <label className={styles.label}>Nome na biblioteca (opcional)</label>
+          <input className={styles.input} value={cLabel} onChange={(e) => setCLabel(e.target.value)} placeholder="Ex.: Observações do ambiente" />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Enunciado (a pergunta que o cliente vê)</label>
+          <textarea className={styles.input} rows={2} value={cText} onChange={(e) => setCText(e.target.value)} placeholder="Ex.: Qual a metragem aproximada do ambiente?" />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Tipo de resposta</label>
+          <select className={styles.input} value={cType} onChange={(e) => setCType(e.target.value as QuestionType)} style={{ maxWidth: 320 }}>
+            {QUESTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+        {HAS_OPTIONS.includes(cType) && (
+          <div className={styles.field}>
+            <label className={styles.label}>Opções</label>
+            <ListEditor items={cOptions} onChange={setCOptions} placeholder="ex.: Sim" />
+          </div>
+        )}
+        {(cType === "radio" || cType === "checklist") && (
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, margin: "0 0 12px", fontSize: 13, color: "var(--color-text-secondary)", cursor: "pointer" }}>
+            <input type="checkbox" checked={cOther} onChange={(e) => setCOther(e.target.checked)} />
+            <span>Incluir opção “Outros” (abre campo livre)</span>
+          </label>
+        )}
+        <div className={styles.field}>
+          <label className={styles.label}>Botões de resposta rápida extras (opcional)</label>
+          <ListEditor items={cQuick} onChange={setCQuick} placeholder="ex.: IGUAL AO ANTERIOR" />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={create} disabled={busy || !cText.trim()}>+ Adicionar à biblioteca</button>
+          {(cLabel || cText || cOptions.length || cQuick.length) && <button className={styles.btn} onClick={resetCompose} disabled={busy}>Limpar</button>}
+        </div>
+      </div>
+
+      <LibraryList
+        loading={loading}
+        empty="Nenhuma pergunta salva ainda. Crie a primeira acima, ou use ☆ na barra da pergunta no editor de briefing."
+        hint="Perguntas de briefing reutilizáveis. Para inserir numa seção, use + da biblioteca no editor de briefing."
+        rows={items.map((it) => ({
+          id: it.id, label: it.label, meta: questionMeta(it.question), preview: it.question.text || "",
+          editing: editId === it.id, editValue: editLabel,
+        }))}
+        onStartEdit={(id) => { const it = items.find((x) => x.id === id); if (it) { setEditId(id); setEditLabel(it.label); } }}
+        onEditChange={setEditLabel}
+        onCommitEdit={rename}
+        onCancelEdit={() => setEditId(null)}
+        onDelete={(id) => { const it = items.find((x) => x.id === id); if (it) remove(it); }}
+      />
+    </div>
   );
 }
 
