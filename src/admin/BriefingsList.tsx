@@ -256,7 +256,7 @@ export default function BriefingsList({
                             { label: `Respostas (${b.responseCount || 0})`, onSelect: () => onResponses(b.number) },
                             { label: "Duplicar", onSelect: () => onDuplicate(b.number), disabled: busy === b.number },
                             { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
-                            { label: "Baixar PDF", href: pub ? `/briefing/${b.number}` : undefined, hidden: !pub },
+                            { label: "Baixar PDF", href: pub ? `/briefing/${b.number}?pdf=1` : undefined, hidden: !pub },
                             { label: "Cancelar", onSelect: () => cancelB(b), disabled: busy === b.number, hidden: s === "cancelled" },
                             { label: "Excluir", onSelect: () => remove(b.number), danger: true, disabled: busy === b.number },
                           ];

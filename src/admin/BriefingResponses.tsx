@@ -25,20 +25,64 @@ export default function BriefingResponses({
   // Edição das respostas pelo admin (sobrescreve).
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
+  // Anexos em edição (admin adiciona imagem/vídeo/link a cada resposta).
+  const [draftRefs, setDraftRefs] = useState<Record<string, string[]>>({});
+  const [linkDraft, setLinkDraft] = useState<Record<string, string>>({});
+  const [refBusy, setRefBusy] = useState<string | null>(null); // qid enviando
   const [saving, setSaving] = useState(false);
   // Bloqueio manual das respostas (preserva o briefing após iniciar os trabalhos).
   const [locked, setLocked] = useState(false);
   const [lockBusy, setLockBusy] = useState(false);
   const [pdfId, setPdfId] = useState<number | null>(null); // resposta gerando PDF
 
-  const startEdit = (r: BriefingResponse) => { setEditingId(r.id); setDraft({ ...r.answers }); setNotice(null); setError(null); };
-  const cancelEdit = () => { setEditingId(null); setDraft({}); };
+  // Normaliza refImages (string legada OU array) para { qid: url[] }.
+  const refsToMap = (r: BriefingResponse): Record<string, string[]> => {
+    const out: Record<string, string[]> = {};
+    for (const [qid, v] of Object.entries(r.refImages ?? {})) {
+      const list = Array.isArray(v) ? v.filter(Boolean) : v ? [v as string] : [];
+      if (list.length) out[qid] = list;
+    }
+    return out;
+  };
+  const startEdit = (r: BriefingResponse) => {
+    setEditingId(r.id); setDraft({ ...r.answers }); setDraftRefs(refsToMap(r)); setLinkDraft({});
+    setNotice(null); setError(null);
+  };
+  const cancelEdit = () => { setEditingId(null); setDraft({}); setDraftRefs({}); setLinkDraft({}); };
+
+  // Adiciona um anexo (imagem/vídeo/arquivo) a uma pergunta em edição.
+  const addRefFile = async (qid: string, files: File[]) => {
+    if (!files.length || editingId == null) return;
+    setRefBusy(qid); setError(null);
+    try {
+      const urls: string[] = [];
+      for (const f of files) { const { url } = await api.uploadBriefingRef(number, f); urls.push(url); }
+      setDraftRefs((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), ...urls] }));
+    } catch (err) { setError(err instanceof ApiError ? err.message : "Erro ao enviar anexo."); }
+    finally { setRefBusy(null); }
+  };
+  const addRefLink = (qid: string) => {
+    const raw = (linkDraft[qid] ?? "").trim();
+    if (!raw) return;
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    setDraftRefs((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), url] }));
+    setLinkDraft((prev) => ({ ...prev, [qid]: "" }));
+  };
+  const removeRefAt = (qid: string, i: number) => {
+    setDraftRefs((prev) => {
+      const list = (prev[qid] ?? []).filter((_, k) => k !== i);
+      const next = { ...prev };
+      if (list.length) next[qid] = list; else delete next[qid];
+      return next;
+    });
+  };
+
   const saveEdit = async (r: BriefingResponse) => {
     setSaving(true); setError(null);
     try {
-      await api.updateBriefingResponse(number, r.id, draft);
-      setResponses((prev) => prev.map((x) => (x.id === r.id ? { ...x, answers: { ...draft } } : x)));
-      setEditingId(null); setDraft({});
+      await api.updateBriefingResponse(number, r.id, draft, draftRefs);
+      setResponses((prev) => prev.map((x) => (x.id === r.id ? { ...x, answers: { ...draft }, refImages: { ...draftRefs } } : x)));
+      setEditingId(null); setDraft({}); setDraftRefs({}); setLinkDraft({});
       setNotice("Respostas atualizadas.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
@@ -147,6 +191,7 @@ export default function BriefingResponses({
   };
 
   const isImgUrl = (url: string) => /\.(jpe?g|png|webp|avif|gif)$/i.test(url);
+  const isVideoUrl = (url: string) => /\.(mp4|webm|ogg|ogv|mov|m4v)$/i.test(url);
 
   // PDF no formato do template: imagem do ambiente com pinos numerados,
   // perguntas numeradas e anexos do cliente embutidos como imagem.
@@ -276,6 +321,9 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
         </a>
       );
     }
+    if (isVideoUrl(url)) {
+      return <video src={url} className={styles.refThumb} controls preload="metadata" playsInline />;
+    }
     if (isExternal) {
       const label = url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
       return (
@@ -299,6 +347,49 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
         ))}
       </span>
     ) : null;
+
+  // Editor de anexos (modo edição): mostra os atuais com "×" e permite anexar
+  // imagem/vídeo/arquivo ou colar um link — igual ao que o cliente pode fazer.
+  const refEditor = (qid: string) => {
+    const list = draftRefs[qid] ?? [];
+    return (
+      <div style={{ marginTop: 8 }}>
+        {list.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            {list.map((u, i) => {
+              const ext = /^https?:\/\//i.test(u) && !u.startsWith("/api/files/");
+              return (
+                <span key={i} style={{ position: "relative", display: "inline-flex", alignItems: "center", border: "1px solid var(--color-border)", borderRadius: 8, padding: isImgUrl(u) || isVideoUrl(u) ? 0 : "4px 8px", background: "var(--color-surface-2)" }}>
+                  {isImgUrl(u) ? (
+                    <img src={u} alt="Anexo" className={styles.refThumb} />
+                  ) : isVideoUrl(u) ? (
+                    <video src={u} className={styles.refThumb} controls preload="metadata" playsInline />
+                  ) : (
+                    <a href={u} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--color-text-secondary)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {ext ? `🔗 ${u.replace(/^https?:\/\//i, "").slice(0, 40)}` : "📎 anexo"}
+                    </a>
+                  )}
+                  <button type="button" onClick={() => removeRefAt(qid, i)} aria-label="Remover anexo"
+                    style={{ position: "absolute", top: -7, right: -7, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#f0506e", color: "#fff", fontSize: 11, lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <label className={`${styles.btn} ${styles.btnGhost}`} style={{ cursor: refBusy === qid ? "default" : "pointer", fontSize: 12, opacity: refBusy === qid ? 0.6 : 1 }}>
+            {refBusy === qid ? "Enviando…" : "📎 Anexar imagem/vídeo"}
+            <input type="file" accept="image/*,video/*,audio/*,.pdf,.gif,.dwg,.skp,.zip" multiple style={{ display: "none" }} disabled={refBusy === qid}
+              onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) addRefFile(qid, fs); e.target.value = ""; }} />
+          </label>
+          <input className={styles.input} style={{ maxWidth: 240, fontSize: 12 }} placeholder="🔗 Colar link (Drive, Pinterest…)"
+            value={linkDraft[qid] ?? ""} onChange={(e) => setLinkDraft((p) => ({ ...p, [qid]: e.target.value }))}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRefLink(qid); } }} />
+          <button type="button" className={styles.btn} style={{ fontSize: 12 }} onClick={() => addRefLink(qid)} disabled={!(linkDraft[qid] ?? "").trim()}>+ Link</button>
+        </div>
+      </div>
+    );
+  };
 
   const numBadge = (i: number) => (
     <span
@@ -434,7 +525,7 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
                                 — sem resposta
                               </div>
                             )}
-                            <Attachments urls={refList(r, q.id)} />
+                            {editing ? refEditor(q.id) : <Attachments urls={refList(r, q.id)} />}
                           </div>
                         );
                       })}

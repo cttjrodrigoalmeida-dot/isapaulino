@@ -324,6 +324,16 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
     }
   };
 
+  // Download em 1 clique a partir da lista: abrir /proposta/<n>?pdf=1 já baixa o
+  // PDF automaticamente (sem precisar clicar de novo em "Baixar PDF" na página).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("pdf") !== "1") return;
+    const t = setTimeout(() => { exportPdf(); }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Portfólio: "Ver Mais" + lightbox (ampliar — somente desktop) ──
   const GALLERY_INITIAL = 4;
   const gallery = p.gallery ?? [];

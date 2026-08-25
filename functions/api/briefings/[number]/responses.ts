@@ -156,7 +156,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   try {
     await requireAuth(request, env);
     const number = String(params.number);
-    const body = await readJson<{ id?: number; answers?: Record<string, string> }>(request);
+    const body = await readJson<{ id?: number; answers?: Record<string, string>; refImages?: Record<string, string | string[]> }>(request);
     const id = Number(body.id);
     if (!Number.isFinite(id)) return error(400, "Id da resposta inválido.");
     if (!body.answers || typeof body.answers !== "object" || Array.isArray(body.answers)) {
@@ -164,9 +164,30 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     }
     const answersStr = JSON.stringify(body.answers);
     if (answersStr.length > MAX_ANSWERS_BYTES) return error(413, "Respostas muito grandes.");
-    const res = await env.DB.prepare(
-      "UPDATE briefing_responses SET answers = ? WHERE id = ? AND briefing_number = ?"
-    ).bind(answersStr, id, number).run();
+
+    // Anexos (imagens/vídeos/links) — só atualiza a coluna quando o campo veio no
+    // corpo. Guarda URLs internas (/api/files/…) e links http(s); descarta o resto.
+    let res;
+    if ("refImages" in body) {
+      const okRef = (u: unknown): u is string =>
+        typeof u === "string" && (u.startsWith("/api/files/") || /^https?:\/\//i.test(u));
+      const refImages: Record<string, string[]> = {};
+      const raw = body.refImages;
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        for (const [qid, v] of Object.entries(raw)) {
+          const list = (Array.isArray(v) ? v : [v]).filter(okRef);
+          if (list.length) refImages[qid] = list;
+        }
+      }
+      const refImagesStr = Object.keys(refImages).length ? JSON.stringify(refImages) : null;
+      res = await env.DB.prepare(
+        "UPDATE briefing_responses SET answers = ?, ref_images = ? WHERE id = ? AND briefing_number = ?"
+      ).bind(answersStr, refImagesStr, id, number).run();
+    } else {
+      res = await env.DB.prepare(
+        "UPDATE briefing_responses SET answers = ? WHERE id = ? AND briefing_number = ?"
+      ).bind(answersStr, id, number).run();
+    }
     if (!res.meta.changes) return error(404, "Resposta não encontrada.");
     return json({ ok: true });
   } catch (e) {

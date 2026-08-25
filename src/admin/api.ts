@@ -663,11 +663,24 @@ export const api = {
     req<{ responses: BriefingResponse[] }>(
       `/api/briefings/${encodeURIComponent(number)}/responses`
     ),
-  updateBriefingResponse: (number: string, id: number, answers: Record<string, string>) =>
+  updateBriefingResponse: (number: string, id: number, answers: Record<string, string>, refImages?: Record<string, string[]>) =>
     req<{ ok: true }>(`/api/briefings/${encodeURIComponent(number)}/responses`, {
       method: "PUT",
-      body: JSON.stringify({ id, answers }),
+      body: JSON.stringify(refImages === undefined ? { id, answers } : { id, answers, refImages }),
     }),
+  // Sobe um anexo (imagem/vídeo/arquivo) de referência para uma resposta (admin).
+  async uploadBriefingRef(number: string, file: File): Promise<{ url: string; key: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/briefings/${encodeURIComponent(number)}/upload`, {
+      method: "POST",
+      credentials: "include",
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, (data as { error?: string }).error ?? "Erro ao enviar arquivo.");
+    return data as { url: string; key: string };
+  },
 
   // ── Biblioteca de perguntas (reutilizáveis) ──
   listQuestionLibrary: () => req<{ items: LibraryQuestion[] }>("/api/question-library"),

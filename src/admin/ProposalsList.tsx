@@ -303,7 +303,7 @@ export default function ProposalsList({
                           { label: "Editar", onSelect: () => onEdit(p.number) },
                           { label: "Duplicar", onSelect: () => onDuplicate(p.number) },
                           { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
-                          { label: "Baixar PDF", href: pub ? `/proposta/${p.number}` : undefined, hidden: !pub },
+                          { label: "Baixar PDF", href: pub ? `/proposta/${p.number}?pdf=1` : undefined, hidden: !pub },
                           { label: "Cancelar", onSelect: () => cancelP(p), hidden: p.status === "cancelled" },
                           { label: "Excluir", onSelect: () => remove(p.number), danger: true },
                         ];

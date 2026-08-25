@@ -6,15 +6,25 @@
 //   edita e exclui por lá. Devolve { url, key }; a URL é servida por /api/files/<key>.
 import type { Env } from "../../_lib/types";
 import { json, error, toErrorResponse } from "../../_lib/http";
+import { getSession } from "../../_lib/auth";
 
-const MAX_BYTES = 15 * 1024 * 1024; // 15 MB (arquivos de referência podem ser maiores)
-// Tipos de imagem que podem ser servidos inline com segurança (SVG fica de fora — risco de XSS).
+const MAX_BYTES = 60 * 1024 * 1024; // 60 MB (permite vídeos curtos de referência)
+// Tipos que podem ser servidos inline com segurança (SVG fica de fora — risco de XSS).
+// Imagens (miniatura), vídeos e áudios (player inline no briefing).
 const INLINE_IMAGES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/avif": "avif",
   "image/gif": "gif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/ogg": "ogv",
+  "video/quicktime": "mov",
+  "audio/mpeg": "mp3",
+  "audio/mp4": "m4a",
+  "audio/ogg": "oga",
+  "audio/wav": "wav",
 };
 
 // Nome de pasta seguro (mesma regra do gerenciador de documentos).
@@ -33,17 +43,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   try {
     const number = String(params.number);
 
-    // só aceita anexo para briefing publicado e NÃO bloqueado
+    // O admin autenticado anexa a qualquer momento (edita as respostas por aqui);
+    // o cliente só quando o briefing está publicado e NÃO bloqueado.
+    const isAdmin = !!(await getSession(request, env));
     const b = await env.DB.prepare("SELECT status, locked_at, proposal_number FROM briefings WHERE number = ? AND deleted_at IS NULL")
       .bind(number)
       .first<{ status: string; locked_at: string | null; proposal_number: string | null }>();
-    if (!b || b.status !== "published") return error(404, "Briefing não encontrado.");
-    if (b.locked_at) return error(423, "Briefing bloqueado para edição.");
+    if (!b) return error(404, "Briefing não encontrado.");
+    if (!isAdmin) {
+      if (b.status !== "published") return error(404, "Briefing não encontrado.");
+      if (b.locked_at) return error(423, "Briefing bloqueado para edição.");
+    }
 
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return error(400, "Envie um arquivo no campo 'file'.");
-    if (file.size > MAX_BYTES) return error(413, "Arquivo muito grande (máx. 15 MB).");
+    if (file.size > MAX_BYTES) return error(413, "Arquivo muito grande (máx. 60 MB).");
 
     // Nome do cliente vem da proposta vinculada → vira a pasta em Arquivos.
     let clientName = "";

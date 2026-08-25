@@ -178,6 +178,8 @@ type RefItem = {
   name: string;
   /** imagem → mostra miniatura; senão (PDF/arquivo/link) → chip. */
   isImage: boolean;
+  /** vídeo → mostra player inline. */
+  isVideo?: boolean;
   /** link externo (Drive, Pinterest…) — não sobe pro R2. */
   isLink: boolean;
   /** arquivo local ainda por enviar ao R2. */
@@ -186,11 +188,12 @@ type RefItem = {
 type Refs = Record<string, RefItem[]>;
 
 const IMG_EXT_RE = /\.(jpe?g|png|webp|avif|gif|heic|heif)$/i;
+const VIDEO_EXT_RE = /\.(mp4|webm|ogg|ogv|mov|m4v)$/i;
 // Deriva um RefItem a partir de uma URL já persistida (sem File).
 function refItemFromUrl(url: string): RefItem {
   const isLink = !url.startsWith("blob:") && !url.startsWith("/api/files/");
   const name = decodeURIComponent(url.split("/").pop() || url).replace(/^https?:\/\//, "");
-  return { url, name, isImage: IMG_EXT_RE.test(url), isLink };
+  return { url, name, isImage: IMG_EXT_RE.test(url), isVideo: VIDEO_EXT_RE.test(url), isLink };
 }
 // Referência vazia estável (evita re-render por identidade de array nova).
 const EMPTY_REFS: RefItem[] = [];
@@ -313,7 +316,7 @@ function QuestionItem({
     <input
       ref={fileRef}
       type="file"
-      accept="image/*,.pdf,.dwg,.skp,.zip"
+      accept="image/*,video/*,audio/*,.pdf,.gif,.dwg,.skp,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
       multiple
       className={styles.refHidden}
       onChange={(e) => {
@@ -332,6 +335,15 @@ function QuestionItem({
         it.isImage ? (
           <span key={i} className={styles.refPreview}>
             <img src={it.url} alt={it.name || "Referência anexada"} className={styles.refImg} />
+            {!readOnly && (
+              <button type="button" className={styles.refRemove} onClick={() => onRemoveRef(i)} aria-label="Remover anexo">
+                ×
+              </button>
+            )}
+          </span>
+        ) : it.isVideo ? (
+          <span key={i} className={styles.refPreview}>
+            <video src={it.url} className={styles.refImg} controls preload="metadata" playsInline />
             {!readOnly && (
               <button type="button" className={styles.refRemove} onClick={() => onRemoveRef(i)} aria-label="Remover anexo">
                 ×
@@ -1038,6 +1050,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
       url: URL.createObjectURL(file),
       name: file.name,
       isImage: file.type.startsWith("image/") || IMG_EXT_RE.test(file.name),
+      isVideo: file.type.startsWith("video/") || VIDEO_EXT_RE.test(file.name),
       isLink: false,
       file,
     }));
@@ -1205,6 +1218,15 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
       setExporting(false);
     }
   };
+
+  // Download em 1 clique a partir da lista: /briefing/<n>?pdf=1 baixa automaticamente.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("pdf") !== "1") return;
+    const t = setTimeout(() => { exportPdf(); }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Validação ao enviar ──
   const validate = useCallback((): string[] => {
