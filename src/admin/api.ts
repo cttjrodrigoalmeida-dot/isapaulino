@@ -103,6 +103,8 @@ export interface BriefingSummary {
   responseCount: number;
   /** Data/hora da última resposta recebida (ISO). */
   lastResponseAt: string | null;
+  /** 1 = edição do cliente bloqueada (locked_at preenchido); 0 = liberado. */
+  locked?: number | boolean;
 }
 
 export interface BriefingResponse {

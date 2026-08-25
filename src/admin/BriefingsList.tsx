@@ -130,6 +130,24 @@ export default function BriefingsList({
     try { await navigator.clipboard.writeText(url); toast("Link copiado!", { type: "success" }); }
     catch { window.prompt("Copie o link:", url); }
   };
+  // Bloqueia/desbloqueia a edição do cliente direto na lista (sem abrir o briefing).
+  const toggleLock = async (b: BriefingSummary) => {
+    const next = !b.locked;
+    if (next && !(await confirmDialog({
+      title: "Bloquear o briefing?",
+      message: `Bloquear o briefing Nº ${b.number}? O cliente passa a só visualizar (você ainda edita por aqui).`,
+      confirmLabel: "Bloquear",
+      cancelLabel: "Voltar",
+      danger: false,
+    }))) return;
+    setBusy(b.number);
+    try {
+      await api.lockBriefing(b.number, next);
+      setItems((prev) => prev.map((x) => (x.number === b.number ? { ...x, locked: next } : x)));
+      toast(next ? "Briefing bloqueado — o cliente só visualiza." : "Briefing desbloqueado — o cliente pode editar.", { type: "success" });
+    } catch (err) { toast(err instanceof ApiError ? err.message : "Erro ao alterar o bloqueio."); }
+    finally { setBusy(null); }
+  };
 
   return (
     <div className={styles.container}>
@@ -211,6 +229,26 @@ export default function BriefingsList({
                         {(() => {
                           const pub = b.status === "published";
                           const publicUrl = `${location.origin}/briefing/${b.number}`;
+                          const locked = !!b.locked;
+                          const lockColor = locked ? "#f0506e" : "#4ade80"; // vermelho = bloqueado, verde = liberado
+                          const lockBtn = (
+                            <button
+                              type="button"
+                              onClick={() => toggleLock(b)}
+                              disabled={busy === b.number}
+                              title={locked ? "Briefing BLOQUEADO — clique para desbloquear (liberar edição do cliente)" : "Briefing LIBERADO — clique para bloquear (o cliente só visualiza)"}
+                              aria-label={locked ? "Desbloquear briefing" : "Bloquear briefing"}
+                              style={{
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                width: 34, height: 32, marginRight: 8, verticalAlign: "middle",
+                                borderRadius: "7px 0 7px 0", cursor: busy === b.number ? "default" : "pointer",
+                                background: `${lockColor}1e`, border: `1px solid ${lockColor}`, color: lockColor,
+                                fontSize: 15, lineHeight: 1, opacity: busy === b.number ? 0.5 : 1,
+                              }}
+                            >
+                              {locked ? "🔒" : "🔓"}
+                            </button>
+                          );
                           const acts: MenuAction[] = [
                             { label: "Ver", href: pub ? `/briefing/${b.number}` : undefined, hidden: !pub },
                             { label: "Editar", onSelect: () => onEdit(b.number) },
@@ -221,7 +259,12 @@ export default function BriefingsList({
                             { label: "Cancelar", onSelect: () => cancelB(b), disabled: busy === b.number, hidden: s === "cancelled" },
                             { label: "Excluir", onSelect: () => remove(b.number), danger: true, disabled: busy === b.number },
                           ];
-                          return <ActionMenu actions={acts} />;
+                          return (
+                            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end" }}>
+                              {lockBtn}
+                              <ActionMenu actions={acts} />
+                            </span>
+                          );
                         })()}
                       </td>
                     </tr>
