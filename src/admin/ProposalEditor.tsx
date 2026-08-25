@@ -686,8 +686,20 @@ export default function ProposalEditor({
             </div>
             {apoioOpen && (
               <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 8 }}>
-                  <div className={styles.railTitle} style={{ margin: 0 }}>Ambientes da proposta</div>
+                {/* Seções da proposta — navegação rápida (clique pula até o card). */}
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Seções da proposta</div>
+                {PROPOSAL_SECTIONS.map((s) => {
+                  const active = s.id === activeSectionId;
+                  return (
+                    <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
+                      <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                    </button>
+                  );
+                })}
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, margin: "16px 0 8px" }}>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Ambientes do escopo</div>
                   <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={ambAdd} title="Adicionar um ambiente — cria na proposta">+ Adicionar</button>
                 </div>
                 <p className={styles.pageHint} style={{ margin: "0 0 8px", fontSize: 11 }}>
