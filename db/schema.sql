@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS briefings (
   data            TEXT NOT NULL,                 -- JSON do tipo Briefing
   -- Apoio PESSOAL do admin ao preencher (não vai para o cliente):
   editor_notes    TEXT,                          -- bloco de notas do editor
-  editor_done     TEXT,                          -- JSON array de ids de seção marcadas "preenchidas"
+  editor_done     TEXT,                          -- (legado) ids de seção "preenchidas"
+  editor_checklist TEXT,                          -- checklist manual de ambientes: [{id,label,done}]
   -- Bloqueio manual das respostas: NULL = cliente pode editar; timestamp = congelado
   -- (o cliente só visualiza; o admin ainda pode editar pelo painel).
   locked_at       TEXT,

@@ -87,6 +87,13 @@ export function numberOwnerConflict(
   return null;
 }
 
+// Item do checklist manual de ambientes ("Meu apoio" do editor de briefing).
+export interface BriefingChecklistItem {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
 export interface BriefingSummary {
   number: string;
   proposalNumber: string | null;
@@ -629,7 +636,7 @@ export const api = {
   // ── briefings ──
   listBriefings: () => req<{ briefings: BriefingSummary[] }>("/api/briefings"),
   getBriefing: (number: string) =>
-    req<{ briefing: Briefing; status: "draft" | "published"; locked?: boolean; editorNotes?: string; editorDone?: string[] }>(
+    req<{ briefing: Briefing; status: "draft" | "published"; locked?: boolean; editorNotes?: string; editorDone?: string[]; editorChecklist?: BriefingChecklistItem[] }>(
       `/api/briefings/${encodeURIComponent(number)}`
     ),
   // Bloqueia/desbloqueia a edição das respostas pelo cliente (admin ainda edita).
@@ -647,7 +654,7 @@ export const api = {
     number: string,
     briefing: Briefing,
     status: "draft" | "published",
-    aid?: { editorNotes?: string; editorDone?: string[] }
+    aid?: { editorNotes?: string; editorDone?: string[]; editorChecklist?: BriefingChecklistItem[] }
   ) =>
     req<{ ok: true; number: string; status: string }>(
       `/api/briefings/${encodeURIComponent(number)}`,

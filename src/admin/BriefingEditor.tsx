@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, BriefingSection, BriefingQuestion } from "../components/briefing/types";
 import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
-import { api, ApiError, numberOwnerConflict, type ProposalSummary, type LibraryQuestion, type NumberUse } from "./api";
+import { api, ApiError, numberOwnerConflict, type ProposalSummary, type LibraryQuestion, type NumberUse, type BriefingChecklistItem } from "./api";
 import BriefingSectionEditor from "./BriefingSectionEditor";
 import QuestionLibraryPicker from "./QuestionLibraryPicker";
 import BackToTop from "./BackToTop";
@@ -56,9 +56,13 @@ export default function BriefingEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // ── Apoio pessoal (D1): notas + checklist "preenchido" + salvamento ──
+  // ── Apoio pessoal (D1): notas + checklist MANUAL de ambientes + salvamento ──
   const [notes, setNotes] = useState("");
-  const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
+  // Checklist manual (a Isabela adiciona/remove os ambientes que precisa criar —
+  // é um lembrete, desvinculado das seções reais). Persiste no D1.
+  const [checklist, setChecklist] = useState<BriefingChecklistItem[]>([]);
+  const [selChk, setSelChk] = useState<Set<string>>(new Set());
+  const chkDrag = useRef<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [activeSectionId, setActiveSectionId] = useState("");
@@ -67,8 +71,25 @@ export default function BriefingEditor({
   const hydratedRef = useRef(false);   // evita marcar "dirty" no carregamento
   const savingRef = useRef(false);     // evita autosave sobreposto
   const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
-  const toggleDone = (id: string) =>
-    setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const newChkId = () => `chk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const addChkItem = () => setChecklist((l) => [...l, { id: newChkId(), label: "", done: false }]);
+  const setChkLabel = (id: string, label: string) => setChecklist((l) => l.map((it) => (it.id === id ? { ...it, label } : it)));
+  const toggleChkDone = (id: string) => setChecklist((l) => l.map((it) => (it.id === id ? { ...it, done: !it.done } : it)));
+  const dupChkItem = (id: string) => setChecklist((l) => l.flatMap((it) => (it.id === id ? [it, { ...it, id: newChkId() }] : [it])));
+  const delChkItem = (id: string) => { setChecklist((l) => l.filter((it) => it.id !== id)); setSelChk((s) => { const n = new Set(s); n.delete(id); return n; }); };
+  const toggleSelChk = (id: string) => setSelChk((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const allChkSelected = checklist.length > 0 && selChk.size === checklist.length;
+  const toggleSelAllChk = () => setSelChk(allChkSelected ? new Set() : new Set(checklist.map((it) => it.id)));
+  const dupSelChk = () => { if (!selChk.size) return; setChecklist((l) => l.flatMap((it) => (selChk.has(it.id) ? [it, { ...it, id: newChkId() }] : [it]))); setSelChk(new Set()); };
+  const delSelChk = () => { if (!selChk.size) return; setChecklist((l) => l.filter((it) => !selChk.has(it.id))); setSelChk(new Set()); };
+  const reorderChk = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setChecklist((l) => {
+      const from = l.findIndex((it) => it.id === fromId), to = l.findIndex((it) => it.id === toId);
+      if (from < 0 || to < 0) return l;
+      const next = l.slice(); const [m] = next.splice(from, 1); next.splice(to, 0, m); return next;
+    });
+  };
 
   // ── Seleção em massa de perguntas (global entre seções; por id da pergunta) ──
   const [selectedQ, setSelectedQ] = useState<Set<string>>(new Set());
@@ -138,12 +159,12 @@ export default function BriefingEditor({
           setBriefing(draft);
           setStatus("draft");
         } else {
-          const { briefing: b, status: s, editorNotes, editorDone } = await api.getBriefing(number!);
+          const { briefing: b, status: s, editorNotes, editorChecklist } = await api.getBriefing(number!);
           if (!alive) return;
           setBriefing(b);
           setStatus(s);
           setNotes(editorNotes ?? "");
-          setDoneSet(new Set(editorDone ?? []));
+          setChecklist(editorChecklist ?? []);
         }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -550,11 +571,11 @@ export default function BriefingEditor({
   // Marca alterações pendentes (após o carregamento inicial).
   useEffect(() => {
     if (hydratedRef.current) setDirty(true);
-  }, [briefing, status, notes, doneSet]);
+  }, [briefing, status, notes, checklist]);
 
   // Autosave silencioso (só briefing JÁ criado): debounce ~2,5s de ociosidade.
-  const latestRef = useRef({ briefing, status, notes, doneSet });
-  latestRef.current = { briefing, status, notes, doneSet };
+  const latestRef = useRef({ briefing, status, notes, checklist });
+  latestRef.current = { briefing, status, notes, checklist };
   useEffect(() => {
     if (!dirty || isNew || !autosaveOn) return;
     const t = window.setTimeout(async () => {
@@ -563,13 +584,13 @@ export default function BriefingEditor({
       if (!cur.briefing) return;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes, editorDone: [...cur.doneSet] });
+        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes, editorChecklist: cur.checklist });
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
-  }, [dirty, briefing, status, notes, doneSet, isNew, number, autosaveOn]);
+  }, [dirty, briefing, status, notes, checklist, isNew, number, autosaveOn]);
 
   // Scroll-spy: acende a seção visível durante a rolagem.
   useEffect(() => {
@@ -612,7 +633,7 @@ export default function BriefingEditor({
     savingRef.current = true; setSaving(true);
     try {
       if (isNew) { await api.createBriefing(briefing, finalStatus); onSaved(); return; }
-      await api.updateBriefing(number!, briefing, finalStatus, { editorNotes: notes, editorDone: [...doneSet] });
+      await api.updateBriefing(number!, briefing, finalStatus, { editorNotes: notes, editorChecklist: checklist });
       if (publish && status !== "published") setStatus("published");
       setLastSavedAt(Date.now());
       setDirty(false);
@@ -625,9 +646,9 @@ export default function BriefingEditor({
 
   // Derivados do apoio (navegação/progresso). Continuações colapsam no "run" pai.
   const navList = (briefing?.sections ?? []).map((s, i) => ({ s, i })).filter(({ i }) => !contInfo[i]?.isCont);
-  const ambienteList = navList.filter(({ s }) => s.kind === "ambiente");
-  const doneCount = navList.filter(({ s }) => doneSet.has(s.id)).length;
-  const pct = navList.length ? Math.round((doneCount / navList.length) * 100) : 0;
+  // Progresso agora reflete o checklist MANUAL (ambientes marcados como prontos).
+  const doneCount = checklist.filter((it) => it.done).length;
+  const pct = checklist.length ? Math.round((doneCount / checklist.length) * 100) : 0;
   let activeRunId = "";
   if (briefing) {
     let ai = briefing.sections.findIndex((s) => s.id === activeSectionId);
@@ -747,25 +768,21 @@ export default function BriefingEditor({
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
             {navList.map(({ s }) => {
-              const done = doneSet.has(s.id);
               const active = s.id === activeRunId;
               const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
               return (
                 <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={name}>
-                  <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                  <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
                 </button>
               );
             })}
-            <div style={{ marginTop: 14 }}>
-              <div className={styles.railTitle} style={{ marginBottom: 6 }}>Progresso · {pct}%</div>
-              <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Concluído</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Em andamento</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={styles.statusDot} />Pendente</span>
+            {checklist.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Ambientes prontos · {doneCount}/{checklist.length} · {pct}%</div>
+                <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
               </div>
-            </div>
+            )}
             <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
           </aside>
 
@@ -939,15 +956,51 @@ export default function BriefingEditor({
             </div>
             {apoioOpen && (
               <>
-                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Checklist de ambientes</div>
-                {ambienteList.length === 0 ? (
-                  <p className={styles.pageHint} style={{ margin: "0 0 8px" }}>Sem ambientes ainda.</p>
-                ) : ambienteList.map(({ s }) => (
-                  <label key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 2px", fontSize: 12.5, cursor: "pointer" }}>
-                    <input type="checkbox" checked={doneSet.has(s.id)} onChange={() => toggleDone(s.id)} />
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title || "Ambiente"}</span>
-                  </label>
-                ))}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Checklist de ambientes</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={addChkItem} title="Adicionar um ambiente à sua lista de apoio">+ Adicionar</button>
+                    <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={dupSelChk} disabled={!selChk.size} title="Duplicar os marcados">⧉ Duplicar</button>
+                    <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ fontSize: 10, padding: "5px 9px" }} onClick={delSelChk} disabled={!selChk.size} title="Excluir os marcados">🗑 Excluir</button>
+                  </div>
+                </div>
+                <p className={styles.pageHint} style={{ margin: "0 0 8px", fontSize: 11 }}>
+                  Lista de apoio (só sua) — anote os ambientes que precisa criar e marque conforme montar cada formulário.
+                </p>
+                {checklist.length === 0 ? (
+                  <p className={styles.pageHint} style={{ margin: "0 0 8px" }}>Nenhum ambiente na lista. Use <strong>+ Adicionar</strong>.</p>
+                ) : (
+                  <>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 2px", fontSize: 11.5, color: "var(--color-text-muted)", cursor: "pointer" }}>
+                      <input type="checkbox" checked={allChkSelected} ref={(el) => { if (el) el.indeterminate = selChk.size > 0 && !allChkSelected; }} onChange={toggleSelAllChk} />
+                      Selecionar tudo
+                    </label>
+                    {checklist.map((it) => (
+                      <div
+                        key={it.id}
+                        draggable
+                        onDragStart={() => (chkDrag.current = it.id)}
+                        onDragEnd={() => (chkDrag.current = null)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => { e.preventDefault(); if (chkDrag.current) reorderChk(chkDrag.current, it.id); chkDrag.current = null; }}
+                        style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 2px", fontSize: 12.5 }}
+                      >
+                        <span className={styles.dragHandle} title="Arraste para reordenar" style={{ cursor: "grab" }}>⠿</span>
+                        <input type="checkbox" checked={selChk.has(it.id)} onChange={() => toggleSelChk(it.id)} aria-label="Selecionar" />
+                        <input type="checkbox" checked={it.done} onChange={() => toggleChkDone(it.id)} title="Marcar como pronto" style={{ accentColor: "#4ade80" }} />
+                        <input
+                          className={styles.input}
+                          value={it.label}
+                          onChange={(e) => setChkLabel(it.id, e.target.value)}
+                          placeholder="Ex.: COZINHA"
+                          style={{ flex: 1, fontSize: 12.5, padding: "5px 8px", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}
+                        />
+                        <button type="button" className={styles.iconBtn} onClick={() => dupChkItem(it.id)} title="Duplicar">⧉</button>
+                        <button type="button" className={styles.iconBtn} onClick={() => delChkItem(it.id)} title="Excluir" aria-label="Excluir">🗑</button>
+                      </div>
+                    ))}
+                  </>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, marginBottom: 6 }}>
                   <div className={styles.railTitle} style={{ margin: 0 }}>Bloco de notas</div>
                   <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setNotes("")} disabled={!notes}>Limpar</button>
