@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, BriefingSection, BriefingQuestion } from "../components/briefing/types";
 import { SAMPLE_BRIEFING } from "../components/briefing/sampleBriefing";
-import { api, ApiError, numberOwnerConflict, type ProposalSummary, type LibraryQuestion, type NumberUse, type BriefingChecklistItem } from "./api";
+import { api, ApiError, numberOwnerConflict, type ProposalSummary, type LibraryQuestion, type NumberUse } from "./api";
 import BriefingSectionEditor from "./BriefingSectionEditor";
 import QuestionLibraryPicker from "./QuestionLibraryPicker";
 import BackToTop from "./BackToTop";
@@ -56,11 +56,11 @@ export default function BriefingEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // ── Apoio pessoal (D1): notas + checklist MANUAL de ambientes + salvamento ──
+  // ── Apoio pessoal (D1): notas + salvamento ──
   const [notes, setNotes] = useState("");
-  // Checklist manual (a Isabela adiciona/remove os ambientes que precisa criar —
-  // é um lembrete, desvinculado das seções reais). Persiste no D1.
-  const [checklist, setChecklist] = useState<BriefingChecklistItem[]>([]);
+  // "Checklist de ambientes" ESPELHA as seções do briefing (auto) e as edita:
+  // adicionar/renomear/mover/duplicar/excluir refletem direto no editor. `selChk`
+  // guarda os ids de seção marcados para as ações em massa; `chkDrag` = id arrastado.
   const [selChk, setSelChk] = useState<Set<string>>(new Set());
   const chkDrag = useRef<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -71,25 +71,7 @@ export default function BriefingEditor({
   const hydratedRef = useRef(false);   // evita marcar "dirty" no carregamento
   const savingRef = useRef(false);     // evita autosave sobreposto
   const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
-  const newChkId = () => `chk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const addChkItem = () => setChecklist((l) => [...l, { id: newChkId(), label: "", done: false }]);
-  const setChkLabel = (id: string, label: string) => setChecklist((l) => l.map((it) => (it.id === id ? { ...it, label } : it)));
-  const toggleChkDone = (id: string) => setChecklist((l) => l.map((it) => (it.id === id ? { ...it, done: !it.done } : it)));
-  const dupChkItem = (id: string) => setChecklist((l) => l.flatMap((it) => (it.id === id ? [it, { ...it, id: newChkId() }] : [it])));
-  const delChkItem = (id: string) => { setChecklist((l) => l.filter((it) => it.id !== id)); setSelChk((s) => { const n = new Set(s); n.delete(id); return n; }); };
   const toggleSelChk = (id: string) => setSelChk((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const allChkSelected = checklist.length > 0 && selChk.size === checklist.length;
-  const toggleSelAllChk = () => setSelChk(allChkSelected ? new Set() : new Set(checklist.map((it) => it.id)));
-  const dupSelChk = () => { if (!selChk.size) return; setChecklist((l) => l.flatMap((it) => (selChk.has(it.id) ? [it, { ...it, id: newChkId() }] : [it]))); setSelChk(new Set()); };
-  const delSelChk = () => { if (!selChk.size) return; setChecklist((l) => l.filter((it) => !selChk.has(it.id))); setSelChk(new Set()); };
-  const reorderChk = (fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    setChecklist((l) => {
-      const from = l.findIndex((it) => it.id === fromId), to = l.findIndex((it) => it.id === toId);
-      if (from < 0 || to < 0) return l;
-      const next = l.slice(); const [m] = next.splice(from, 1); next.splice(to, 0, m); return next;
-    });
-  };
 
   // ── Seleção em massa de perguntas (global entre seções; por id da pergunta) ──
   const [selectedQ, setSelectedQ] = useState<Set<string>>(new Set());
@@ -159,12 +141,11 @@ export default function BriefingEditor({
           setBriefing(draft);
           setStatus("draft");
         } else {
-          const { briefing: b, status: s, editorNotes, editorChecklist } = await api.getBriefing(number!);
+          const { briefing: b, status: s, editorNotes } = await api.getBriefing(number!);
           if (!alive) return;
           setBriefing(b);
           setStatus(s);
           setNotes(editorNotes ?? "");
-          setChecklist(editorChecklist ?? []);
         }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -571,11 +552,11 @@ export default function BriefingEditor({
   // Marca alterações pendentes (após o carregamento inicial).
   useEffect(() => {
     if (hydratedRef.current) setDirty(true);
-  }, [briefing, status, notes, checklist]);
+  }, [briefing, status, notes]);
 
   // Autosave silencioso (só briefing JÁ criado): debounce ~2,5s de ociosidade.
-  const latestRef = useRef({ briefing, status, notes, checklist });
-  latestRef.current = { briefing, status, notes, checklist };
+  const latestRef = useRef({ briefing, status, notes });
+  latestRef.current = { briefing, status, notes };
   useEffect(() => {
     if (!dirty || isNew || !autosaveOn) return;
     const t = window.setTimeout(async () => {
@@ -584,13 +565,13 @@ export default function BriefingEditor({
       if (!cur.briefing) return;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes, editorChecklist: cur.checklist });
+        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes });
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
-  }, [dirty, briefing, status, notes, checklist, isNew, number, autosaveOn]);
+  }, [dirty, briefing, status, notes, isNew, number, autosaveOn]);
 
   // Scroll-spy: acende a seção visível durante a rolagem.
   useEffect(() => {
@@ -633,7 +614,7 @@ export default function BriefingEditor({
     savingRef.current = true; setSaving(true);
     try {
       if (isNew) { await api.createBriefing(briefing, finalStatus); onSaved(); return; }
-      await api.updateBriefing(number!, briefing, finalStatus, { editorNotes: notes, editorChecklist: checklist });
+      await api.updateBriefing(number!, briefing, finalStatus, { editorNotes: notes });
       if (publish && status !== "published") setStatus("published");
       setLastSavedAt(Date.now());
       setDirty(false);
@@ -646,9 +627,101 @@ export default function BriefingEditor({
 
   // Derivados do apoio (navegação/progresso). Continuações colapsam no "run" pai.
   const navList = (briefing?.sections ?? []).map((s, i) => ({ s, i })).filter(({ i }) => !contInfo[i]?.isCont);
-  // Progresso agora reflete o checklist MANUAL (ambientes marcados como prontos).
-  const doneCount = checklist.filter((it) => it.done).length;
-  const pct = checklist.length ? Math.round((doneCount / checklist.length) * 100) : 0;
+  // Progresso = seções que JÁ têm perguntas (o "formulário" do ambiente foi criado).
+  const doneCount = navList.filter(({ s }) => (s.questions?.length ?? 0) > 0).length;
+  const pct = navList.length ? Math.round((doneCount / navList.length) * 100) : 0;
+
+  // ── "Checklist de ambientes" = espelho editável das seções (não-continuação) ──
+  // Cada item controla a seção (renomear/mover/duplicar/excluir) direto no briefing.
+  // Alcance do "run" (seção + suas continuações) a partir do índice da cabeça.
+  const runEnd = (secs: BriefingSection[], head: number) => {
+    let end = head + 1;
+    while (end < secs.length && secs[end].continuation) end++;
+    return end;
+  };
+  const chkRename = (headIdx: number, title: string) => {
+    const s = briefing?.sections[headIdx]; if (s) setSection(headIdx, { ...s, title });
+  };
+  const chkAdd = () => { addSection("ambiente"); if (!apoioOpen) setApoioOpen(true); };
+  const chkDeleteRun = (headId: string) =>
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const out: BriefingSection[] = []; let skip = false;
+      prev.sections.forEach((s) => { if (!s.continuation) skip = s.id === headId; if (!skip) out.push(s); });
+      return { ...prev, sections: out };
+    });
+  // Duplica o run inteiro (cabeça + continuações) como um NOVO ambiente independente.
+  const chkDuplicateRun = (headId: string) =>
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const stamp = Date.now(); let c = 0;
+      const out: BriefingSection[] = [];
+      let buf: BriefingSection[] = []; let bufHead = "";
+      const flush = () => {
+        out.push(...buf);
+        if (bufHead === headId) {
+          buf.forEach((s, k) => out.push({
+            ...structuredClone(s), id: `sec-${stamp}-${c++}`,
+            continuation: k === 0 ? false : true,
+            questions: (s.questions ?? []).map((q, qi) => ({ ...q, id: `q-${stamp}-${c}-${qi}` })),
+          }));
+        }
+        buf = [];
+      };
+      prev.sections.forEach((s) => { if (!s.continuation) { flush(); bufHead = s.id; } buf.push(s); });
+      flush();
+      return { ...prev, sections: out };
+    });
+  // Arrastar: move o run (cabeça + continuações) para antes do run alvo.
+  const chkMoveRun = (fromId: string, toId: string) =>
+    setBriefing((prev) => {
+      if (!prev || fromId === toId) return prev;
+      const secs = prev.sections;
+      const fh = secs.findIndex((s) => s.id === fromId), th = secs.findIndex((s) => s.id === toId);
+      if (fh < 0 || th < 0) return prev;
+      const block = secs.slice(fh, runEnd(secs, fh));
+      const rest = [...secs.slice(0, fh), ...secs.slice(runEnd(secs, fh))];
+      const insAt = rest.findIndex((s) => s.id === toId);
+      const at = insAt < 0 ? rest.length : insAt;
+      return { ...prev, sections: [...rest.slice(0, at), ...block, ...rest.slice(at)] };
+    });
+  const chkDeleteSel = () => {
+    if (!selChk.size) return;
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const out: BriefingSection[] = []; let skip = false;
+      prev.sections.forEach((s) => { if (!s.continuation) skip = selChk.has(s.id); if (!skip) out.push(s); });
+      return { ...prev, sections: out };
+    });
+    setSelChk(new Set());
+  };
+  const chkDuplicateSel = () => {
+    if (!selChk.size) return;
+    setBriefing((prev) => {
+      if (!prev) return prev;
+      const stamp = Date.now(); let c = 0;
+      const out: BriefingSection[] = [];
+      let buf: BriefingSection[] = []; let bufHead = "";
+      const flush = () => {
+        out.push(...buf);
+        if (selChk.has(bufHead)) {
+          buf.forEach((s, k) => out.push({
+            ...structuredClone(s), id: `sec-${stamp}-${c++}`,
+            continuation: k === 0 ? false : true,
+            questions: (s.questions ?? []).map((q, qi) => ({ ...q, id: `q-${stamp}-${c}-${qi}` })),
+          }));
+        }
+        buf = [];
+      };
+      prev.sections.forEach((s) => { if (!s.continuation) { flush(); bufHead = s.id; } buf.push(s); });
+      flush();
+      return { ...prev, sections: out };
+    });
+    setSelChk(new Set());
+  };
+  const allChkSelected = navList.length > 0 && navList.every(({ s }) => selChk.has(s.id));
+  const toggleSelAllChk = () => setSelChk(allChkSelected ? new Set() : new Set(navList.map(({ s }) => s.id)));
+
   let activeRunId = "";
   if (briefing) {
     let ai = briefing.sections.findIndex((s) => s.id === activeSectionId);
@@ -777,9 +850,9 @@ export default function BriefingEditor({
                 </button>
               );
             })}
-            {checklist.length > 0 && (
+            {navList.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Ambientes prontos · {doneCount}/{checklist.length} · {pct}%</div>
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Com perguntas · {doneCount}/{navList.length} · {pct}%</div>
                 <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
               </div>
             )}
@@ -957,46 +1030,48 @@ export default function BriefingEditor({
             {apoioOpen && (
               <>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-                  <div className={styles.railTitle} style={{ margin: 0 }}>Checklist de ambientes</div>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Ambientes do briefing</div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={addChkItem} title="Adicionar um ambiente à sua lista de apoio">+ Adicionar</button>
-                    <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={dupSelChk} disabled={!selChk.size} title="Duplicar os marcados">⧉ Duplicar</button>
-                    <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ fontSize: 10, padding: "5px 9px" }} onClick={delSelChk} disabled={!selChk.size} title="Excluir os marcados">🗑 Excluir</button>
+                    <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={chkAdd} title="Adicionar um ambiente — cria a seção no briefing">+ Adicionar</button>
+                    <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={chkDuplicateSel} disabled={!selChk.size} title="Duplicar os ambientes marcados">⧉ Duplicar</button>
+                    <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={{ fontSize: 10, padding: "5px 9px" }} onClick={chkDeleteSel} disabled={!selChk.size} title="Excluir os ambientes marcados (remove as seções)">🗑 Excluir</button>
                   </div>
                 </div>
                 <p className={styles.pageHint} style={{ margin: "0 0 8px", fontSize: 11 }}>
-                  Lista de apoio (só sua) — anote os ambientes que precisa criar e marque conforme montar cada formulário.
+                  Espelha as seções do briefing. Adicionar, renomear, arrastar ou excluir <strong>aqui altera o briefing</strong>. Clique num nome para ir até a seção.
                 </p>
-                {checklist.length === 0 ? (
-                  <p className={styles.pageHint} style={{ margin: "0 0 8px" }}>Nenhum ambiente na lista. Use <strong>+ Adicionar</strong>.</p>
+                {navList.length === 0 ? (
+                  <p className={styles.pageHint} style={{ margin: "0 0 8px" }}>Nenhuma seção ainda. Use <strong>+ Adicionar</strong>.</p>
                 ) : (
                   <>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 2px", fontSize: 11.5, color: "var(--color-text-muted)", cursor: "pointer" }}>
                       <input type="checkbox" checked={allChkSelected} ref={(el) => { if (el) el.indeterminate = selChk.size > 0 && !allChkSelected; }} onChange={toggleSelAllChk} />
                       Selecionar tudo
                     </label>
-                    {checklist.map((it) => (
+                    {navList.map(({ s, i }) => (
                       <div
-                        key={it.id}
+                        key={s.id}
                         draggable
-                        onDragStart={() => (chkDrag.current = it.id)}
+                        onDragStart={() => (chkDrag.current = s.id)}
                         onDragEnd={() => (chkDrag.current = null)}
                         onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => { e.preventDefault(); if (chkDrag.current) reorderChk(chkDrag.current, it.id); chkDrag.current = null; }}
+                        onDrop={(e) => { e.preventDefault(); if (chkDrag.current) chkMoveRun(chkDrag.current, s.id); chkDrag.current = null; }}
                         style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 2px", fontSize: 12.5 }}
                       >
-                        <span className={styles.dragHandle} title="Arraste para reordenar" style={{ cursor: "grab" }}>⠿</span>
-                        <input type="checkbox" checked={selChk.has(it.id)} onChange={() => toggleSelChk(it.id)} aria-label="Selecionar" />
-                        <input type="checkbox" checked={it.done} onChange={() => toggleChkDone(it.id)} title="Marcar como pronto" style={{ accentColor: "#4ade80" }} />
+                        <span className={styles.dragHandle} title="Arraste para reordenar (move a seção no briefing)" style={{ cursor: "grab" }}>⠿</span>
+                        <input type="checkbox" checked={selChk.has(s.id)} onChange={() => toggleSelChk(s.id)} aria-label="Selecionar" />
                         <input
                           className={styles.input}
-                          value={it.label}
-                          onChange={(e) => setChkLabel(it.id, e.target.value)}
-                          placeholder="Ex.: COZINHA"
-                          style={{ flex: 1, fontSize: 12.5, padding: "5px 8px", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}
+                          value={s.title}
+                          onChange={(e) => chkRename(i, e.target.value)}
+                          onFocus={() => jumpTo(s.id)}
+                          placeholder={s.kind === "ambiente" ? "Ex.: COZINHA" : "Seção"}
+                          title="Renomeia a seção no briefing"
+                          style={{ flex: 1, fontSize: 12.5, padding: "5px 8px" }}
                         />
-                        <button type="button" className={styles.iconBtn} onClick={() => dupChkItem(it.id)} title="Duplicar">⧉</button>
-                        <button type="button" className={styles.iconBtn} onClick={() => delChkItem(it.id)} title="Excluir" aria-label="Excluir">🗑</button>
+                        <button type="button" className={styles.iconBtn} onClick={() => jumpTo(s.id)} title="Ir até a seção">→</button>
+                        <button type="button" className={styles.iconBtn} onClick={() => chkDuplicateRun(s.id)} title="Duplicar (cria uma cópia da seção)">⧉</button>
+                        <button type="button" className={styles.iconBtn} onClick={() => chkDeleteRun(s.id)} title="Excluir (remove a seção do briefing)" aria-label="Excluir">🗑</button>
                       </div>
                     ))}
                   </>
@@ -1010,7 +1085,7 @@ export default function BriefingEditor({
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
                   <li>Salva sozinho enquanto você preenche.</li>
                   <li>Use a prévia para ver como o cliente verá.</li>
-                  <li>Marque os ambientes prontos no checklist.</li>
+                  <li>Editar aqui (nome/ordem) muda o briefing na hora.</li>
                 </ul>
               </>
             )}
