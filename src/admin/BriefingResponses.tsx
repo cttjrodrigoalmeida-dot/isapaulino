@@ -34,6 +34,7 @@ export default function BriefingResponses({
   const [locked, setLocked] = useState(false);
   const [lockBusy, setLockBusy] = useState(false);
   const [pdfId, setPdfId] = useState<number | null>(null); // resposta gerando PDF
+  const [lightbox, setLightbox] = useState<string | null>(null); // imagem ampliada na mesma tela
 
   // Normaliza refImages (string legada OU array) para { qid: url[] }.
   const refsToMap = (r: BriefingResponse): Record<string, string[]> => {
@@ -96,7 +97,7 @@ export default function BriefingResponses({
       message: "O cliente continuará VISUALIZANDO, mas não poderá mais alterar as respostas. Você (admin) ainda pode editar por aqui. Use isso ao iniciar os trabalhos, para preservar o briefing que embasou o projeto.",
       confirmLabel: "Bloquear edição",
       cancelLabel: "Cancelar",
-      danger: false,
+      danger: true,
     }))) return;
     setLockBusy(true); setError(null); setNotice(null);
     try {
@@ -107,6 +108,14 @@ export default function BriefingResponses({
       setError(err instanceof ApiError ? err.message : "Erro ao alterar o bloqueio.");
     } finally { setLockBusy(false); }
   };
+
+  // Esc fecha a imagem ampliada (lightbox).
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   useEffect(() => {
     let alive = true;
@@ -315,10 +324,17 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
   const Attachment = ({ url }: { url: string }) => {
     const isExternal = /^https?:\/\//i.test(url) && !url.startsWith("/api/files/");
     if (isImgUrl(url)) {
+      // Abre a imagem ampliada AQUI na tela (lightbox), não em outra aba.
       return (
-        <a href={url} target="_blank" rel="noopener noreferrer" className={styles.refThumbLink}>
+        <button
+          type="button"
+          onClick={() => setLightbox(url)}
+          className={styles.refThumbLink}
+          title="Clique para ampliar aqui na tela"
+          style={{ border: "none", background: "none", padding: 0, cursor: "zoom-in" }}
+        >
           <img src={url} alt="Anexo enviado" className={styles.refThumb} />
-        </a>
+        </button>
       );
     }
     if (isVideoUrl(url)) {
@@ -550,6 +566,38 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lightbox — imagem ampliada na MESMA tela (fecha ao clicar fora / no ✕). */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.82)", display: "flex", alignItems: "center",
+            justifyContent: "center", padding: 24, cursor: "zoom-out",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            aria-label="Fechar"
+            style={{
+              position: "absolute", top: 18, right: 20, width: 40, height: 40,
+              borderRadius: "0 7px 0 7px", border: "1px solid rgba(255,255,255,0.4)",
+              background: "rgba(0,0,0,0.4)", color: "#fff", fontSize: 20, cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            ✕
+          </button>
+          <img
+            src={lightbox}
+            alt="Anexo ampliado"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "94vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 8, boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}
+          />
         </div>
       )}
     </div>
