@@ -26,10 +26,7 @@ import styles from "./Admin.module.css";
 
 type Status = "draft" | "published";
 
-// Largura do painel de prévia (usada no drawer e para "encolher" o editor à esquerda).
-const PREVIEW_W = "min(48vw, 760px)";
-
-// Seções da proposta (apoio: navegação, progresso e checklist).
+// Seções da proposta (apoio: navegação e recolher/expandir).
 const PROPOSAL_SECTIONS: { id: string; label: string }[] = [
   { id: "identificacao", label: "Identificação" },
   { id: "escopo", label: "Capa / Escopo" },
@@ -118,12 +115,14 @@ export default function ProposalEditor({
   const [slugSuffix, setSlugSuffix] = useState("");
   // ── Apoio pessoal (D1): notas + checklist "revisado" + navegação/recolher ──
   const [notes, setNotes] = useState("");
+  // `doneSet` (revisado) foi aposentado da UI — o apoio agora é o espelho editável
+  // dos ambientes. A coluna editor_done segue persistida (retrocompat, inofensiva).
   const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
   const [activeSectionId, setActiveSectionId] = useState("");
   const [apoioOpen, setApoioOpen] = useState(true);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const toggleDone = (id: string) =>
-    setDoneSet((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  // Arrastar item no espelho de ambientes (índice de origem).
+  const ambDrag = useRef<number | null>(null);
   const toggleCollapse = (id: string) =>
     setCollapsed((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const jumpTo = (id: string) => {
@@ -415,8 +414,6 @@ export default function ProposalEditor({
     return () => window.clearTimeout(t);
   }, [activeSectionId, showPreview]);
 
-  const doneCount = PROPOSAL_SECTIONS.filter((s) => doneSet.has(s.id)).length;
-  const pct = PROPOSAL_SECTIONS.length ? Math.round((doneCount / PROPOSAL_SECTIONS.length) * 100) : 0;
   const collapseAll = () => setCollapsed(new Set(PROPOSAL_SECTIONS.map((s) => s.id)));
   const expandAll = () => setCollapsed(new Set());
 
@@ -424,21 +421,29 @@ export default function ProposalEditor({
     return <div className={styles.loading}>Carregando proposta…</div>;
   }
 
+  // ── Espelho editável dos AMBIENTES (📌 Meu apoio) ──
+  // Reflete direto em proposal.ambientes: adicionar/renomear/arrastar/duplicar/
+  // excluir aqui altera a proposta (a lista de Ambientes do escopo é a mesma fonte).
+  const ambientes = proposal.ambientes ?? [];
+  const setAmbientes = (next: string[]) => setProposal((prev) => (prev ? { ...prev, ambientes: next } : prev));
+  const ambAdd = () => { setAmbientes([...ambientes, "Novo ambiente"]); if (!apoioOpen) setApoioOpen(true); };
+  const ambRename = (i: number, v: string) => setAmbientes(ambientes.map((a, idx) => (idx === i ? v : a)));
+  const ambDelete = (i: number) => setAmbientes(ambientes.filter((_, idx) => idx !== i));
+  const ambDuplicate = (i: number) => { const l = ambientes.slice(); l.splice(i + 1, 0, l[i] ?? ""); setAmbientes(l); };
+  const ambMove = (from: number, to: number) => {
+    if (from < 0 || to < 0 || from >= ambientes.length || to >= ambientes.length || from === to) return;
+    const l = ambientes.slice();
+    const [m] = l.splice(from, 1);
+    l.splice(from < to ? to - 1 : to, 0, m);
+    setAmbientes(l);
+  };
+
   return (
     <div
       className={styles.container}
-      style={
-        showPreview
-          ? {
-              // Encolhe o editor p/ a esquerda enquanto a prévia estiver aberta,
-              // reservando a largura do painel (senão ele tapa os campos da direita).
-              maxWidth: "none",
-              marginLeft: 0,
-              marginRight: `calc(${PREVIEW_W} + 20px)`,
-              transition: "margin-right .22s ease",
-            }
-          : { transition: "margin-right .22s ease" }
-      }
+      // Igual ao briefing: com a prévia aberta o editor fica largo (os rails
+      // continuam visíveis) e a prévia flutua ao lado do rail direito.
+      style={showPreview ? { maxWidth: "none" } : undefined}
     >
       <BackToTop />
       <div className={styles.pageHead}>
@@ -453,9 +458,6 @@ export default function ProposalEditor({
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
-            {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
-          </button>
           <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
             ← Voltar
           </button>
@@ -490,6 +492,10 @@ export default function ProposalEditor({
               {collapsed.size >= PROPOSAL_SECTIONS.length - 1 ? "Expandir tudo" : "Recolher tudo"}
             </button>
           )}
+          {/* Pré-visualizar fica aqui, na barra fixa (sempre à mão na rolagem). */}
+          <button type="button" className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} style={{ fontSize: 11 }} onClick={() => setShowPreview((v) => !v)}>
+            {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
+          </button>
           {isNew && <span className={styles.pageHint} style={{ margin: 0 }}>O automático começa após o 1º “Salvar”.</span>}
         </div>
         {/* Identificador da proposta em edição — fica fixo na rolagem, para não
@@ -500,33 +506,21 @@ export default function ProposalEditor({
       </div>
 
       {tab === "campos" ? (
-        <div className={styles.editorWorkspace} style={showPreview ? { display: "block" } : undefined}>
-          {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
-          {!showPreview && (
+        <div className={styles.editorWorkspace}>
+          {/* RAIL ESQUERDO — seções (scroll-spy) */}
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
             {PROPOSAL_SECTIONS.map((s) => {
-              const done = doneSet.has(s.id);
               const active = s.id === activeSectionId;
               return (
                 <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
-                  <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                  <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
                 </button>
               );
             })}
-            <div style={{ marginTop: 14 }}>
-              <div className={styles.railTitle} style={{ marginBottom: 6 }}>Progresso · {pct}%</div>
-              <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Revisado</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Onde você está</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={styles.statusDot} />Pendente</span>
-              </div>
-            </div>
             <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
           </aside>
-          )}
 
           {/* MAIN — cards do editor */}
           <div className={styles.editorGrid}>
@@ -682,8 +676,7 @@ export default function ProposalEditor({
           </div>
           </div>{/* fim do editorGrid (main) */}
 
-          {/* RAIL DIREITO — Meu apoio (checklist + notas) */}
-          {!showPreview && (
+          {/* RAIL DIREITO — Meu apoio (espelho editável dos ambientes + notas) */}
           <aside className={styles.editorRail}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
@@ -691,13 +684,41 @@ export default function ProposalEditor({
             </div>
             {apoioOpen && (
               <>
-                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Checklist de revisão</div>
-                {PROPOSAL_SECTIONS.map((s) => (
-                  <label key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 2px", fontSize: 12.5, cursor: "pointer" }}>
-                    <input type="checkbox" checked={doneSet.has(s.id)} onChange={() => toggleDone(s.id)} />
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-                  </label>
-                ))}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 8 }}>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Ambientes da proposta</div>
+                  <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={ambAdd} title="Adicionar um ambiente — cria na proposta">+ Adicionar</button>
+                </div>
+                <p className={styles.pageHint} style={{ margin: "0 0 8px", fontSize: 11 }}>
+                  Espelha os ambientes do escopo. Adicionar, renomear, arrastar ou excluir <strong>aqui altera a proposta</strong>.
+                </p>
+                {ambientes.length === 0 ? (
+                  <p className={styles.pageHint} style={{ margin: "0 0 8px" }}>Nenhum ambiente ainda. Use <strong>+ Adicionar</strong>.</p>
+                ) : (
+                  ambientes.map((a, i) => (
+                    <div
+                      key={i}
+                      draggable
+                      onDragStart={() => (ambDrag.current = i)}
+                      onDragEnd={() => (ambDrag.current = null)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => { e.preventDefault(); if (ambDrag.current != null) ambMove(ambDrag.current, i); ambDrag.current = null; }}
+                      style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 2px", fontSize: 12.5 }}
+                    >
+                      <span className={styles.dragHandle} title="Arraste para reordenar (move na proposta)" style={{ cursor: "grab" }}>⠿</span>
+                      <input
+                        className={styles.input}
+                        value={a}
+                        onChange={(e) => ambRename(i, e.target.value)}
+                        onFocus={() => jumpTo("escopo")}
+                        placeholder="Ex.: Sala de TV"
+                        title="Renomeia o ambiente na proposta"
+                        style={{ flex: 1, fontSize: 12.5, padding: "5px 8px" }}
+                      />
+                      <button type="button" className={styles.iconBtn} onClick={() => ambDuplicate(i)} title="Duplicar ambiente">⧉</button>
+                      <button type="button" className={styles.iconBtn} onClick={() => ambDelete(i)} title="Excluir ambiente" aria-label="Excluir">🗑</button>
+                    </div>
+                  ))
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, marginBottom: 6 }}>
                   <div className={styles.railTitle} style={{ margin: 0 }}>Bloco de notas</div>
                   <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setNotes("")} disabled={!notes}>Limpar</button>
@@ -706,13 +727,12 @@ export default function ProposalEditor({
                 <div className={styles.railTitle} style={{ marginTop: 14, marginBottom: 6 }}>Dicas rápidas</div>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
                   <li>Salva sozinho enquanto você edita (proposta já salva).</li>
-                  <li>Marque as seções revisadas no checklist.</li>
-                  <li>Use “Recolher tudo” e o índice à esquerda para navegar.</li>
+                  <li>Editar aqui (nome/ordem) muda a proposta na hora.</li>
+                  <li>Use a prévia para ver como o cliente verá.</li>
                 </ul>
               </>
             )}
           </aside>
-          )}
         </div>
       ) : (
         <div className={styles.card}>
@@ -806,14 +826,16 @@ export default function ProposalEditor({
         </div>
       </div>
 
-      {/* Painel de pré-visualização ao vivo (atualiza a cada alteração) */}
+      {/* Painel de pré-visualização ao vivo — flutua ao lado do rail direito
+          (igual ao briefing) e acompanha a seção em edição. */}
       {showPreview && (
         <div
           style={{
-            position: "fixed", top: 0, right: 0, zIndex: 60,
-            width: PREVIEW_W, height: "100vh",
-            background: "#0a0a0a", borderLeft: "1px solid var(--color-border)",
-            boxShadow: "-10px 0 40px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column",
+            position: "fixed", top: 132, right: 324, zIndex: 55,
+            width: "min(40vw, 600px)", height: "calc(100vh - 148px)",
+            background: "#0a0a0a", border: "1px solid var(--color-border)",
+            borderRadius: 12,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column",
           }}
         >
           <div style={{

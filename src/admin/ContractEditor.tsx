@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError, numberOwnerConflict, type Client, type ContractInput, type ContractStatus, type ContractSummary, type NumberUse, type ProposalSummary } from "./api";
-import type { ContractDoc, SignatureStatus, SixTabelaCustos } from "../components/contract/types";
+import type { ContractDoc, ContractClause, SignatureStatus, SixTabelaCustos } from "../components/contract/types";
 import { blankContractDoc, blankAditivoDoc } from "../components/contract/newContractDoc";
 import { DEFAULT_TABELA_CUSTOS, DEFAULT_VALIDADE_CARDS } from "../components/contract/contractDefaults";
 import ContractView from "../components/contract/ContractView";
@@ -24,11 +24,9 @@ import {
 import styles from "./Admin.module.css";
 import BackToTop from "./BackToTop";
 import { useAutosavePref, AutosaveToggle } from "./autosave";
+import { normalizeClauses } from "../components/contract/clauseNumbering";
 
 type Tab = "campos" | "json";
-
-// Largura do painel de prévia (usada no drawer e para "encolher" o editor à esquerda).
-const PREVIEW_W = "min(48vw, 760px)";
 
 const SIGN_STATUS: { value: SignatureStatus; label: string }[] = [
   { value: "aguardando", label: "Aguardando assinatura" },
@@ -179,8 +177,8 @@ export default function ContractEditor({
   const [autosaveOn, setAutosaveOn] = useAutosavePref();
   const hydratedRef = useRef(false); // evita marcar "dirty" no carregamento
   const savingRef = useRef(false);   // evita autosave sobreposto
-  const toggleDone = (sid: string) =>
-    setDoneSet((prev) => { const n = new Set(prev); if (n.has(sid)) n.delete(sid); else n.add(sid); return n; });
+  // Arrastar item no espelho de cláusulas (índice de origem).
+  const clsDrag = useRef<number | null>(null);
   const toggleCollapse = (sid: string) =>
     setCollapsed((prev) => { const n = new Set(prev); if (n.has(sid)) n.delete(sid); else n.add(sid); return n; });
   const jumpTo = (sid: string) => {
@@ -727,28 +725,38 @@ export default function ContractEditor({
   const publicUrl = slug ? `${window.location.origin}/contrato/${slug}` : null;
   const slugBase = (doc?.proposalNumber ?? "").trim(); // nº da proposta = base do link
 
-  // Derivados do apoio (navegação/progresso/recolher).
+  // Derivados do apoio (navegação/recolher).
   const collapseAll = () => setCollapsed(new Set(sectionsMeta.map((s) => s.id)));
   const expandAll = () => setCollapsed(new Set());
-  const doneCount = sectionsMeta.filter((s) => doneSet.has(s.id)).length;
-  const pct = sectionsMeta.length ? Math.round((doneCount / sectionsMeta.length) * 100) : 0;
   const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  // ── Espelho editável das CLÁUSULAS (📌 Meu apoio) ──
+  // Reflete direto em doc.clauses (o número é renumerado por posição). Adicionar/
+  // renomear/arrastar/duplicar/excluir aqui altera as cláusulas jurídicas.
+  const clauses = doc.clauses ?? [];
+  const setClauses = (next: ContractClause[]) => patch({ clauses: normalizeClauses(next, doc.kind) });
+  const clAdd = () => {
+    setClauses([...clauses, { number: "", title: "Nova cláusula", blocks: [{ type: "p", text: "" }] }]);
+    if (!apoioOpen) setApoioOpen(true);
+    jumpTo("clausulas");
+  };
+  const clRename = (i: number, title: string) => setClauses(clauses.map((c, idx) => (idx === i ? { ...c, title } : c)));
+  const clDelete = (i: number) => setClauses(clauses.filter((_, idx) => idx !== i));
+  const clDuplicate = (i: number) => { const l = clauses.slice(); l.splice(i + 1, 0, structuredClone(clauses[i])); setClauses(l); };
+  const clMove = (from: number, to: number) => {
+    if (from < 0 || to < 0 || from >= clauses.length || to >= clauses.length || from === to) return;
+    const l = clauses.slice();
+    const [m] = l.splice(from, 1);
+    l.splice(from < to ? to - 1 : to, 0, m);
+    setClauses(l);
+  };
 
   return (
     <div
       className={styles.container}
-      style={
-        showPreview
-          ? {
-              // Encolhe o editor p/ a esquerda enquanto a prévia estiver aberta,
-              // reservando a largura do painel (senão ele tapa os campos da direita).
-              maxWidth: "none",
-              marginLeft: 0,
-              marginRight: `calc(${PREVIEW_W} + 20px)`,
-              transition: "margin-right .22s ease",
-            }
-          : { maxWidth: "none", transition: "margin-right .22s ease" }
-      }
+      // Igual ao briefing: com a prévia aberta os rails continuam visíveis e a
+      // prévia flutua ao lado do rail direito (não encolhe mais o editor).
+      style={{ maxWidth: "none" }}
     >
       <div ref={topRef} />
       <BackToTop />
@@ -765,9 +773,6 @@ export default function ContractEditor({
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
-            {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
-          </button>
           <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onBack}>
             ← Voltar
           </button>
@@ -917,6 +922,10 @@ export default function ContractEditor({
             <div style={{ display: "flex", gap: 8 }}>
               <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
               <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
+              {/* Pré-visualizar fica aqui, na barra fixa (sempre à mão na rolagem). */}
+              <button type="button" className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} style={{ fontSize: 11 }} onClick={() => setShowPreview((v) => !v)}>
+                {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
+              </button>
             </div>
           </div>
           {/* Nº + nome do projeto — sutil, na última linha (não some sob o cabeçalho fixo). */}
@@ -925,33 +934,21 @@ export default function ContractEditor({
           </span>
         </div>
 
-        <div className={styles.editorWorkspace} style={showPreview ? { display: "block" } : undefined}>
-          {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
-          {!showPreview && (
+        <div className={styles.editorWorkspace}>
+          {/* RAIL ESQUERDO — seções (scroll-spy) */}
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
             {sectionsMeta.map((s) => {
-              const done = doneSet.has(s.id);
               const active = s.id === activeSectionId;
               return (
                 <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
-                  <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                  <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
                 </button>
               );
             })}
-            <div style={{ marginTop: 14 }}>
-              <div className={styles.railTitle} style={{ marginBottom: 6 }}>Progresso · {pct}%</div>
-              <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8, fontSize: 10.5, color: "var(--color-text-muted)" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotDone}`} />Revisado</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={`${styles.statusDot} ${styles.statusDotActive}`} />Onde você está</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className={styles.statusDot} />Pendente</span>
-              </div>
-            </div>
             <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
           </aside>
-          )}
 
           {/* MAIN — cards do editor */}
           <div className={styles.editorGrid}>
@@ -1441,8 +1438,7 @@ export default function ContractEditor({
           </Section>
           </div>{/* fim da coluna principal (editorGrid) */}
 
-          {/* RAIL DIREITO — Meu apoio (checklist de revisão + bloco de notas) */}
-          {!showPreview && (
+          {/* RAIL DIREITO — Meu apoio (espelho editável das cláusulas + notas) */}
           <aside className={styles.editorRail}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
@@ -1450,13 +1446,42 @@ export default function ContractEditor({
             </div>
             {apoioOpen && (
               <>
-                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Checklist de revisão</div>
-                {sectionsMeta.map((s) => (
-                  <label key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 2px", fontSize: 12.5, cursor: "pointer" }}>
-                    <input type="checkbox" checked={doneSet.has(s.id)} onChange={() => toggleDone(s.id)} />
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-                  </label>
-                ))}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 8 }}>
+                  <div className={styles.railTitle} style={{ margin: 0 }}>Cláusulas do contrato</div>
+                  <button type="button" className={styles.btn} style={{ fontSize: 10, padding: "5px 9px" }} onClick={clAdd} title="Adicionar uma cláusula — cria no contrato">+ Adicionar</button>
+                </div>
+                <p className={styles.pageHint} style={{ margin: "0 0 8px", fontSize: 11 }}>
+                  Espelha as cláusulas jurídicas. Adicionar, renomear, arrastar ou excluir <strong>aqui altera o contrato</strong> (a numeração se ajusta sozinha).
+                </p>
+                {clauses.length === 0 ? (
+                  <p className={styles.pageHint} style={{ margin: "0 0 8px" }}>Nenhuma cláusula ainda. Use <strong>+ Adicionar</strong>.</p>
+                ) : (
+                  clauses.map((cl, i) => (
+                    <div
+                      key={i}
+                      draggable
+                      onDragStart={() => (clsDrag.current = i)}
+                      onDragEnd={() => (clsDrag.current = null)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => { e.preventDefault(); if (clsDrag.current != null) clMove(clsDrag.current, i); clsDrag.current = null; }}
+                      style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 2px", fontSize: 12.5 }}
+                    >
+                      <span className={styles.dragHandle} title="Arraste para reordenar (move no contrato)" style={{ cursor: "grab" }}>⠿</span>
+                      <span className={styles.mono} style={{ fontSize: 10.5, color: "var(--color-text-muted)", width: 20, flexShrink: 0, textAlign: "right" }}>{cl.number || "–"}</span>
+                      <input
+                        className={styles.input}
+                        value={cl.title}
+                        onChange={(e) => clRename(i, e.target.value)}
+                        onFocus={() => jumpTo("clausulas")}
+                        placeholder="Título da cláusula"
+                        title="Renomeia a cláusula no contrato"
+                        style={{ flex: 1, fontSize: 12.5, padding: "5px 8px" }}
+                      />
+                      <button type="button" className={styles.iconBtn} onClick={() => clDuplicate(i)} title="Duplicar cláusula">⧉</button>
+                      <button type="button" className={styles.iconBtn} onClick={() => clDelete(i)} title="Excluir cláusula" aria-label="Excluir">🗑</button>
+                    </div>
+                  ))
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, marginBottom: 6 }}>
                   <div className={styles.railTitle} style={{ margin: 0 }}>Bloco de notas</div>
                   <button type="button" className={styles.btn} style={{ fontSize: 10 }} onClick={() => setNotes("")} disabled={!notes}>Limpar</button>
@@ -1465,13 +1490,12 @@ export default function ContractEditor({
                 <div className={styles.railTitle} style={{ marginTop: 14, marginBottom: 6 }}>Dicas rápidas</div>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
                   <li>Salva sozinho enquanto você edita (contrato já salvo).</li>
-                  <li>Marque as seções revisadas no checklist.</li>
-                  <li>Use “Recolher tudo” para navegar mais rápido.</li>
+                  <li>Editar aqui (nome/ordem) muda o contrato na hora.</li>
+                  <li>O texto de cada cláusula fica na seção “Cláusulas jurídicas”.</li>
                 </ul>
               </>
             )}
           </aside>
-          )}
         </div>{/* fim do editorWorkspace */}
        </>
       )}
@@ -1524,14 +1548,16 @@ export default function ContractEditor({
         </div>
       </div>
 
-      {/* Painel de pré-visualização ao vivo (atualiza a cada alteração) */}
+      {/* Painel de pré-visualização ao vivo — flutua ao lado do rail direito
+          (igual ao briefing), sem tapar os apoios. */}
       {showPreview && (
         <div
           style={{
-            position: "fixed", top: 0, right: 0, zIndex: 60,
-            width: PREVIEW_W, height: "100vh",
-            background: "#ffffff", borderLeft: "1px solid var(--color-border)",
-            boxShadow: "-10px 0 40px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column",
+            position: "fixed", top: 132, right: 324, zIndex: 55,
+            width: "min(40vw, 600px)", height: "calc(100vh - 148px)",
+            background: "#ffffff", border: "1px solid var(--color-border)",
+            borderRadius: 12,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column",
           }}
         >
           <div style={{
