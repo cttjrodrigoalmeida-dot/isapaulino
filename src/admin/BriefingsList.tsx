@@ -62,6 +62,8 @@ export default function BriefingsList({
   const [busy, setBusy] = useState<string | null>(null);
   const [year, setYear] = useState<string>("");
   const [tab, setTab] = useState<StatusFilter>("todas");
+  // Filtro por cadeado: todos / bloqueados (fechado) / liberados (aberto).
+  const [lockFilter, setLockFilter] = useState<"todos" | "locked" | "unlocked">("todos");
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
 
@@ -90,8 +92,13 @@ export default function BriefingsList({
   }, [yearItems, tab]);
   const nq = norm(q).trim();
   const base = nq ? items.filter((b) => briefingMatches(b, nq)) : filtered;
-  const { sorted, sort, toggle } = useSort(base, briefingSortVal);
-  useEffect(() => { setPage(1); }, [sort, nq]);
+  // Filtro por cadeado (aplica sempre, inclusive na busca).
+  const lockBase = useMemo(() => {
+    if (lockFilter === "todos") return base;
+    return base.filter((b) => (lockFilter === "locked" ? !!b.locked : !b.locked));
+  }, [base, lockFilter]);
+  const { sorted, sort, toggle } = useSort(lockBase, briefingSortVal);
+  useEffect(() => { setPage(1); }, [sort, nq, lockFilter]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -105,6 +112,13 @@ export default function BriefingsList({
       else awaiting++;
     }
     return { todas: yearItems.length, responded, awaiting, cancelled };
+  }, [yearItems]);
+
+  // Contagem de cadeados (do ano selecionado) para o seletor de filtro.
+  const lockCounts = useMemo(() => {
+    let locked = 0, unlocked = 0;
+    for (const b of yearItems) { if (b.locked) locked++; else unlocked++; }
+    return { locked, unlocked };
   }, [yearItems]);
 
   const remove = async (number: string) => {
@@ -169,6 +183,18 @@ export default function BriefingsList({
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           )}
+          {/* Filtro por cadeado — fechado (bloqueado) / aberto (liberado). */}
+          <select
+            className={styles.input}
+            style={{ width: "auto", minWidth: 130 }}
+            value={lockFilter}
+            onChange={(e) => setLockFilter(e.target.value as "todos" | "locked" | "unlocked")}
+            title="Filtrar por cadeado: bloqueados (fechado) ou liberados (aberto)"
+          >
+            <option value="todos">🔒 Cadeado: todos</option>
+            <option value="locked">🔒 Fechados ({lockCounts.locked})</option>
+            <option value="unlocked">🔓 Abertos ({lockCounts.unlocked})</option>
+          </select>
           <button className={styles.btn} onClick={load} disabled={loading}>Atualizar</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onNew}>+ Novo briefing</button>
         </div>

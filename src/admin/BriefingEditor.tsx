@@ -1023,7 +1023,10 @@ export default function BriefingEditor({
           </div>
           </div>{/* fim da coluna principal (editorGrid) */}
 
-          {/* RAIL DIREITO — Meu apoio (checklist de ambientes + bloco de notas) */}
+          {/* RAIL DIREITO — Meu apoio (checklist de ambientes + bloco de notas).
+              Com a prévia aberta some, para a prévia ocupar o canto (sem sobrar
+              a faixa do rail ao lado). */}
+          {!showPreview && (
           <aside className={styles.editorRail}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
@@ -1092,6 +1095,7 @@ export default function BriefingEditor({
               </>
             )}
           </aside>
+          )}
         </div>{/* fim do editorWorkspace */}
        </>
       ) : (
@@ -1107,13 +1111,13 @@ export default function BriefingEditor({
       )}
 
 
-      {/* Painel de pré-visualização ao vivo (sobrepõe o conteúdo, mas deixa o
-          rail direito "Meu apoio" visível — afastado da borda). */}
+      {/* Painel de pré-visualização ao vivo — encostado no canto direito
+          (o rail "Meu apoio" some enquanto a prévia está aberta). */}
       {showPreview && (
         <div
           style={{
-            position: "fixed", top: 132, right: 324, zIndex: 55,
-            width: "min(40vw, 600px)", height: "calc(100vh - 148px)",
+            position: "fixed", top: 132, right: 16, zIndex: 55,
+            width: "min(44vw, 680px)", height: "calc(100vh - 148px)",
             background: adminTheme === "dark" ? "#0a0a0a" : "#ffffff", border: "1px solid var(--color-border)",
             borderRadius: 12,
             boxShadow: "0 20px 60px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column",
