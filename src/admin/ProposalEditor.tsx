@@ -22,6 +22,7 @@ import SectionsEditor from "./SectionsEditor";
 import BackToTop from "./BackToTop";
 import Section from "./EditorSection";
 import { useAutosavePref, AutosaveToggle } from "./autosave";
+import { usePreviewFollowPref, PreviewFollowToggle } from "./previewFollow";
 import styles from "./Admin.module.css";
 
 type Status = "draft" | "published";
@@ -130,6 +131,7 @@ export default function ProposalEditor({
     requestAnimationFrame(() => document.getElementById(`sec-card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
   const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
+  const [followOn, setFollowOn] = usePreviewFollowPref();
   const [comboEnabled, setComboEnabled] = useState(false);
   const [comboPercent, setComboPercent] = useState(10);
   const [pixDiscount, setPixDiscount] = useState(5);
@@ -400,7 +402,7 @@ export default function ProposalEditor({
   // activeSectionId), a prévia rola para o mesmo trecho (data-spy). Rolagem
   // manual do container (getBoundingClientRect funciona apesar do zoom).
   useEffect(() => {
-    if (!showPreview || !activeSectionId) return;
+    if (!showPreview || !followOn || !activeSectionId) return;
     const cont = previewScrollRef.current;
     if (!cont) return;
     const t = window.setTimeout(() => {
@@ -412,7 +414,7 @@ export default function ProposalEditor({
       cont.scrollTo({ top: cont.scrollTop + delta, behavior: "smooth" });
     }, 80);
     return () => window.clearTimeout(t);
-  }, [activeSectionId, showPreview]);
+  }, [activeSectionId, showPreview, followOn]);
 
   const collapseAll = () => setCollapsed(new Set(PROPOSAL_SECTIONS.map((s) => s.id)));
   const expandAll = () => setCollapsed(new Set());
@@ -839,12 +841,15 @@ export default function ProposalEditor({
           }}
         >
           <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
+            display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
             padding: "10px 14px", borderBottom: "1px solid var(--color-border)",
             background: "var(--color-surface)", color: "var(--color-text-primary)",
           }}>
-            <strong style={{ fontSize: 13 }}>Prévia ao vivo · Nº {proposal.number}</strong>
-            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+            <strong style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Prévia ao vivo · Nº {proposal.number}</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <PreviewFollowToggle enabled={followOn} onChange={setFollowOn} />
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+            </div>
           </div>
           <div ref={previewScrollRef} style={{ flex: 1, overflow: "auto" }}>
             {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}

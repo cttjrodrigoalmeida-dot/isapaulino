@@ -24,6 +24,7 @@ import {
 import styles from "./Admin.module.css";
 import BackToTop from "./BackToTop";
 import { useAutosavePref, AutosaveToggle } from "./autosave";
+import { usePreviewFollowPref, PreviewFollowToggle } from "./previewFollow";
 import { normalizeClauses } from "../components/contract/clauseNumbering";
 
 type Tab = "campos" | "json";
@@ -179,6 +180,8 @@ export default function ContractEditor({
   const savingRef = useRef(false);   // evita autosave sobreposto
   // Arrastar item no espelho de cláusulas (índice de origem).
   const clsDrag = useRef<number | null>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
+  const [followOn, setFollowOn] = usePreviewFollowPref();
   const toggleCollapse = (sid: string) =>
     setCollapsed((prev) => { const n = new Set(prev); if (n.has(sid)) n.delete(sid); else n.add(sid); return n; });
   const jumpTo = (sid: string) => {
@@ -688,6 +691,25 @@ export default function ContractEditor({
     els.forEach((el) => obs.observe(el));
     return () => obs.disconnect();
   }, [loading, tab, showPreview, collapsed, doc?.kind, doc?.sixVariant]);
+
+  // A prévia acompanha a seção em edição (quando "Acompanhar rolagem" está ligado):
+  // ao rolar o editor (scroll-spy define activeSectionId), a prévia rola para o
+  // trecho correspondente (data-spy no ContractView). Rolagem manual do container
+  // (getBoundingClientRect funciona apesar do zoom).
+  useEffect(() => {
+    if (!showPreview || !followOn || !activeSectionId) return;
+    const cont = previewScrollRef.current;
+    if (!cont) return;
+    const t = window.setTimeout(() => {
+      const sel = (typeof CSS !== "undefined" && CSS.escape) ? CSS.escape(activeSectionId) : activeSectionId;
+      const target = cont.querySelector<HTMLElement>(`[data-spy="${sel}"]`);
+      if (!target) return;
+      const delta = target.getBoundingClientRect().top - cont.getBoundingClientRect().top - 12;
+      if (Math.abs(delta) < 2) return;
+      cont.scrollTo({ top: cont.scrollTop + delta, behavior: "smooth" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [activeSectionId, showPreview, followOn]);
 
   if (loading || !doc) return <div className={styles.loading}>Carregando contrato…</div>;
 
@@ -1561,14 +1583,17 @@ export default function ContractEditor({
           }}
         >
           <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
+            display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
             padding: "10px 14px", borderBottom: "1px solid var(--color-border)",
             background: "var(--color-surface)", color: "var(--color-text-primary)",
           }}>
-            <strong style={{ fontSize: 13 }}>Prévia ao vivo · {doc.documentTitle || "Contrato"}</strong>
-            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+            <strong style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Prévia ao vivo · {doc.documentTitle || "Contrato"}</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <PreviewFollowToggle enabled={followOn} onChange={setFollowOn} />
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+            </div>
           </div>
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div ref={previewScrollRef} style={{ flex: 1, overflow: "auto" }}>
             {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}
             <div style={{ zoom: 0.64 }}>
               <ContractView doc={doc} preview />

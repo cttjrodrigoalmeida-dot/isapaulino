@@ -8,6 +8,7 @@ import BackToTop from "./BackToTop";
 import BriefingView from "../components/briefing/BriefingView";
 import RelatedDocs from "./RelatedDocs";
 import { useAutosavePref, AutosaveToggle } from "./autosave";
+import { usePreviewFollowPref, PreviewFollowToggle } from "./previewFollow";
 import styles from "./Admin.module.css";
 
 // Pergunta reutilizável (clipboard/biblioteca): sem id/pin (posição é do ambiente).
@@ -68,6 +69,7 @@ export default function BriefingEditor({
   const [activeSectionId, setActiveSectionId] = useState("");
   const [apoioOpen, setApoioOpen] = useState(true);
   const [autosaveOn, setAutosaveOn] = useAutosavePref();
+  const [followOn, setFollowOn] = usePreviewFollowPref();
   const hydratedRef = useRef(false);   // evita marcar "dirty" no carregamento
   const savingRef = useRef(false);     // evita autosave sobreposto
   const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
@@ -735,7 +737,7 @@ export default function BriefingEditor({
   // ambiente. Rolagem manual do container (não scrollIntoView) para não mexer na
   // página; getBoundingClientRect funciona mesmo com o `zoom` da prévia.
   useEffect(() => {
-    if (!showPreview) return;
+    if (!showPreview || !followOn) return;
     const id = activeRunId || activeSectionId;
     if (!id) return;
     const cont = previewScrollRef.current;
@@ -749,7 +751,7 @@ export default function BriefingEditor({
       cont.scrollTo({ top: cont.scrollTop + delta, behavior: "smooth" });
     }, 80);
     return () => window.clearTimeout(t);
-  }, [activeRunId, activeSectionId, showPreview]);
+  }, [activeRunId, activeSectionId, showPreview, followOn]);
 
   // A prévia acompanha o tema do painel (evita "escuro no escuro" no modo claro).
   const adminTheme: "light" | "dark" =
@@ -1118,12 +1120,15 @@ export default function BriefingEditor({
           }}
         >
           <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
+            display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
             padding: "10px 14px", borderBottom: "1px solid var(--color-border)",
             background: "var(--color-surface)", color: "var(--color-text-primary)",
           }}>
-            <strong style={{ fontSize: 13 }}>Prévia ao vivo · {briefing.title || "Briefing"}</strong>
-            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+            <strong style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Prévia ao vivo · {briefing.title || "Briefing"}</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <PreviewFollowToggle enabled={followOn} onChange={setFollowOn} />
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>
+            </div>
           </div>
           <div ref={previewScrollRef} style={{ flex: 1, overflow: "auto" }}>
             {/* zoom encolhe o documento p/ caber no painel (mantém a rolagem correta) */}

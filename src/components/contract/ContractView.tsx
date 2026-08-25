@@ -150,12 +150,14 @@ const IconWhatsApp = () => (
 );
 
 // ── Reveal on scroll (desligado na impressão) ──────────────────
-function Reveal({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
+// `dataSpy` marca a seção para o "acompanhar rolagem" da prévia no editor.
+function Reveal({ children, delay = 0, className, dataSpy }: { children: ReactNode; delay?: number; className?: string; dataSpy?: string }) {
   const printing = useContext(PrintContext);
-  if (printing) return <div className={className}>{children}</div>;
+  if (printing) return <div className={className} data-spy={dataSpy}>{children}</div>;
   return (
     <motion.div
       className={className}
+      data-spy={dataSpy}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
@@ -164,6 +166,20 @@ function Reveal({ children, delay = 0, className }: { children: ReactNode; delay
       {children}
     </motion.div>
   );
+}
+
+// Mapeia o papel da cláusula para o id da seção do EDITOR de contrato (para a
+// prévia acompanhar a seção sendo editada). Cláusulas comuns caem em "clausulas".
+function clauseSpyId(role: ReturnType<typeof clauseRole>): string {
+  switch (role) {
+    case "escopo": return "escopo";
+    case "prazo": return "prazo";
+    case "arquivos": return "arquivos";
+    case "validade": return "validade";
+    case "pagamento": return "pix"; // cláusula 07 (PIX) = seção "PIX" do editor
+    case "foro": return "assinatura";
+    default: return "clausulas";
+  }
 }
 
 // Extrai a data final de um intervalo "01/08/2026 a 05/08/2026" (ou a string
@@ -1027,7 +1043,7 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
         {!printing && !preview && <CustomCursor />}
         <div className={styles.sheet}>
           {/* ── Cabeçalho ── */}
-          <header className={styles.header}>
+          <header className={styles.header} data-spy="identificacao">
             <div className={styles.headerTop}>
               <div className={styles.logoBox}>
                 <img src="/assets/logo-parasite.webp" alt="Isabela Paulino Studio" className={styles.logoImg} />
@@ -1071,7 +1087,7 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
           </header>
 
           {/* ── Partes ── */}
-          <Reveal>
+          <Reveal dataSpy="contratante">
             <section className={styles.section}>
               <SectionCard tab="AS PARTES IDENTIFICADAS" bare className={styles.partiesCard}>
                 <div className={styles.partiesGrid}>
@@ -1087,11 +1103,11 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
             /* ── TERMO ADITIVO: cláusulas (pagamento embutido) + assinatura ── */
             <>
               {clauses.map((clause, i) => (
-                <Reveal className={styles.section} key={i}>
+                <Reveal className={styles.section} key={i} dataSpy={clauseSpyId(clauseRole(clause, doc.kind))}>
                   <AditivoClauseCard clause={clause} doc={doc} />
                 </Reveal>
               ))}
-              <Reveal className={styles.section}>
+              <Reveal className={styles.section} dataSpy="assinatura">
                 <SectionCard tab="ASSINATURA">
                   <SignatureInner doc={doc} />
                 </SectionCard>
@@ -1102,11 +1118,11 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
             /* ── Contrato principal (+ Seção 06 após a "prazo"; assinatura na foro) ── */
             clauses.map((clause, i) => (
               <Fragment key={i}>
-                <Reveal className={styles.section}>
+                <Reveal className={styles.section} dataSpy={clauseSpyId(clauseRole(clause, doc.kind))}>
                   <ClauseCard clause={clause} doc={doc} onPrint={exportPdf} waLink={waLink} />
                 </Reveal>
                 {clauseRole(clause, doc.kind) === "prazo" && (
-                  <Reveal className={styles.section}>
+                  <Reveal className={styles.section} dataSpy="pagamento">
                     <Section06 doc={doc} number={payNum} />
                   </Reveal>
                 )}
