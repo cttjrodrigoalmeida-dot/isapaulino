@@ -701,30 +701,33 @@ export default function BriefingEditor({
 
       {tab === "campos" ? (
        <>
-        {/* Barra de ações fixa — Salvar/Pré-visualizar sempre à mão + selo */}
-        <div className={styles.editorToolbar}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-            <span className={styles.saveBadge}>
-              <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
-              {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : "Tudo salvo"}
-            </span>
-            <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+        {/* Barra de ações fixa — Salvar/Pré-visualizar sempre à mão + selo.
+            1ª linha: Nº + nome (sutil, sempre visível). 2ª linha: selo + ações. */}
+        <div className={styles.editorToolbar} style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <span className={styles.saveBadge}>
+                <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
+                {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : "Tudo salvo"}
+              </span>
+              <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 150 }}>
+                <option value="draft">Rascunho (oculto)</option>
+                <option value="published">Publicado</option>
+              </select>
+              <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
+                {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
+              </button>
+              <button className={styles.btn} onClick={() => save(false)} disabled={saving}>💾 Salvar</button>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>Salvar e publicar</button>
+            </div>
           </div>
-          {/* Nº + nome do projeto, fixo na rolagem — evita confundir entre janelas. */}
-          <span className={styles.editorDocId} style={{ margin: "0 auto" }} title="Briefing que você está editando agora">
+          {/* Nº + nome do projeto — sutil, na última linha (não some sob o cabeçalho fixo). */}
+          <span className={styles.editorDocId} style={{ marginLeft: 0, maxWidth: "100%" }} title="Briefing que você está editando agora">
             ✎ Nº&nbsp;{(briefing.number || "").trim() || "—"}{briefing.title?.trim() ? ` · ${briefing.title.trim()}` : (briefing.serviceTitle?.trim() ? ` · ${briefing.serviceTitle.trim()}` : "")}
           </span>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 150 }}>
-              <option value="draft">Rascunho (oculto)</option>
-              <option value="published">Publicado</option>
-            </select>
-            <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
-              {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
-            </button>
-            <button className={styles.btn} onClick={() => save(false)} disabled={saving}>💾 Salvar</button>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>Salvar e publicar</button>
-          </div>
         </div>
 
         {/* Barra de seleção em massa (aparece quando há perguntas marcadas). */}

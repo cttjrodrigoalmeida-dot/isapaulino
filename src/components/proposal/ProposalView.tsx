@@ -675,17 +675,18 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
           </div>
 
           <Reveal delay={0.1} className={styles.totalCard}>
-            {p.comboNote && (
-              <div className={styles.comboBadge}>
-                <span className={styles.comboStar}>★</span>
-                <span className={styles.comboText}>{p.comboNote}</span>
-              </div>
-            )}
             <div className={styles.totalRow}>
               <span className={styles.totalLabel}>Investimento total</span>
               <span className={styles.totalValue}>{p.total}</span>
             </div>
             <span className={styles.totalExtenso}>{p.totalExtenso}</span>
+            {/* Desconto condicional (combo) — abaixo do valor, como uma nota do total. */}
+            {p.comboNote && (
+              <div className={styles.comboBadge} style={{ marginTop: 18, marginBottom: 0 }}>
+                <span className={styles.comboStar}>★</span>
+                <span className={styles.comboText}>{p.comboNote}</span>
+              </div>
+            )}
           </Reveal>
 
           {/* Brindes (cortesia) — consolidados abaixo do total; não entram no

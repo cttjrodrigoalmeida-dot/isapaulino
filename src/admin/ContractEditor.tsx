@@ -518,16 +518,23 @@ export default function ContractEditor({
 
   const save = async () => {
     const v = validate();
-    if (v) return setError(v);
+    if (v) { setError(v); scrollToTop(); return; }
     setError(null);
     setNotice(null);
     savingRef.current = true;
     setSaving(true);
     try {
+      const wasNew = !contractId;
       await persist(buildInput());
-      onSaved();
+      // 1ª vez: cria e volta para a lista. Depois: FICA na página (como a proposta),
+      // mostrando "Salvo às HH:MM" — não joga a Isabela de volta para a lista.
+      if (wasNew) { onSaved(); return; }
+      setLastSavedAt(Date.now());
+      setDirty(false);
+      setNotice("Alterações salvas.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
+      scrollToTop();
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -897,23 +904,25 @@ export default function ContractEditor({
         </div>
       ) : (
        <>
-        {/* Barra fixa — estado do salvamento + recolher/expandir tudo */}
-        <div className={styles.editorToolbar}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-            <span className={styles.saveBadge}>
-              <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
-              {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : contractId ? "Tudo salvo" : "Ainda não salvo"}
-            </span>
-            <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+        {/* Barra fixa — 1ª linha: Nº + nome (sutil, sempre visível). 2ª linha: selo + ações. */}
+        <div className={styles.editorToolbar} style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <span className={styles.saveBadge}>
+                <span className={styles.saveBadgeDot} style={{ background: saving ? "#d9a531" : dirty ? "#d9a531" : "#4ade80" }} />
+                {saving ? "Salvando…" : dirty ? (autosaveOn ? "Alterações não salvas" : "Não salvo — clique em Salvar") : lastSavedAt ? `Salvo às ${fmtTime(lastSavedAt)}` : contractId ? "Tudo salvo" : "Ainda não salvo"}
+              </span>
+              <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
+              <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
+            </div>
           </div>
-          {/* Nº + nome do projeto, fixo na rolagem — evita confundir entre janelas. */}
-          <span className={styles.editorDocId} style={{ margin: "0 auto" }} title="Contrato que você está editando agora">
+          {/* Nº + nome do projeto — sutil, na última linha (não some sob o cabeçalho fixo). */}
+          <span className={styles.editorDocId} style={{ marginLeft: 0, maxWidth: "100%" }} title="Contrato que você está editando agora">
             ✎ Nº&nbsp;{(doc?.contractNumber || "").trim() || "—"}{doc?.projectName?.trim() ? ` · ${doc.projectName.trim()}` : (doc?.serviceTitle?.trim() ? ` · ${doc.serviceTitle.trim()}` : "")}
           </span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={collapseAll}>Recolher tudo</button>
-            <button type="button" className={styles.btn} style={{ fontSize: 11 }} onClick={expandAll}>Expandir tudo</button>
-          </div>
         </div>
 
         <div className={styles.editorWorkspace} style={showPreview ? { display: "block" } : undefined}>

@@ -85,6 +85,11 @@ export default function ListEditor({
     const next = [...items.slice(0, i + 1), ...clip, ...items.slice(i + 1)];
     commit(next);
   };
+  // Substitui ESTE item pelo(s) copiado(s) — ocupa o lugar dele.
+  const replaceOne = (i: number) => {
+    const clip = readListClip(); if (!clip.length) return;
+    commit([...items.slice(0, i), ...clip, ...items.slice(i + 1)]);
+  };
   const duplicateOne = (i: number) => commit([...items.slice(0, i + 1), items[i], ...items.slice(i + 1)]);
   const duplicateSelected = () => {
     const sel = new Set(selected);
@@ -159,6 +164,7 @@ export default function ListEditor({
             <>
               <button type="button" className={styles.iconBtn} onClick={() => copyOne(i)} title="Copiar este item">⧉</button>
               <button type="button" className={styles.iconBtn} onClick={() => pasteAfter(i)} disabled={!hasClip} title="Colar o copiado logo abaixo">📋</button>
+              <button type="button" className={styles.iconBtn} onClick={() => replaceOne(i)} disabled={!hasClip} title="Substituir ESTE item pelo copiado (ocupa o lugar dele)">⇄</button>
               <button type="button" className={styles.iconBtn} onClick={() => duplicateOne(i)} title="Duplicar este item">⎘</button>
             </>
           )}

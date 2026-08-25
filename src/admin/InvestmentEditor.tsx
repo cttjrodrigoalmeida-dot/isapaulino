@@ -145,10 +145,21 @@ export default function InvestmentEditor({
     selByBlock().forEach((lis, bi) => lis.forEach((li) => lines.push(blocks[bi].lines[li])));
     if (lines.length) { writeItemClip(lines); setHasItemClip(true); }
   };
-  const pasteAfter = (bi: number, li: number) => {
+  // Ao colar/substituir, força o item copiado a virar (ou deixar de ser) brinde
+  // conforme o alvo — assim "ocupar o lugar" respeita a seção (itens ou brindes).
+  const asKind = (l: PriceLine, asBrinde: boolean): PriceLine =>
+    asBrinde ? { ...l, brinde: true } : { ...l, brinde: undefined };
+  const pasteAfter = (bi: number, li: number, asBrinde = false) => {
     const clip = readItemClip(); if (!clip.length) return;
     const next = blocks.map((b, idx) => idx === bi
-      ? { ...b, lines: [...b.lines.slice(0, li + 1), ...clip.map((l) => ({ ...l })), ...b.lines.slice(li + 1)] } : b);
+      ? { ...b, lines: [...b.lines.slice(0, li + 1), ...clip.map((l) => asKind(l, asBrinde)), ...b.lines.slice(li + 1)] } : b);
+    clearSel(); apply(next);
+  };
+  // Substitui ESTE item pelo(s) copiado(s) — ocupa o lugar dele (splice remove 1 + insere).
+  const replaceItem = (bi: number, li: number, asBrinde = false) => {
+    const clip = readItemClip(); if (!clip.length) return;
+    const next = blocks.map((b, idx) => idx === bi
+      ? { ...b, lines: [...b.lines.slice(0, li), ...clip.map((l) => asKind(l, asBrinde)), ...b.lines.slice(li + 1)] } : b);
     clearSel(); apply(next);
   };
   const duplicateItem = (bi: number, li: number) => {
@@ -330,6 +341,7 @@ export default function InvestmentEditor({
                 />
                 <button type="button" className={styles.iconBtn} onClick={() => copyItem(bi, li)} title="Copiar este item">⧉</button>
                 <button type="button" className={styles.iconBtn} onClick={() => pasteAfter(bi, li)} disabled={!hasItemClip} title="Colar o item copiado logo abaixo">📋</button>
+                <button type="button" className={styles.iconBtn} onClick={() => replaceItem(bi, li)} disabled={!hasItemClip} title="Substituir ESTE item pelo copiado (ocupa o lugar dele)">⇄</button>
                 <button type="button" className={styles.iconBtn} onClick={() => duplicateItem(bi, li)} title="Duplicar este item">⎘</button>
                 <button type="button" className={styles.iconBtn} onClick={() => removeLine(bi, li)} aria-label="Remover item">×</button>
               </div>
@@ -362,6 +374,10 @@ export default function InvestmentEditor({
                     onChange={(e) => setLine(bi, li, { value: e.target.value })}
                     onBlur={(e) => setLine(bi, li, { value: formatBRL(parseBRL(e.target.value)) })}
                   />
+                  <button type="button" className={styles.iconBtn} onClick={() => copyItem(bi, li)} title="Copiar este brinde">⧉</button>
+                  <button type="button" className={styles.iconBtn} onClick={() => pasteAfter(bi, li, true)} disabled={!hasItemClip} title="Colar o item copiado como brinde logo abaixo">📋</button>
+                  <button type="button" className={styles.iconBtn} onClick={() => replaceItem(bi, li, true)} disabled={!hasItemClip} title="Substituir ESTE brinde pelo copiado (ocupa o lugar dele)">⇄</button>
+                  <button type="button" className={styles.iconBtn} onClick={() => duplicateItem(bi, li)} title="Duplicar este brinde">⎘</button>
                   <button type="button" className={styles.iconBtn} onClick={() => removeLine(bi, li)} aria-label="Remover brinde">
                     ×
                   </button>
