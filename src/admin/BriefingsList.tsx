@@ -241,7 +241,8 @@ export default function BriefingsList({
                               style={{
                                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                                 width: 34, height: 32, marginRight: 8, verticalAlign: "middle",
-                                borderRadius: "7px 0 7px 0", cursor: busy === b.number ? "default" : "pointer",
+                                // Cantos espelhados em relação ao botão "Ações" (btn = 7px 0 7px 0).
+                                borderRadius: "0 7px 0 7px", cursor: busy === b.number ? "default" : "pointer",
                                 background: `${lockColor}1e`, border: `1px solid ${lockColor}`, color: lockColor,
                                 fontSize: 15, lineHeight: 1, opacity: busy === b.number ? 0.5 : 1,
                               }}
