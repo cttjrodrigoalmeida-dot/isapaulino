@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { eventTypeMeta } from "../projectEvents";
 import { AvatarSVG, AvatarPicker, avatarById } from "../avatars";
@@ -137,6 +137,73 @@ function groupByContract(items: ProjectHistoryItem[]): [string, ProjectHistoryIt
   return [...map.entries()];
 }
 
+// Textos do mini tutorial por aba.
+const TAB_HELP: Record<string, string> = {
+  inicio: "Um resumo rápido do seu projeto: próximo pagamento, status do contrato e o andamento — tudo à primeira vista.",
+  contrato: "Aqui você vê e baixa seu contrato. Se ainda estiver pendente, é aqui que você assina.",
+  pagamentos: "Suas parcelas: o que já foi pago e o que está em aberto, com botão para pagar direto.",
+  andamento: "A linha do tempo do seu projeto — cada etapa registrada pelo estúdio.",
+  arquivos: "Os arquivos que o estúdio compartilhou com você ficam aqui para baixar.",
+  briefings: "Responda ou edite os formulários (briefings) do seu projeto quando quiser.",
+  dados: "Mantenha seu contato atualizado (nome, e-mail, telefone). É só o que você pode editar.",
+};
+
+interface TourStep { selector: string; title: string; text: string }
+
+// Mini tutorial: escurece a tela e acende um "holofote" no elemento da vez,
+// com uma janelinha clara explicando. Anterior/Próximo/Pular.
+function TourOverlay({ steps, index, onPrev, onNext, onClose }: {
+  steps: TourStep[]; index: number; onPrev: () => void; onNext: () => void; onClose: () => void;
+}) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const step = steps[index];
+  useEffect(() => {
+    const measure = () => {
+      const el = document.querySelector(step.selector) as HTMLElement | null;
+      if (el) { el.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); setRect(el.getBoundingClientRect()); }
+      else setRect(null);
+    };
+    measure();
+    const t = window.setTimeout(measure, 300); // remede após o scroll
+    window.addEventListener("resize", measure);
+    return () => { window.clearTimeout(t); window.removeEventListener("resize", measure); };
+  }, [step.selector]);
+
+  const pad = 8;
+  const last = index === steps.length - 1;
+  const popW = Math.min(320, (typeof window !== "undefined" ? window.innerWidth : 360) - 24);
+  const vh = typeof window !== "undefined" ? window.innerHeight : 720;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 360;
+  // Janelinha abaixo do alvo (ou acima, se não couber).
+  let popTop = rect ? rect.bottom + 14 : vh / 2 - 90;
+  if (rect && popTop + 210 > vh) popTop = Math.max(14, rect.top - 210);
+  const popLeft = rect ? Math.max(12, Math.min(rect.left, vw - popW - 12)) : Math.max(12, vw / 2 - popW / 2);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300 }}>
+      {rect ? (
+        <div className={styles.tourSpot} style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }} />
+      ) : (
+        <div className={styles.tourVeil} />
+      )}
+      <div className={styles.tourPop} style={{ top: popTop, left: popLeft, width: popW }}>
+        <div className={styles.tourStepNo}>{index + 1} de {steps.length}</div>
+        <h3 className={styles.tourTitle}>{step.title}</h3>
+        <p className={styles.tourText}>{step.text}</p>
+        <div className={styles.tourActions}>
+          <button type="button" className={styles.tourSkip} onClick={onClose}>Pular</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {index > 0 && <button type="button" className={styles.tourBtn} onClick={onPrev}>Anterior</button>}
+            <button type="button" className={`${styles.tourBtn} ${styles.tourBtnPrimary}`} onClick={last ? onClose : onNext}>
+              {last ? "Concluir" : "Próximo"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const INST_STATUS: Record<string, { label: string; cls: string }> = {
   pending: { label: "Pendente", cls: "stPending" },
   confirmed: { label: "Confirmado", cls: "stPaid" },
@@ -176,6 +243,13 @@ export default function AreaCliente() {
     return n;
   });
   const [tab, setTab] = useState<string>("inicio");
+  // Mini tutorial (holofote): índice do passo, ou null quando fechado.
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  const tourAuto = useRef(false); // auto-inicia uma vez por montagem
+  const endTour = () => {
+    setTourStep(null);
+    try { localStorage.setItem("ips_client_tour_done", "1"); } catch { /* ignore */ }
+  };
 
   const load = async () => {
     try {
@@ -218,6 +292,18 @@ export default function AreaCliente() {
     document.title = "Área do Cliente · Isabela Paulino Studio";
     load();
   }, []);
+
+  // Auto-inicia o tutorial uma vez (após a abertura, só na 1ª visita).
+  useEffect(() => {
+    if (state !== "ok" || intro || tourAuto.current) return;
+    tourAuto.current = true;
+    let done = false;
+    try { done = localStorage.getItem("ips_client_tour_done") === "1"; } catch { /* ignore */ }
+    if (!done) {
+      const t = window.setTimeout(() => setTourStep(0), 500);
+      return () => window.clearTimeout(t);
+    }
+  }, [state, intro]);
 
   const submitCpf = async (e: FormEvent) => {
     e.preventDefault();
@@ -473,7 +559,7 @@ export default function AreaCliente() {
       <header className={styles.top}>
         <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.topLogo} />
         <div className={styles.topRight}>
-          <button type="button" className={styles.themeBtn} onClick={toggleTheme} aria-label="Alternar tema" title={theme === "dark" ? "Tema claro" : "Tema escuro"}>
+          <button type="button" data-tour="theme" className={styles.themeBtn} onClick={toggleTheme} aria-label="Alternar tema" title={theme === "dark" ? "Tema claro" : "Tema escuro"}>
             {theme === "dark" ? <IconSun /> : <IconMoon />}
           </button>
           <button
@@ -510,7 +596,7 @@ export default function AreaCliente() {
       <div className={styles.tabsBar}>
         <nav className={styles.tabs}>
           {tabs.map((t) => (
-            <button key={t.id} type="button" className={`${styles.tab} ${activeTab === t.id ? styles.tabActive : ""}`} onClick={() => setTab(t.id)}>{t.label}</button>
+            <button key={t.id} type="button" data-tour={`tab-${t.id}`} className={`${styles.tab} ${activeTab === t.id ? styles.tabActive : ""}`} onClick={() => setTab(t.id)}>{t.label}</button>
           ))}
         </nav>
       </div>
@@ -823,8 +909,28 @@ export default function AreaCliente() {
         )}
 
         </div>{/* fim do tabPanel */}
-        <footer className={styles.footer}>ISABELA PAULINO STUDIO · ÁREA DO CLIENTE</footer>
+        <footer className={styles.footer}>
+          <button type="button" className={styles.tourReplay} onClick={() => setTourStep(0)}>❔ Rever tutorial</button>
+          <div>ISABELA PAULINO STUDIO · ÁREA DO CLIENTE</div>
+        </footer>
       </main>
+
+      {tourStep !== null && (() => {
+        const tourSteps: TourStep[] = [
+          ...tabs.map((t) => ({ selector: `[data-tour="tab-${t.id}"]`, title: t.label, text: TAB_HELP[t.id] || "" })),
+          { selector: '[data-tour="theme"]', title: "Tema claro/escuro", text: "Toque aqui para alternar entre o tema claro e o escuro — como preferir." },
+        ];
+        const idx = Math.min(tourStep, tourSteps.length - 1);
+        return (
+          <TourOverlay
+            steps={tourSteps}
+            index={idx}
+            onPrev={() => setTourStep((s) => Math.max(0, (s ?? 0) - 1))}
+            onNext={() => setTourStep((s) => (s ?? 0) + 1)}
+            onClose={endTour}
+          />
+        );
+      })()}
     </div>
   );
 }

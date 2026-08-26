@@ -62,13 +62,19 @@
   --ac-pending-bg: #f1efe9;  --ac-pending-fg: #8a7856;
   --ac-paid-bg: #e4f3e7;     --ac-paid-fg: #2f7a3f;
   --ac-overdue-bg: rgba(240, 80, 110, 0.12); --ac-overdue-fg: #b23a56;
+  --ac-grid: rgba(0, 0, 0, 0.05);
 
   min-height: 100vh;
-  background: var(--ac-bg);
+  background-color: var(--ac-bg);
+  background-image:
+    linear-gradient(var(--ac-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ac-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
   color: var(--ac-text);
   font-family: var(--font-body, "Inter", system-ui, sans-serif);
   font-weight: 300;
-  transition: background 0.25s ease, color 0.25s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 .page[data-theme="dark"] {
   --ac-bg: #0e0e0e;
@@ -90,6 +96,7 @@
   --ac-pending-bg: rgba(203, 180, 137, 0.14); --ac-pending-fg: #d6c093;
   --ac-paid-bg: rgba(74, 222, 128, 0.14);     --ac-paid-fg: #82d99c;
   --ac-overdue-bg: rgba(240, 80, 110, 0.20);  --ac-overdue-fg: #f2879f;
+  --ac-grid: rgba(255, 255, 255, 0.055);
 }
 
 .center {
@@ -158,8 +165,8 @@
 }
 .logout:hover { background: rgba(255, 255, 255, 0.08); }
 
-/* ── Hero de boas-vindas ── */
-.hero { background: var(--ac-bg); }
+/* ── Hero de boas-vindas ── (fundo transparente: deixa o grid aparecer) */
+.hero { background: transparent; }
 .heroInner {
   max-width: 900px; margin: 0 auto;
   padding: clamp(28px, 5vw, 46px) clamp(18px, 5vw, 32px) clamp(14px, 2vw, 20px);
@@ -211,6 +218,8 @@
 .empty { font-size: 14px; color: var(--ac-faint); background: var(--ac-surface); border: 1px dashed var(--ac-border); border-radius: 16px 0 16px 0; padding: 22px; text-align: center; }
 
 .card { background: var(--ac-surface); border: 1px solid var(--ac-border); border-radius: 22px 0 22px 0; padding: 22px 24px; margin-bottom: 12px; box-shadow: var(--ac-shadow); }
+/* Espelhado: alterna os cantos entre cards vizinhos (padrão do sistema). */
+.card:nth-of-type(even) { border-radius: 0 22px 0 22px; }
 .cardHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .cardTitle { font-size: 16px; font-weight: 600; color: var(--ac-text); margin-bottom: 8px; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -225,6 +234,7 @@
   border-radius: 18px 0 18px 0; padding: 18px 20px;
   display: flex; flex-direction: column; gap: 7px; box-shadow: var(--ac-shadow);
 }
+.dCard:nth-of-type(even) { border-radius: 0 18px 0 18px; }
 .dLabel { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ac-accent); }
 .dValue { font-size: 21px; font-weight: 600; color: var(--ac-text); font-family: var(--font-title, var(--font-ui, sans-serif)); line-height: 1.15; }
 .dSub { font-size: 12.5px; color: var(--ac-muted); }
@@ -260,7 +270,38 @@
 .stPaid { background: var(--ac-paid-bg); color: var(--ac-paid-fg); }
 .stOverdue { background: var(--ac-overdue-bg); color: var(--ac-overdue-fg); }
 
-.footer { margin-top: 48px; text-align: center; font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.16em; color: var(--ac-faint); }
+.footer { margin-top: 48px; text-align: center; font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.16em; color: var(--ac-faint); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.tourReplay {
+  background: none; border: 1px solid var(--ac-border); color: var(--ac-accent); cursor: pointer;
+  font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  border-radius: 8px 0 8px 0; padding: 7px 14px;
+}
+.tourReplay:hover { background: var(--ac-hover); }
+
+/* ── Mini tutorial (holofote + janelinha clara) ── */
+.tourSpot {
+  position: fixed; z-index: 300; pointer-events: none;
+  border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.74);
+  transition: top 0.28s ease, left 0.28s ease, width 0.28s ease, height 0.28s ease;
+}
+.tourVeil { position: fixed; inset: 0; z-index: 300; background: rgba(0, 0, 0, 0.74); }
+.tourPop {
+  position: fixed; z-index: 310; width: min(320px, calc(100vw - 24px));
+  background: #ffffff; color: #1a1a1a;
+  border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 18px 0 18px 0;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); padding: 18px 20px;
+  animation: tourPopIn 0.28s ease both;
+}
+@keyframes tourPopIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.tourStepNo { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #9c8a6c; }
+.tourTitle { font-family: var(--font-title, var(--font-ui, sans-serif)); font-size: 18px; font-weight: 600; margin: 6px 0 6px; color: #161616; }
+.tourText { font-size: 13.5px; line-height: 1.6; color: #4a4a4a; margin: 0 0 16px; }
+.tourActions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tourSkip { background: none; border: none; color: #8a8a8a; font-size: 11px; cursor: pointer; font-family: var(--font-mono, monospace); text-transform: uppercase; letter-spacing: 0.08em; }
+.tourBtn { font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 14px; border-radius: 9px 0 9px 0; border: 1px solid rgba(0, 0, 0, 0.18); background: #fff; color: #161616; cursor: pointer; }
+.tourBtn:hover { background: #f4f1ea; }
+.tourBtnPrimary { background: #161616; color: #fff; border-color: #161616; }
+.tourBtnPrimary:hover { background: #000; }
 
 /* Meus dados (edição do próprio cadastro) */
 .profileGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
