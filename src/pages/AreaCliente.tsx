@@ -573,6 +573,12 @@ export default function AreaCliente() {
       <header className={styles.top}>
         <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.topLogo} />
         <div className={styles.topRight}>
+          <a className={styles.topLink} href={SITE_OFICIAL} target="_blank" rel="noopener noreferrer">
+            <IconGlobe /> <span className={styles.topLinkTxt}>Site oficial</span>
+          </a>
+          <a className={styles.topLink} href={ISABELA_WHATSAPP} target="_blank" rel="noopener noreferrer">
+            <IconChat /> <span className={styles.topLinkTxt}>Falar com a Isabela</span>
+          </a>
           <button type="button" data-tour="theme" className={styles.themeBtn} onClick={toggleTheme} aria-label="Alternar tema" title={theme === "dark" ? "Tema claro" : "Tema escuro"}>
             {theme === "dark" ? <IconSun /> : <IconMoon />}
           </button>
@@ -604,14 +610,6 @@ export default function AreaCliente() {
           <span className={styles.heroEyebrow}>Área do Cliente</span>
           <h1 className={styles.heroTitle}>Olá, {first} 👋</h1>
           <p className={styles.heroSub}>Aqui você acompanha seu contrato, pagamentos e o andamento do seu projeto — tudo em um lugar só.</p>
-          <div className={styles.heroActions}>
-            <a className={styles.heroLink} href={SITE_OFICIAL} target="_blank" rel="noopener noreferrer">
-              <IconGlobe /> Site oficial
-            </a>
-            <a className={`${styles.heroLink} ${styles.heroLinkWa}`} href={ISABELA_WHATSAPP} target="_blank" rel="noopener noreferrer">
-              <IconChat /> Falar com a Isabela
-            </a>
-          </div>
         </div>
       </div>
 

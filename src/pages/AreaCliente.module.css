@@ -149,7 +149,19 @@
   z-index: 30;
 }
 .topLogo { height: 30px; width: auto; object-fit: contain; }
-.topRight { display: flex; align-items: center; gap: 14px; }
+.topRight { display: flex; align-items: center; gap: 12px; }
+/* Links do topo (Site oficial / Falar com a Isabela) — visual da barra escura. */
+.topLink {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  text-decoration: none; color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px 0 8px 0; padding: 7px 13px; cursor: pointer; white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.topLink:nth-of-type(even) { border-radius: 0 8px 0 8px; }
+.topLink:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.topLink svg { color: var(--ac-accent); }
 .topName { font-family: var(--font-mono, monospace); font-size: 12px; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.7); }
 .themeBtn {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
@@ -181,21 +193,6 @@
   margin: 8px 0 6px; letter-spacing: -0.01em;
 }
 .heroSub { font-size: 14px; color: var(--ac-muted); margin: 0; max-width: 54ch; line-height: 1.6; }
-.heroActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-.heroLink {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-  text-decoration: none; color: var(--ac-text);
-  background: var(--ac-surface); border: 1px solid var(--ac-btn-border);
-  border-radius: 10px 0 10px 0; padding: 10px 16px; cursor: pointer;
-  box-shadow: var(--ac-shadow); transition: background 0.15s, transform 0.15s;
-}
-.heroLink:nth-of-type(even) { border-radius: 0 10px 0 10px; }
-.heroLink:hover { background: var(--ac-hover); transform: translateY(-1px); }
-.heroLink svg { color: var(--ac-accent); }
-.heroLinkWa { background: #25d366; border-color: #25d366; color: #0b3d20; }
-.heroLinkWa svg { color: #0b3d20; }
-.heroLinkWa:hover { background: #22c35d; }
 
 /* ── Abas ── */
 .tabsBar {
@@ -340,6 +337,8 @@
   .top { padding: 13px 16px; }
   .topRight { gap: 10px; }
   .topName { display: none; } /* nome some no mobile p/ não apertar a barra */
+  .topLinkTxt { display: none; } /* só o ícone no mobile */
+  .topLink { padding: 7px 10px; }
   .heroInner { padding: 24px 18px 12px; }
   .main { padding: 20px 16px 72px; }
   .card { padding: 18px 18px; }
