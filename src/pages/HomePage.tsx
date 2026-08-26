@@ -28,7 +28,7 @@ function SitePreloader({ onDone }: { onDone: () => void }) {
   }, [])
   useEffect(() => {
     if (!closing) return
-    const t = window.setTimeout(onDone, 720) // espera a saída (sobe pela tela)
+    const t = window.setTimeout(onDone, 650) // espera a saída (zoom + fade)
     return () => window.clearTimeout(t)
   }, [closing, onDone])
   return (
