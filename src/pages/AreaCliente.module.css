@@ -62,7 +62,7 @@
   --ac-pending-bg: #f1efe9;  --ac-pending-fg: #8a7856;
   --ac-paid-bg: #e4f3e7;     --ac-paid-fg: #2f7a3f;
   --ac-overdue-bg: rgba(240, 80, 110, 0.12); --ac-overdue-fg: #b23a56;
-  --ac-grid: rgba(0, 0, 0, 0.05);
+  --ac-grid: rgba(0, 0, 0, 0.028);
 
   min-height: 100vh;
   background-color: var(--ac-bg);
@@ -96,7 +96,7 @@
   --ac-pending-bg: rgba(203, 180, 137, 0.14); --ac-pending-fg: #d6c093;
   --ac-paid-bg: rgba(74, 222, 128, 0.14);     --ac-paid-fg: #82d99c;
   --ac-overdue-bg: rgba(240, 80, 110, 0.20);  --ac-overdue-fg: #f2879f;
-  --ac-grid: rgba(255, 255, 255, 0.055);
+  --ac-grid: rgba(255, 255, 255, 0.032);
 }
 
 .center {
