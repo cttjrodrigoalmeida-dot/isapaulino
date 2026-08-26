@@ -23,20 +23,22 @@ function SitePreloader({ onDone }: { onDone: () => void }) {
   const [closing, setClosing] = useState(false)
   useEffect(() => {
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    const t = window.setTimeout(() => setClosing(true), reduce ? 550 : 1900)
+    const t = window.setTimeout(() => setClosing(true), reduce ? 600 : 2200)
     return () => window.clearTimeout(t)
   }, [])
   useEffect(() => {
     if (!closing) return
-    const t = window.setTimeout(onDone, 450)
+    const t = window.setTimeout(onDone, 720) // espera a saída (sobe pela tela)
     return () => window.clearTimeout(t)
   }, [closing, onDone])
   return (
     <div className={`${styles.preloader} ${closing ? styles.closing : ''}`}>
-      <div className={styles.preloaderLogoWrap}>
-        <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.preloaderLogo} />
+      <div className={styles.preloaderContent}>
+        <div className={styles.preloaderLogoWrap}>
+          <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.preloaderLogo} />
+        </div>
+        <div className={styles.preloaderBar}><div className={styles.preloaderFill} /></div>
       </div>
-      <div className={styles.preloaderBar}><div className={styles.preloaderFill} /></div>
     </div>
   )
 }
