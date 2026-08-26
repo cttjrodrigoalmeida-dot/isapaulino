@@ -33,7 +33,9 @@ function SitePreloader({ onDone }: { onDone: () => void }) {
   }, [closing, onDone])
   return (
     <div className={`${styles.preloader} ${closing ? styles.closing : ''}`}>
-      <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.preloaderLogo} />
+      <div className={styles.preloaderLogoWrap}>
+        <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.preloaderLogo} />
+      </div>
       <div className={styles.preloaderBar}><div className={styles.preloaderFill} /></div>
     </div>
   )
