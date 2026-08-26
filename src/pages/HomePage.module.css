@@ -1,0 +1,48 @@
+/* Preloader de marca do site principal — logo + barra de carregamento. */
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background: #0f0f0f;
+  opacity: 1;
+  transition: opacity 0.45s ease;
+}
+.closing { opacity: 0; }
+.preloaderLogo {
+  width: min(240px, 52vw);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 42px rgba(156, 138, 108, 0.28));
+  animation: preIn 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.preloaderBar {
+  width: min(220px, 44vw);
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.preloaderFill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #9c8a6c, #d8c39a);
+  animation: preFill 1.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes preIn {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes preFill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .preloaderLogo { animation-duration: 0.3s; }
+  .preloaderFill { animation-duration: 0.4s; }
+}
