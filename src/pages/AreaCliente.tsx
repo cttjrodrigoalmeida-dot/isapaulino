@@ -39,6 +39,20 @@ const IconMoon = () => (
     <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" strokeLinejoin="round" />
   </svg>
 );
+const IconGlobe = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.4 3.8 5.6 3.8 9S14.5 18.6 12 21C9.5 18.6 8.2 15.4 8.2 12S9.5 5.4 12 3Z" />
+  </svg>
+);
+const IconChat = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.8 8.8 0 0 1-3.9-.9L3 20.5l1.5-4.4a8.3 8.3 0 0 1-1-4A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z" strokeLinejoin="round" />
+  </svg>
+);
+
+// Contato da Isabela (mesmo WhatsApp do site) e endereço do site oficial.
+const ISABELA_WHATSAPP = "https://wa.me/556291942598";
+const SITE_OFICIAL = "https://isabelapaulino.com.br";
 
 // Abertura de marca ao entrar: a logo aparece em tela cheia e revela a área.
 // Some sozinha (~2s) ou ao toque; respeita "reduzir movimento".
@@ -590,6 +604,14 @@ export default function AreaCliente() {
           <span className={styles.heroEyebrow}>Área do Cliente</span>
           <h1 className={styles.heroTitle}>Olá, {first} 👋</h1>
           <p className={styles.heroSub}>Aqui você acompanha seu contrato, pagamentos e o andamento do seu projeto — tudo em um lugar só.</p>
+          <div className={styles.heroActions}>
+            <a className={styles.heroLink} href={SITE_OFICIAL} target="_blank" rel="noopener noreferrer">
+              <IconGlobe /> Site oficial
+            </a>
+            <a className={`${styles.heroLink} ${styles.heroLinkWa}`} href={ISABELA_WHATSAPP} target="_blank" rel="noopener noreferrer">
+              <IconChat /> Falar com a Isabela
+            </a>
+          </div>
         </div>
       </div>
 

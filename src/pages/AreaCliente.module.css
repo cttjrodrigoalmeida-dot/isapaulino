@@ -181,6 +181,21 @@
   margin: 8px 0 6px; letter-spacing: -0.01em;
 }
 .heroSub { font-size: 14px; color: var(--ac-muted); margin: 0; max-width: 54ch; line-height: 1.6; }
+.heroActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.heroLink {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  text-decoration: none; color: var(--ac-text);
+  background: var(--ac-surface); border: 1px solid var(--ac-btn-border);
+  border-radius: 10px 0 10px 0; padding: 10px 16px; cursor: pointer;
+  box-shadow: var(--ac-shadow); transition: background 0.15s, transform 0.15s;
+}
+.heroLink:nth-of-type(even) { border-radius: 0 10px 0 10px; }
+.heroLink:hover { background: var(--ac-hover); transform: translateY(-1px); }
+.heroLink svg { color: var(--ac-accent); }
+.heroLinkWa { background: #25d366; border-color: #25d366; color: #0b3d20; }
+.heroLinkWa svg { color: #0b3d20; }
+.heroLinkWa:hover { background: #22c35d; }
 
 /* ── Abas ── */
 .tabsBar {
