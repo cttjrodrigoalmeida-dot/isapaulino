@@ -28,6 +28,18 @@ const IconArrow = () => (
   </svg>
 );
 
+const IconSun = () => (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" strokeLinecap="round" />
+  </svg>
+);
+const IconMoon = () => (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" strokeLinejoin="round" />
+  </svg>
+);
+
 // Abertura de marca ao entrar: a logo aparece em tela cheia e revela a área.
 // Some sozinha (~2s) ou ao toque; respeita "reduzir movimento".
 function IntroSplash({ onDone }: { onDone: () => void }) {
@@ -154,6 +166,16 @@ export default function AreaCliente() {
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
   // Abertura de marca (uma vez por sessão do navegador).
   const [intro, setIntro] = useState(false);
+  // Tema claro/escuro (lembrado no navegador) + aba ativa.
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try { return localStorage.getItem("ips_client_theme") === "dark" ? "dark" : "light"; } catch { return "light"; }
+  });
+  const toggleTheme = () => setTheme((t) => {
+    const n = t === "light" ? "dark" : "light";
+    try { localStorage.setItem("ips_client_theme", n); } catch { /* ignore */ }
+    return n;
+  });
+  const [tab, setTab] = useState<string>("inicio");
 
   const load = async () => {
     try {
@@ -423,11 +445,37 @@ export default function AreaCliente() {
     );
   }
 
+  // ── Destaques + abas (derivados do overview; sem endpoint novo) ──
+  const paidSet = new Set(["received", "confirmed"]);
+  const openInst = d.installments.filter((i) => !paidSet.has(i.status) && i.status !== "deleted");
+  const nextPayment = [...openInst].sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""))[0] || null;
+  const paidTotal = d.installments.filter((i) => paidSet.has(i.status)).reduce((s, i) => s + (i.amount || 0), 0);
+  const pendingTotal = openInst.reduce((s, i) => s + (i.amount || 0), 0);
+  const totalKnown = paidTotal + pendingTotal;
+  const signedContract = d.contracts.find((c) => c.status === "signed") || null;
+  const pendingContract = d.contracts.find((c) => c.status !== "signed") || null;
+  const latestEvent = d.projectHistory && d.projectHistory.length
+    ? [...d.projectHistory].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0] : null;
+  const hasSheet = !!(d.sheet && d.sheet.rows.length);
+  const tabs: { id: string; label: string }[] = [
+    { id: "inicio", label: "Início" },
+    ...(d.contracts.length || hasSheet ? [{ id: "contrato", label: "Contrato" }] : []),
+    ...(d.installments.length || d.history.length ? [{ id: "pagamentos", label: "Pagamentos" }] : []),
+    ...(d.projectHistory && d.projectHistory.length ? [{ id: "andamento", label: "Andamento" }] : []),
+    ...(d.files && d.files.length ? [{ id: "arquivos", label: "Arquivos" }] : []),
+    ...(briefings.length ? [{ id: "briefings", label: "Briefings" }] : []),
+    { id: "dados", label: "Meus dados" },
+  ];
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : "inicio";
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-theme={theme}>
       <header className={styles.top}>
         <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.topLogo} />
         <div className={styles.topRight}>
+          <button type="button" className={styles.themeBtn} onClick={toggleTheme} aria-label="Alternar tema" title={theme === "dark" ? "Tema claro" : "Tema escuro"}>
+            {theme === "dark" ? <IconSun /> : <IconMoon />}
+          </button>
           <button
             type="button"
             aria-label="Trocar avatar"
@@ -451,10 +499,84 @@ export default function AreaCliente() {
         </div>
       </header>
 
-      <main className={styles.main}>
-        <h1 className={styles.hello}>Olá, {first}! 👋</h1>
-        <p className={styles.sub}>Aqui você acompanha seu contrato, pagamentos e serviços.</p>
+      <div className={styles.hero}>
+        <div className={styles.heroInner}>
+          <span className={styles.heroEyebrow}>Área do Cliente</span>
+          <h1 className={styles.heroTitle}>Olá, {first} 👋</h1>
+          <p className={styles.heroSub}>Aqui você acompanha seu contrato, pagamentos e o andamento do seu projeto — tudo em um lugar só.</p>
+        </div>
+      </div>
 
+      <div className={styles.tabsBar}>
+        <nav className={styles.tabs}>
+          {tabs.map((t) => (
+            <button key={t.id} type="button" className={`${styles.tab} ${activeTab === t.id ? styles.tabActive : ""}`} onClick={() => setTab(t.id)}>{t.label}</button>
+          ))}
+        </nav>
+      </div>
+
+      <main className={styles.main}>
+        <div className={styles.tabPanel} key={activeTab}>
+
+        {activeTab === "inicio" && (
+          <section className={styles.section}>
+            <div className={styles.destaques}>
+              <div className={styles.dCard}>
+                <span className={styles.dLabel}>Próximo pagamento</span>
+                {nextPayment ? (
+                  <>
+                    <span className={styles.dValue}>{fmtBRL(nextPayment.amount)}</span>
+                    <span className={styles.dSub}>{nextPayment.number === 0 ? "Entrada" : `${nextPayment.number}ª parcela`} · vence {fmtDate(nextPayment.dueDate)}</span>
+                    {nextPayment.invoiceUrl && <a className={`${styles.btn} ${styles.btnPrimary} ${styles.dCta}`} href={nextPayment.invoiceUrl} target="_blank" rel="noopener noreferrer">Pagar</a>}
+                  </>
+                ) : (
+                  <><span className={styles.dValue}>Em dia ✓</span><span className={styles.dSub}>Nenhum pagamento em aberto.</span></>
+                )}
+              </div>
+
+              <div className={styles.dCard}>
+                <span className={styles.dLabel}>Contrato</span>
+                {signedContract ? (
+                  <>
+                    <span className={styles.dValue}>Assinado</span>
+                    <span className={styles.dSub}>{signedContract.title}</span>
+                    {signedContract.slug && <a className={`${styles.btn} ${styles.dCta}`} href={`/contrato/${signedContract.slug}`} target="_blank" rel="noopener noreferrer">Ver contrato</a>}
+                  </>
+                ) : pendingContract ? (
+                  <>
+                    <span className={styles.dValue}>Aguardando</span>
+                    <span className={styles.dSub}>{pendingContract.title}</span>
+                    {pendingContract.autentiqueUrl
+                      ? <a className={`${styles.btn} ${styles.btnPrimary} ${styles.dCta}`} href={pendingContract.autentiqueUrl} target="_blank" rel="noopener noreferrer">Assinar</a>
+                      : pendingContract.slug ? <a className={`${styles.btn} ${styles.dCta}`} href={`/contrato/${pendingContract.slug}`} target="_blank" rel="noopener noreferrer">Ver contrato</a> : null}
+                  </>
+                ) : (
+                  <><span className={styles.dValue}>—</span><span className={styles.dSub}>Nenhum contrato ainda.</span></>
+                )}
+              </div>
+
+              {latestEvent && (
+                <div className={styles.dCard}>
+                  <span className={styles.dLabel}>Andamento</span>
+                  <span className={styles.dValue} style={{ fontSize: 16 }}>{eventTypeMeta(latestEvent.type).label}</span>
+                  <span className={styles.dSub}>{fmtDate(latestEvent.date)}{latestEvent.phase ? ` · ${latestEvent.phase}` : ""}</span>
+                  <button type="button" className={`${styles.btn} ${styles.dCta}`} onClick={() => setTab("andamento")}>Ver andamento</button>
+                </div>
+              )}
+
+              {totalKnown > 0 && (
+                <div className={styles.dCard}>
+                  <span className={styles.dLabel}>Pagamentos</span>
+                  <div className={styles.dRow}><span className={styles.dValue} style={{ fontSize: 17 }}>{fmtBRL(paidTotal)}</span><span className={styles.dSmall}>de {fmtBRL(totalKnown)}</span></div>
+                  <div className={styles.dBar}><div className={styles.dBarFill} style={{ width: `${Math.round((paidTotal / totalKnown) * 100)}%` }} /></div>
+                  <span className={styles.dSub}>{fmtBRL(pendingTotal)} em aberto</span>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "contrato" && (
         <section className={styles.section}>
           <h2 className={styles.h2}>Seu contrato</h2>
           {d.contracts.length === 0 ? (
@@ -482,8 +604,9 @@ export default function AreaCliente() {
             ))
           )}
         </section>
+        )}
 
-        {d.projectHistory && d.projectHistory.length > 0 && (
+        {activeTab === "andamento" && d.projectHistory && d.projectHistory.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.h2}>Andamento do projeto</h2>
             {groupByContract(d.projectHistory).map(([cid, evs]) => (
@@ -496,13 +619,13 @@ export default function AreaCliente() {
                     <div key={h.id} style={{ display: "flex", gap: 12, paddingBottom: last ? 0 : 16 }}>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                         <span style={{ width: 13, height: 13, borderRadius: "50%", background: meta.color, marginTop: 3, flexShrink: 0, boxShadow: `0 0 0 4px ${meta.color}22` }} />
-                        {!last && <span style={{ flex: 1, width: 2, background: "rgba(0,0,0,0.12)", marginTop: 4 }} />}
+                        {!last && <span style={{ flex: 1, width: 2, background: "var(--ac-line)", marginTop: 4 }} />}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: meta.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>{meta.label}</span>
                           <span style={{ fontSize: 12.5, opacity: 0.65 }}>{fmtDate(h.date)}</span>
-                          {h.phase && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,0.06)", opacity: 0.85 }}>{h.phase}</span>}
+                          {h.phase && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "var(--ac-chip)", opacity: 0.85 }}>{h.phase}</span>}
                         </div>
                         <div style={{ marginTop: 4, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>
                         {(h.categories || "").split(",").map((c) => c.trim()).filter(Boolean).length > 0 && (
@@ -521,7 +644,7 @@ export default function AreaCliente() {
           </section>
         )}
 
-        {d.sheet && d.sheet.rows.length > 0 && (
+        {activeTab === "contrato" && d.sheet && d.sheet.rows.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.h2}>Planilha do projeto</h2>
             <div className={styles.card} style={{ overflowX: "auto" }}>
@@ -529,7 +652,7 @@ export default function AreaCliente() {
                 <thead>
                   <tr>
                     {SHEET_COLS.map((c) => (
-                      <th key={c.key} style={{ textAlign: "left", padding: "8px 10px", whiteSpace: "nowrap", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", opacity: 0.7, borderBottom: "1px solid rgba(0,0,0,0.12)", background: d.sheet!.colColors[c.key] || undefined }}>{c.label}</th>
+                      <th key={c.key} style={{ textAlign: "left", padding: "8px 10px", whiteSpace: "nowrap", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", opacity: 0.7, borderBottom: "1px solid var(--ac-border)", background: d.sheet!.colColors[c.key] || undefined }}>{c.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -540,7 +663,7 @@ export default function AreaCliente() {
                         const bg = r.cellColors?.[c.key] || d.sheet!.colColors[c.key] || undefined;
                         const val = c.key === "status" ? (SHEET_STATUS_LABEL[r.status] || "") : (r[c.key] as string);
                         return (
-                          <td key={c.key} style={{ padding: "8px 10px", borderBottom: "1px solid rgba(0,0,0,0.06)", background: bg, whiteSpace: c.key === "description" || c.key === "categories" ? "normal" : "nowrap" }}>{val || "—"}</td>
+                          <td key={c.key} style={{ padding: "8px 10px", borderBottom: "1px solid var(--ac-line)", background: bg, whiteSpace: c.key === "description" || c.key === "categories" ? "normal" : "nowrap" }}>{val || "—"}</td>
                         );
                       })}
                     </tr>
@@ -551,6 +674,7 @@ export default function AreaCliente() {
           </section>
         )}
 
+        {activeTab === "pagamentos" && (
         <section className={styles.section}>
           <h2 className={styles.h2}>Pagamentos</h2>
           {d.installments.length === 0 ? (
@@ -579,8 +703,9 @@ export default function AreaCliente() {
             </div>
           )}
         </section>
+        )}
 
-        {d.history.length > 0 && (
+        {activeTab === "pagamentos" && d.history.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.h2}>Histórico financeiro</h2>
             <div className={styles.card}>
@@ -612,7 +737,7 @@ export default function AreaCliente() {
           </section>
         )}
 
-        {d.files && d.files.length > 0 && (
+        {activeTab === "arquivos" && d.files && d.files.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.h2}>Arquivos do projeto</h2>
             <div className={styles.card}>
@@ -631,7 +756,7 @@ export default function AreaCliente() {
           </section>
         )}
 
-        {briefings.length > 0 && (
+        {activeTab === "briefings" && briefings.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.h2}>Briefings</h2>
             <div className={styles.card}>
@@ -650,6 +775,7 @@ export default function AreaCliente() {
           </section>
         )}
 
+        {activeTab === "dados" && (
         <section className={styles.section}>
           <h2 className={styles.h2}>Meus dados</h2>
           <form className={styles.card} onSubmit={saveProfile}>
@@ -694,7 +820,9 @@ export default function AreaCliente() {
             </p>
           </form>
         </section>
+        )}
 
+        </div>{/* fim do tabPanel */}
         <footer className={styles.footer}>ISABELA PAULINO STUDIO · ÁREA DO CLIENTE</footer>
       </main>
     </div>
