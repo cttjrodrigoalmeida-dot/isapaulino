@@ -28,6 +28,34 @@ const IconArrow = () => (
   </svg>
 );
 
+// Abertura de marca ao entrar: a logo aparece em tela cheia e revela a área.
+// Some sozinha (~2s) ou ao toque; respeita "reduzir movimento".
+function IntroSplash({ onDone }: { onDone: () => void }) {
+  const [closing, setClosing] = useState(false);
+  const finish = () => setClosing(true);
+  useEffect(() => {
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const t = window.setTimeout(finish, reduce ? 700 : 2000);
+    return () => window.clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!closing) return;
+    const t = window.setTimeout(onDone, 420);
+    return () => window.clearTimeout(t);
+  }, [closing, onDone]);
+  return (
+    <div
+      className={`${styles.intro} ${closing ? styles.introClosing : ""}`}
+      onClick={finish}
+      role="button"
+      aria-label="Entrar na Área do Cliente"
+    >
+      <img src="/assets/logo-parasite.webp" alt="Isabela Paulino" className={styles.introLogo} />
+      <span className={styles.introWord}>Área do Cliente</span>
+    </div>
+  );
+}
+
 interface Contract {
   id: string; title: string; status: string; slug: string | null;
   value: number | null; autentiqueUrl: string | null; signedAt: string | null;
@@ -124,6 +152,8 @@ export default function AreaCliente() {
   const [profile, setProfile] = useState({ name: "", email: "", phone: "", cpf_cnpj: "", address: "", city: "", state: "" });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
+  // Abertura de marca (uma vez por sessão do navegador).
+  const [intro, setIntro] = useState(false);
 
   const load = async () => {
     try {
@@ -143,6 +173,13 @@ export default function AreaCliente() {
           cpf_cnpj: j.client.cpfCnpj ?? "", address: j.client.address ?? "", city: j.client.city ?? "", state: j.client.state ?? "",
         });
         setState("ok");
+        // Abertura da marca: só na 1ª entrada da sessão (não repete a cada reload/salvamento).
+        try {
+          if (!sessionStorage.getItem("ips_client_intro_seen")) {
+            sessionStorage.setItem("ips_client_intro_seen", "1");
+            setIntro(true);
+          }
+        } catch { /* sessionStorage indisponível */ }
         try {
           const br = await fetch("/api/client/briefings", { credentials: "include" });
           if (br.ok) setBriefings((await br.json()).briefings ?? []);
@@ -248,6 +285,9 @@ export default function AreaCliente() {
   };
 
   if (state === "loading") return <div className={styles.center}>Carregando…</div>;
+
+  // Abertura de marca — aparece ao entrar e revela a área.
+  if (intro && state === "ok") return <IntroSplash onDone={() => setIntro(false)} />;
 
   if (state === "verify") {
     return (
