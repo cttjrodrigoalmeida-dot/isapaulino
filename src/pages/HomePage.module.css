@@ -31,7 +31,7 @@
   height: 100%;
   width: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, #9c8a6c, #d8c39a);
+  background: #ffffff;
   animation: preFill 1.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 @keyframes preIn {
