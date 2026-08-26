@@ -53,6 +53,15 @@ function slugFromParts(base: string, suffix: string): string {
   if (!b) return ""; // sem número da proposta: mantém o slug atual (publish auto-gera)
   return s ? `${b}-${s}` : b;
 }
+// Base do link do contrato: o nº da proposta vinculada. No TERMO ADITIVO sem
+// proposta vinculada, cai no nº do contrato (mesmo do principal) — assim o
+// aditivo também pode ter senha e complemento de URL, como o principal.
+function slugBaseOf(doc: Pick<ContractDoc, "proposalNumber" | "contractNumber" | "kind"> | null): string {
+  const prop = (doc?.proposalNumber ?? "").trim();
+  if (prop) return prop;
+  if (doc?.kind === "aditivo") return (doc?.contractNumber ?? "").trim();
+  return "";
+}
 
 function todayBR(): string {
   const d = new Date();
@@ -232,7 +241,7 @@ export default function ContractEditor({
           }
           setDoc(parsed);
           setAccessPassword(c.accessPassword ?? "");
-          setSlugSuffix(suffixFromSlug(c.slug ?? "", parsed.proposalNumber ?? ""));
+          setSlugSuffix(suffixFromSlug(c.slug ?? "", slugBaseOf(parsed)));
           setNotes(c.editorNotes ?? "");
           setDoneSet(new Set(c.editorDone ?? []));
         } else if (duplicateFrom) {
@@ -485,8 +494,8 @@ export default function ContractEditor({
     deadline: null,
     autentique_url: doc?.autentiqueUrl?.trim() || null,
     status: overrideStatus ?? status,
-    // Link = nº da proposta (base) + complemento. Vazio = mantém o slug atual.
-    slug: slugFromParts(doc?.proposalNumber ?? "", slugSuffix),
+    // Link = base (nº da proposta; aditivo cai no nº do contrato) + complemento.
+    slug: slugFromParts(slugBaseOf(doc), slugSuffix),
     accessPassword: accessPassword.trim() || null,
   });
 
@@ -665,7 +674,7 @@ export default function ContractEditor({
           value: contractValue(c.doc),
           deadline: null,
           autentique_url: c.doc?.autentiqueUrl?.trim() || null,
-          slug: slugFromParts(c.doc?.proposalNumber ?? "", c.slugSuffix),
+          slug: slugFromParts(slugBaseOf(c.doc), c.slugSuffix),
           accessPassword: c.accessPassword.trim() || null,
           // status omitido de propósito → o servidor mantém o status salvo
         }, { editorNotes: c.notes, editorDone: [...c.doneSet] });
@@ -745,7 +754,7 @@ export default function ContractEditor({
     });
   };
   const publicUrl = slug ? `${window.location.origin}/contrato/${slug}` : null;
-  const slugBase = (doc?.proposalNumber ?? "").trim(); // nº da proposta = base do link
+  const slugBase = slugBaseOf(doc); // base do link (proposta; aditivo cai no nº do contrato)
 
   // Derivados do apoio (navegação/recolher).
   const collapseAll = () => setCollapsed(new Set(sectionsMeta.map((s) => s.id)));
@@ -950,9 +959,12 @@ export default function ContractEditor({
               </button>
             </div>
           </div>
-          {/* Nº + nome do projeto — sutil, na última linha (não some sob o cabeçalho fixo). */}
-          <span className={styles.editorDocId} style={{ marginLeft: 0, maxWidth: "100%" }} title="Contrato que você está editando agora">
-            ✎ Nº&nbsp;{(doc?.contractNumber || "").trim() || "—"}{doc?.projectName?.trim() ? ` · ${doc.projectName.trim()}` : (doc?.serviceTitle?.trim() ? ` · ${doc.serviceTitle.trim()}` : "")}
+          {/* Nº + nome do projeto — sutil, na última linha (não some sob o cabeçalho fixo).
+              No aditivo, mostra também o Nº do contrato PRINCIPAL para identificar rápido. */}
+          <span className={styles.editorDocId} style={{ marginLeft: 0, maxWidth: "100%" }} title={isAditivo ? "Termo aditivo que você está editando (e o contrato principal a que ele se refere)" : "Contrato que você está editando agora"}>
+            ✎ {isAditivo ? "Aditivo · " : ""}Nº&nbsp;{(doc?.contractNumber || "").trim() || "—"}
+            {isAditivo && (doc?.parentContractNumber || "").trim() ? ` · do contrato principal Nº ${doc.parentContractNumber!.trim()}` : ""}
+            {doc?.projectName?.trim() ? ` · ${doc.projectName.trim()}` : (doc?.serviceTitle?.trim() ? ` · ${doc.serviceTitle.trim()}` : "")}
           </span>
         </div>
 
