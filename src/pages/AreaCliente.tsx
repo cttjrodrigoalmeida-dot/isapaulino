@@ -172,6 +172,12 @@ function TourOverlay({ steps, index, onPrev, onNext, onClose }: {
   const pad = 8;
   const last = index === steps.length - 1;
   const popW = Math.min(320, (typeof window !== "undefined" ? window.innerWidth : 360) - 24);
+  const vh = typeof window !== "undefined" ? window.innerHeight : 720;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 360;
+  // Janelinha abaixo do alvo (ou acima, se não couber).
+  let popTop = rect ? rect.bottom + 14 : vh / 2 - 90;
+  if (rect && popTop + 210 > vh) popTop = Math.max(14, rect.top - 210);
+  const popLeft = rect ? Math.max(12, Math.min(rect.left, vw - popW - 12)) : Math.max(12, vw / 2 - popW / 2);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300 }}>
@@ -180,7 +186,7 @@ function TourOverlay({ steps, index, onPrev, onNext, onClose }: {
       ) : (
         <div className={styles.tourVeil} />
       )}
-      <div className={styles.tourPop} style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: popW }}>
+      <div className={styles.tourPop} style={{ top: popTop, left: popLeft, width: popW }}>
         <div className={styles.tourStepNo}>{index + 1} de {steps.length}</div>
         <h3 className={styles.tourTitle}>{step.title}</h3>
         <p className={styles.tourText}>{step.text}</p>
