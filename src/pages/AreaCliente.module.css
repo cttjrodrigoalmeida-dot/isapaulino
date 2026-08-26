@@ -185,9 +185,14 @@
 /* ── Abas ── */
 .tabsBar {
   position: sticky; top: 62px; z-index: 25;
-  background: var(--ac-bg);
+  /* Mostra o mesmo grid do fundo (e mascara o conteúdo ao rolar, já que é sticky). */
+  background-color: var(--ac-bg);
+  background-image:
+    linear-gradient(var(--ac-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ac-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
   border-bottom: 1px solid var(--ac-border);
-  backdrop-filter: saturate(1.1);
 }
 .tabs {
   max-width: 900px; margin: 0 auto;
@@ -292,7 +297,7 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); padding: 18px 20px;
   animation: tourPopIn 0.28s ease both;
 }
-@keyframes tourPopIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes tourPopIn { from { opacity: 0; } to { opacity: 1; } }
 .tourStepNo { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #9c8a6c; }
 .tourTitle { font-family: var(--font-title, var(--font-ui, sans-serif)); font-size: 18px; font-weight: 600; margin: 6px 0 6px; color: #161616; }
 .tourText { font-size: 13.5px; line-height: 1.6; color: #4a4a4a; margin: 0 0 16px; }
@@ -315,4 +320,14 @@
 .profileInput:focus { border-color: var(--ac-accent); background: var(--ac-surface); }
 .profileMsg { font-size: 13px; color: var(--ac-paid-fg); }
 .profileNote { font-size: 12.5px; color: var(--ac-faint); margin: 14px 0 0; }
-@media (max-width: 560px) { .profileGrid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .profileGrid { grid-template-columns: 1fr; }
+  .top { padding: 13px 16px; }
+  .topRight { gap: 10px; }
+  .topName { display: none; } /* nome some no mobile p/ não apertar a barra */
+  .heroInner { padding: 24px 18px 12px; }
+  .main { padding: 20px 16px 72px; }
+  .card { padding: 18px 18px; }
+  .row { gap: 10px; }
+  .rowValue { min-width: 0; }
+}
