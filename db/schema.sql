@@ -359,3 +359,41 @@ CREATE TABLE IF NOT EXISTS project_history (
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_project_history_contract ON project_history(contract_id);
+
+-- Tarefas do estúdio (módulo "Tarefas", Produção). Módulo próprio (mais rico
+-- que a agenda), mas conectado ao Calendário: uma tarefa com `due_date` aparece
+-- no dia correspondente do calendário. Não confundir com calendar_events.
+CREATE TABLE IF NOT EXISTS tasks (
+  id          TEXT PRIMARY KEY,                 -- uuid
+  title       TEXT NOT NULL,
+  notes       TEXT,
+  priority    TEXT NOT NULL DEFAULT 'normal',   -- 'baixa' | 'normal' | 'alta'
+  status      TEXT NOT NULL DEFAULT 'aberta',   -- 'aberta' | 'fazendo' | 'concluida'
+  due_date    TEXT,                             -- 'YYYY-MM-DD' (opcional; conecta ao calendário)
+  contract_id TEXT,                             -- projeto (contrato) vinculado (opcional)
+  client_id   TEXT,                             -- cliente vinculado (opcional)
+  done_at     TEXT,                             -- quando foi concluída
+  position    INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date);
+
+-- Tabela de custos (módulo "Tabela de custos", Gestão): catálogo de referência
+-- dos serviços/itens do estúdio com custo e preço. Mantido pela Isabela; base
+-- para (futuramente) puxar valores nas propostas/contratos.
+CREATE TABLE IF NOT EXISTS cost_items (
+  id          TEXT PRIMARY KEY,                 -- uuid
+  name        TEXT NOT NULL,
+  category    TEXT,                             -- agrupador (ex.: "Projetos", "Consultoria")
+  unit        TEXT,                             -- 'm²' | 'un' | 'hora' | 'projeto' | 'diária'…
+  cost        REAL NOT NULL DEFAULT 0,          -- custo do estúdio
+  price       REAL NOT NULL DEFAULT 0,          -- preço de venda
+  notes       TEXT,
+  active      INTEGER NOT NULL DEFAULT 1,       -- 0 | 1 (item ativo no catálogo)
+  position    INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_cost_items_cat ON cost_items(category);

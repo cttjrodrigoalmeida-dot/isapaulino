@@ -1580,3 +1580,93 @@
 .refThumbRow .refThumbLink {
   margin-top: 0;
 }
+
+/* ── Tarefas (módulo Produção) ── */
+.taskForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px 0 16px 0;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.taskGroup { margin-bottom: 20px; }
+.taskGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin: 0 2px 8px;
+}
+.taskGroupDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.taskRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px 0 12px 0;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  transition: background 0.15s;
+}
+.taskRow:nth-of-type(even) { border-radius: 0 12px 0 12px; }
+.taskRow:hover { background: var(--color-surface-hover); }
+.taskCheck {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-strong);
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  display: grid; place-items: center;
+  font-size: 14px; line-height: 1;
+  transition: all 0.15s;
+}
+.taskCheck:hover { border-color: #40c261; color: #40c26188; }
+.taskCheckDone { background: #40c261; border-color: #40c261; color: #fff; }
+.taskPrioDot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.taskBody { flex: 1; min-width: 0; }
+.taskTitle { font-size: 14px; color: var(--color-text-primary); font-weight: 400; }
+.taskTitleDone { text-decoration: line-through; color: var(--color-text-muted); }
+.taskMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
+.taskChip {
+  display: inline-flex; align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 6px 0 6px 0;
+  padding: 2px 8px;
+}
+.taskNote { font-size: 12px; color: var(--color-text-muted); font-style: italic; }
+.taskActions { display: flex; gap: 4px; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .taskActions { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+/* ── Tabela de custos (módulo Gestão) ── */
+.costSummary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.costStat {
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px 0 14px 0;
+  padding: 14px 20px;
+  min-width: 130px;
+}
+.costStat:nth-of-type(even) { border-radius: 0 14px 0 14px; }
+.costStatVal { font-family: var(--font-title, var(--font-body)); font-size: 24px; font-weight: 600; color: var(--color-text-primary); }
+.costStatLbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); }
+.costForm { display: flex; flex-wrap: wrap; gap: 12px; }
+.costField { display: flex; flex-direction: column; gap: 5px; }
+.costLabel { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-secondary); }

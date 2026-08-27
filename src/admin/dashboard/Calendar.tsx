@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, type CalendarEvent } from "../api";
+import { api, type CalendarEvent, type Task } from "../api";
 import admin from "../Admin.module.css";
 import s from "./Dashboard.module.css";
 
@@ -19,6 +19,8 @@ export default function Calendar() {
   const [month, setMonth] = useState(now.getMonth()); // 0-11
   const [selected, setSelected] = useState<string>(todayKey());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  // Tarefas do módulo Tarefas com prazo no mês (conexão com o Calendário).
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // formulário de novo evento
@@ -31,8 +33,12 @@ export default function Calendar() {
     const from = ymd(y, m, 1);
     const to = ymd(y, m, new Date(y, m + 1, 0).getDate());
     try {
-      const { events } = await api.listCalendar(from, to);
+      const [{ events }, { tasks }] = await Promise.all([
+        api.listCalendar(from, to),
+        api.listTasks({ from, to }),
+      ]);
       setEvents(events);
+      setTasks(tasks);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar agenda.");
@@ -52,6 +58,23 @@ export default function Calendar() {
     }
     return map;
   }, [events]);
+
+  const tasksByDate = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const t of tasks) {
+      if (!t.dueDate) continue;
+      const arr = map.get(t.dueDate) ?? [];
+      arr.push(t);
+      map.set(t.dueDate, arr);
+    }
+    return map;
+  }, [tasks]);
+
+  const toggleTaskDone = async (t: Task) => {
+    const next = t.status === "concluida" ? "aberta" : "concluida";
+    setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, status: next } : x)));
+    try { await api.updateTask(t.id, { status: next }); } catch { load(year, month); }
+  };
 
   // grade 6 semanas
   const cells = useMemo(() => {
@@ -81,6 +104,7 @@ export default function Calendar() {
   const monthLabel = new Date(year, month, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
   const tk = todayKey();
   const dayEvents = byDate.get(selected) ?? [];
+  const dayTasks = tasksByDate.get(selected) ?? [];
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); } else setMonth((m) => m - 1);
@@ -145,6 +169,11 @@ export default function Calendar() {
             {DOW.map((d) => <div key={d} className={s.calDow}>{d}</div>)}
             {cells.map((c) => {
               const evs = byDate.get(c.key) ?? [];
+              const tks = tasksByDate.get(c.key) ?? [];
+              const dots = [
+                ...evs.map((e) => ({ id: e.id, kind: e.kind })),
+                ...tks.map((t) => ({ id: `task:${t.id}`, kind: "tarefa" as const })),
+              ];
               const cls = [
                 s.calCell,
                 c.outside ? s.calCellOut : "",
@@ -154,9 +183,9 @@ export default function Calendar() {
               return (
                 <button key={c.key} className={cls} onClick={() => setSelected(c.key)}>
                   <span className={s.calDayNum}>{c.day}</span>
-                  {evs.length > 0 && (
+                  {dots.length > 0 && (
                     <span className={s.calDots}>
-                      {evs.slice(0, 3).map((e) => (
+                      {dots.slice(0, 3).map((e) => (
                         <span key={e.id} className={`${s.calDot} ${e.kind === "compromisso" ? s.calDotCompromisso : ""}`} />
                       ))}
                     </span>
@@ -172,7 +201,26 @@ export default function Calendar() {
           <div className={s.dayPanel}>
             <span className={s.dayTitle} style={{ textTransform: "capitalize" }}>{selectedLabel}</span>
 
-            {dayEvents.length === 0 && <div className={s.emptyMini}>Nenhum item nesse dia.</div>}
+            {dayEvents.length === 0 && dayTasks.length === 0 && <div className={s.emptyMini}>Nenhum item nesse dia.</div>}
+
+            {/* Tarefas (do módulo Tarefas) com prazo nesse dia — marcar concluída aqui. */}
+            {dayTasks.map((t) => (
+              <div key={`task:${t.id}`} className={s.eventItem}>
+                <button
+                  className={`${s.eventCheck} ${t.status === "concluida" ? s.eventCheckDone : ""}`}
+                  onClick={() => toggleTaskDone(t)}
+                  aria-label="Concluir tarefa"
+                >✓</button>
+                <div className={s.eventBody}>
+                  <div className={`${s.eventTitle} ${t.status === "concluida" ? s.eventTitleDone : ""}`}>{t.title}</div>
+                  <div className={s.eventMeta}>
+                    <span className={`${s.eventKind} ${s.kindTarefa}`}>tarefa</span>
+                    {t.priority === "alta" ? "prioridade alta" : "em Tarefas"}
+                  </div>
+                </div>
+              </div>
+            ))}
+
             {dayEvents.map((ev) => (
               <div key={ev.id} className={s.eventItem}>
                 <button

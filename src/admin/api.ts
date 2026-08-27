@@ -388,6 +388,53 @@ export interface CalendarEvent {
   done: boolean;
 }
 
+// Tarefa (módulo Tarefas). due_date opcional conecta ao Calendário.
+export type TaskPriority = "baixa" | "normal" | "alta";
+export type TaskStatus = "aberta" | "fazendo" | "concluida";
+export interface Task {
+  id: string;
+  title: string;
+  notes: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  dueDate: string | null;
+  contractId: string | null;
+  clientId: string | null;
+  doneAt: string | null;
+  createdAt: string;
+}
+export interface TaskInput {
+  title?: string;
+  notes?: string | null;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+  dueDate?: string | null;
+  contractId?: string | null;
+  clientId?: string | null;
+}
+
+// Item do catálogo de custos/preços do estúdio (Tabela de custos).
+export interface CostItem {
+  id: string;
+  name: string;
+  category: string | null;
+  unit: string | null;
+  cost: number;
+  price: number;
+  notes: string | null;
+  active: boolean;
+  createdAt: string;
+}
+export interface CostItemInput {
+  name?: string;
+  category?: string | null;
+  unit?: string | null;
+  cost?: number;
+  price?: number;
+  notes?: string | null;
+  active?: boolean;
+}
+
 export interface DashboardOverview {
   generatedAt: string;
   proposals: {
@@ -586,6 +633,30 @@ export const api = {
     req<{ ok: true }>(`/api/calendar/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
+
+  // ── tarefas ──
+  listTasks: (opts?: { from?: string; to?: string; status?: TaskStatus }) => {
+    const p = new URLSearchParams();
+    if (opts?.from && opts?.to) { p.set("from", opts.from); p.set("to", opts.to); }
+    if (opts?.status) p.set("status", opts.status);
+    const qs = p.toString();
+    return req<{ tasks: Task[] }>(`/api/tasks${qs ? `?${qs}` : ""}`);
+  },
+  createTask: (t: TaskInput) =>
+    req<{ ok: true; task: Task }>("/api/tasks", { method: "POST", body: JSON.stringify(t) }),
+  updateTask: (id: string, patch: TaskInput) =>
+    req<{ ok: true }>(`/api/tasks/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(patch) }),
+  deleteTask: (id: string) =>
+    req<{ ok: true }>(`/api/tasks/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // ── tabela de custos ──
+  listCostItems: () => req<{ items: CostItem[] }>("/api/cost-items"),
+  createCostItem: (i: CostItemInput) =>
+    req<{ ok: true; item: CostItem }>("/api/cost-items", { method: "POST", body: JSON.stringify(i) }),
+  updateCostItem: (id: string, patch: CostItemInput) =>
+    req<{ ok: true }>(`/api/cost-items/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(patch) }),
+  deleteCostItem: (id: string) =>
+    req<{ ok: true }>(`/api/cost-items/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   // ── propostas ──
   listProposals: () => req<{ proposals: ProposalSummary[] }>("/api/proposals"),

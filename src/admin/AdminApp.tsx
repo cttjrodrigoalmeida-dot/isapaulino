@@ -13,6 +13,8 @@ import Comercial from "./dashboard/Comercial";
 import Clientes from "./dashboard/Clientes";
 import Contratos from "./dashboard/Contratos";
 import Projetos from "./dashboard/Projetos";
+import Tarefas from "./dashboard/Tarefas";
+import TabelaCustos from "./dashboard/TabelaCustos";
 import Financeiro from "./dashboard/Financeiro";
 import Relatorios from "./dashboard/Relatorios";
 import Arquivos from "./dashboard/Arquivos";
@@ -134,6 +136,10 @@ export default function AdminApp() {
         return <Contratos requestNew={contratosNew} />;
       case "projetos":
         return <Projetos onGoComercial={() => setSection("comercial")} />;
+      case "tarefas":
+        return <Tarefas />;
+      case "tabela":
+        return <TabelaCustos />;
       case "historico":
         return <HistoricoProjetos />;
       case "biblioteca":
