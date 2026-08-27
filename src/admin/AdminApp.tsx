@@ -14,6 +14,7 @@ import Clientes from "./dashboard/Clientes";
 import Contratos from "./dashboard/Contratos";
 import Projetos from "./dashboard/Projetos";
 import Assistente from "./dashboard/Assistente";
+import AssistantFab from "./dashboard/AssistantFab";
 import Tarefas from "./dashboard/Tarefas";
 import TabelaCustos from "./dashboard/TabelaCustos";
 import Financeiro from "./dashboard/Financeiro";
@@ -190,6 +191,7 @@ export default function AdminApp() {
       </div>
 
       {accountOpen && <MinhaConta onClose={() => setAccountOpen(false)} onSaved={(u) => setUser(u)} />}
+      <AssistantFab onExpand={() => selectSection("assistente")} />
       {toast && <div className={dash.toast}>{toast}</div>}
     </div>
   );
