@@ -25,6 +25,11 @@ database_id = "514cf658-a613-4898-8af9-bd2f7d432ead"
 binding = "R2"
 bucket_name = "isapaulino-files"
 
+# Workers AI — binding `env.AI` (assistente de IA do painel). Roda modelos na
+# infraestrutura da Cloudflare; 10.000 Neurons/dia grátis. Sem chave externa.
+[ai]
+binding = "AI"
+
 # Variáveis NÃO sensíveis (as sensíveis vão como Secret, ver BACKEND.md).
 [vars]
 SITE_URL = "https://isabelapaulino.com.br"

@@ -21,6 +21,7 @@ export const IcTarefas = () => <S><rect x="3.5" y="4" width="6" height="6" rx="1
 export const IcTabela = () => <S><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9.5h18M3 15h18M9 4v16" /></S>;
 export const IcBiblioteca = () => <S><path d="M12 5.5c-1.6-1.1-3.6-1.5-6-1.5v13c2.4 0 4.4.4 6 1.5 1.6-1.1 3.6-1.5 6-1.5V4c-2.4 0-4.4.4-6 1.5Z" /><path d="M12 5.5v13" /></S>;
 export const IcHistorico = () => <S><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" /><path d="M5.5 3v3.5H9" /><path d="M12 8v4.2l2.8 1.8" /></S>;
+export const IcAssistente = () => <S><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h10A1.5 1.5 0 0 1 17 5.5v6A1.5 1.5 0 0 1 15.5 13H9l-4 3.5V13H5.5A1.5 1.5 0 0 1 4 11.5Z" /><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8L16.5 17.5l1.8-.7Z" /></S>;
 
 export const IcSearch = () => <S size={16}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></S>;
 export const IcBell = () => <S size={18}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" /><path d="M10 19a2 2 0 0 0 4 0" /></S>;

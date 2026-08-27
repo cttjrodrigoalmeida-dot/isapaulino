@@ -13,6 +13,7 @@ import {
   IcTabela,
   IcBiblioteca,
   IcHistorico,
+  IcAssistente,
 } from "./icons";
 
 export type SectionId =
@@ -24,6 +25,7 @@ export type SectionId =
   | "contratos"
   | "projetos"
   | "historico"
+  | "assistente"
   | "tarefas"
   | "financeiro"
   | "tabela"
@@ -57,6 +59,7 @@ export const SECTIONS: SectionDef[] = [
   { id: "tarefas", label: "Tarefas", sub: "Lista de tarefas", icon: IcTarefas, category: "Produção", ready: true },
   { id: "calendario", label: "Calendário", sub: "Compromissos e agendas", icon: IcCalendario, category: "Produção", ready: true },
 
+  { id: "assistente", label: "Assistente (IA)", sub: "Pergunte sobre seus números", icon: IcAssistente, category: "Gestão", ready: true },
   { id: "historico", label: "Histórico do projeto", sub: "Linha do tempo dos projetos", icon: IcHistorico, category: "Gestão", ready: true },
   { id: "financeiro", label: "Financeiro", sub: "Receitas, custos e parcelas", icon: IcFinanceiro, category: "Gestão", ready: true },
   { id: "tabela", label: "Tabela de custos", sub: "Custos e preços do estúdio", icon: IcTabela, category: "Gestão", ready: true },

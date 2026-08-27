@@ -649,6 +649,10 @@ export const api = {
   deleteTask: (id: string) =>
     req<{ ok: true }>(`/api/tasks/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
+  // ── assistente de IA (Workers AI) ──
+  askAssistant: (messages: { role: "user" | "assistant"; content: string }[]) =>
+    req<{ answer: string }>("/api/assistant", { method: "POST", body: JSON.stringify({ messages }) }),
+
   // ── tabela de custos ──
   listCostItems: () => req<{ items: CostItem[] }>("/api/cost-items"),
   createCostItem: (i: CostItemInput) =>

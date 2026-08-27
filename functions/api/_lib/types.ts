@@ -5,6 +5,8 @@ export interface Env {
   DB: D1Database;
   /** Armazenamento de arquivos R2 (imagens). */
   R2: R2Bucket;
+  /** Workers AI (assistente do painel). Binding `[ai]` no wrangler.toml. */
+  AI?: Ai;
   /** Segredo para assinar a sessão (HMAC). Definido como Secret no Pages. */
   SESSION_SECRET: string;
   /** URL pública do site (para cookies/links). */

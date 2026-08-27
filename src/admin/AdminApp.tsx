@@ -13,6 +13,7 @@ import Comercial from "./dashboard/Comercial";
 import Clientes from "./dashboard/Clientes";
 import Contratos from "./dashboard/Contratos";
 import Projetos from "./dashboard/Projetos";
+import Assistente from "./dashboard/Assistente";
 import Tarefas from "./dashboard/Tarefas";
 import TabelaCustos from "./dashboard/TabelaCustos";
 import Financeiro from "./dashboard/Financeiro";
@@ -136,6 +137,8 @@ export default function AdminApp() {
         return <Contratos requestNew={contratosNew} />;
       case "projetos":
         return <Projetos onGoComercial={() => setSection("comercial")} />;
+      case "assistente":
+        return <Assistente />;
       case "tarefas":
         return <Tarefas />;
       case "tabela":
