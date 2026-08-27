@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { eventTypeMeta } from "../projectEvents";
 import { AvatarSVG, AvatarPicker, avatarById } from "../avatars";
+import ClientAssistant from "./ClientAssistant";
 import styles from "./AreaCliente.module.css";
 import admin from "../admin/Admin.module.css";
 
@@ -951,6 +952,8 @@ export default function AreaCliente() {
           />
         );
       })()}
+
+      <ClientAssistant />
     </div>
   );
 }
