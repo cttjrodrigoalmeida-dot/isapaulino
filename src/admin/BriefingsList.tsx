@@ -183,18 +183,30 @@ export default function BriefingsList({
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           )}
-          {/* Filtro por cadeado — fechado (bloqueado) / aberto (liberado). */}
-          <select
-            className={styles.input}
-            style={{ width: "auto", minWidth: 130 }}
-            value={lockFilter}
-            onChange={(e) => setLockFilter(e.target.value as "todos" | "locked" | "unlocked")}
-            title="Filtrar por cadeado: bloqueados (fechado) ou liberados (aberto)"
-          >
-            <option value="todos">🔒 Cadeado: todos</option>
-            <option value="locked">🔒 Fechados ({lockCounts.locked})</option>
-            <option value="unlocked">🔓 Abertos ({lockCounts.unlocked})</option>
-          </select>
+          {/* Filtro por cadeado — um clique cicla: cinza (todos) → verde (liberados) → vermelho (bloqueados). */}
+          {(() => {
+            const meta = {
+              todos:    { icon: "🔒", color: "#8a8a8a", label: `Todos (${lockCounts.locked + lockCounts.unlocked})`, next: "unlocked" as const },
+              unlocked: { icon: "🔓", color: "#4ade80", label: `Liberados (${lockCounts.unlocked})`, next: "locked" as const },
+              locked:   { icon: "🔒", color: "#f0506e", label: `Bloqueados (${lockCounts.locked})`, next: "todos" as const },
+            }[lockFilter];
+            return (
+              <button
+                type="button"
+                onClick={() => setLockFilter(meta.next)}
+                title={`Filtro de cadeado: ${meta.label} · clique para alternar`}
+                aria-label={`Filtro de cadeado: ${meta.label}`}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 40, height: 38, borderRadius: "0 7px 0 7px", cursor: "pointer",
+                  background: `${meta.color}1e`, border: `1px solid ${meta.color}`, color: meta.color,
+                  fontSize: 17, lineHeight: 1,
+                }}
+              >
+                {meta.icon}
+              </button>
+            );
+          })()}
           <button className={styles.btn} onClick={load} disabled={loading}>Atualizar</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onNew}>+ Novo briefing</button>
         </div>
