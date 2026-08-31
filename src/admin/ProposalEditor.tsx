@@ -130,6 +130,10 @@ export default function ProposalEditor({
     setCollapsed((prev) => { const n = new Set(prev); n.delete(id); return n; });
     requestAnimationFrame(() => document.getElementById(`sec-card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
+  // Marca/desmarca uma seção como concluída (reflete no ponto verde + progresso).
+  const toggleDone = (id: string) => setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const propDoneCount = PROPOSAL_SECTIONS.filter((s) => doneSet.has(s.id)).length;
+  const propPct = PROPOSAL_SECTIONS.length ? Math.round((propDoneCount / PROPOSAL_SECTIONS.length) * 100) : 0;
   const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
   const [followOn, setFollowOn] = usePreviewFollowPref();
   const [comboEnabled, setComboEnabled] = useState(false);
@@ -509,18 +513,26 @@ export default function ProposalEditor({
 
       {tab === "campos" ? (
         <div className={styles.editorWorkspace}>
-          {/* RAIL ESQUERDO — seções (scroll-spy) */}
+          {/* RAIL ESQUERDO — seções (scroll-spy) + concluir + progresso */}
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
             {PROPOSAL_SECTIONS.map((s) => {
               const active = s.id === activeSectionId;
+              const done = doneSet.has(s.id);
               return (
-                <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
-                  <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-                </button>
+                <div key={s.id} className={`${styles.navRow} ${active ? styles.navRowActive : ""} ${done ? styles.navRowDone : ""}`}>
+                  <input type="checkbox" className={styles.navCheck} checked={done} onChange={() => toggleDone(s.id)} title={done ? "Concluído — clique para desmarcar" : "Marcar como concluído"} aria-label="Concluído" />
+                  <button type="button" className={styles.navRowJump} onClick={() => jumpTo(s.id)} title={s.label}>
+                    <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                    <span className={styles.navLabel}>{s.label}</span>
+                  </button>
+                </div>
               );
             })}
+            <div style={{ marginTop: 14 }}>
+              <div className={styles.railTitle} style={{ marginBottom: 6 }}>Concluídas · {propDoneCount}/{PROPOSAL_SECTIONS.length} · {propPct}%</div>
+              <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${propPct}%` }} /></div>
+            </div>
             <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
           </aside>
 

@@ -197,6 +197,8 @@ export default function ContractEditor({
     setCollapsed((prev) => { const n = new Set(prev); n.delete(sid); return n; });
     requestAnimationFrame(() => document.getElementById(`sec-card-${sid}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
+  // Marca/desmarca uma seção como concluída (ponto verde + barra de progresso).
+  const toggleDone = (id: string) => setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   useEffect(() => {
     let alive = true;
@@ -756,9 +758,11 @@ export default function ContractEditor({
   const publicUrl = slug ? `${window.location.origin}/contrato/${slug}` : null;
   const slugBase = slugBaseOf(doc); // base do link (proposta; aditivo cai no nº do contrato)
 
-  // Derivados do apoio (navegação/recolher).
+  // Derivados do apoio (navegação/recolher/progresso).
   const collapseAll = () => setCollapsed(new Set(sectionsMeta.map((s) => s.id)));
   const expandAll = () => setCollapsed(new Set());
+  const ctrDoneCount = sectionsMeta.filter((s) => doneSet.has(s.id)).length;
+  const ctrPct = sectionsMeta.length ? Math.round((ctrDoneCount / sectionsMeta.length) * 100) : 0;
   const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   // ── Espelho editável das CLÁUSULAS (📌 Meu apoio) ──
@@ -969,18 +973,28 @@ export default function ContractEditor({
         </div>
 
         <div className={styles.editorWorkspace}>
-          {/* RAIL ESQUERDO — seções (scroll-spy) */}
+          {/* RAIL ESQUERDO — seções (scroll-spy) + concluir + progresso */}
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
             {sectionsMeta.map((s) => {
               const active = s.id === activeSectionId;
+              const done = doneSet.has(s.id);
               return (
-                <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
-                  <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-                </button>
+                <div key={s.id} className={`${styles.navRow} ${active ? styles.navRowActive : ""} ${done ? styles.navRowDone : ""}`}>
+                  <input type="checkbox" className={styles.navCheck} checked={done} onChange={() => toggleDone(s.id)} title={done ? "Concluído — clique para desmarcar" : "Marcar como concluído"} aria-label="Concluído" />
+                  <button type="button" className={styles.navRowJump} onClick={() => jumpTo(s.id)} title={s.label}>
+                    <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                    <span className={styles.navLabel}>{s.label}</span>
+                  </button>
+                </div>
               );
             })}
+            {sectionsMeta.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Concluídas · {ctrDoneCount}/{sectionsMeta.length} · {ctrPct}%</div>
+                <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${ctrPct}%` }} /></div>
+              </div>
+            )}
             <button type="button" className={styles.btn} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ marginTop: 14, width: "100%", fontSize: 11 }}>↑ Voltar ao topo</button>
           </aside>
 

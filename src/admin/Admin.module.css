@@ -1061,6 +1061,11 @@
 .statusDot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--color-text-muted); }
 .statusDotDone { background: #4ade80; }
 .statusDotActive { background: #d9a531; }
+/* Checkbox "concluído" + área clicável (pular até a seção) dentro da linha do rail. */
+.navCheck { flex-shrink: 0; width: 15px; height: 15px; margin: 0; cursor: pointer; accent-color: #4ade80; }
+.navRowJump { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; border: none; background: none; padding: 0; cursor: pointer; color: inherit; font: inherit; text-align: left; }
+.navLabel { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navRowDone .navLabel { color: var(--color-text-muted); text-decoration: line-through; }
 
 .progressTrack {
   height: 8px;

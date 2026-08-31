@@ -63,6 +63,10 @@ export default function BriefingEditor({
   // adicionar/renomear/mover/duplicar/excluir refletem direto no editor. `selChk`
   // guarda os ids de seção marcados para as ações em massa; `chkDrag` = id arrastado.
   const [selChk, setSelChk] = useState<Set<string>>(new Set());
+  // Marcação manual "concluído" por seção (persistida em editor_done) → ponto
+  // verde no rail + barra de progresso.
+  const [doneSet, setDoneSet] = useState<Set<string>>(new Set());
+  const toggleDone = (id: string) => setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const chkDrag = useRef<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -143,11 +147,12 @@ export default function BriefingEditor({
           setBriefing(draft);
           setStatus("draft");
         } else {
-          const { briefing: b, status: s, editorNotes } = await api.getBriefing(number!);
+          const { briefing: b, status: s, editorNotes, editorDone } = await api.getBriefing(number!);
           if (!alive) return;
           setBriefing(b);
           setStatus(s);
           setNotes(editorNotes ?? "");
+          setDoneSet(new Set(editorDone ?? []));
         }
       } catch (err) {
         if (alive) setError(err instanceof ApiError ? err.message : "Erro ao carregar.");
@@ -554,11 +559,11 @@ export default function BriefingEditor({
   // Marca alterações pendentes (após o carregamento inicial).
   useEffect(() => {
     if (hydratedRef.current) setDirty(true);
-  }, [briefing, status, notes]);
+  }, [briefing, status, notes, doneSet]);
 
   // Autosave silencioso (só briefing JÁ criado): debounce ~2,5s de ociosidade.
-  const latestRef = useRef({ briefing, status, notes });
-  latestRef.current = { briefing, status, notes };
+  const latestRef = useRef({ briefing, status, notes, doneSet });
+  latestRef.current = { briefing, status, notes, doneSet };
   useEffect(() => {
     if (!dirty || isNew || !autosaveOn) return;
     const t = window.setTimeout(async () => {
@@ -567,13 +572,13 @@ export default function BriefingEditor({
       if (!cur.briefing) return;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes });
+        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes, editorDone: [...cur.doneSet] });
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
-  }, [dirty, briefing, status, notes, isNew, number, autosaveOn]);
+  }, [dirty, briefing, status, notes, doneSet, isNew, number, autosaveOn]);
 
   // Scroll-spy: acende a seção visível durante a rolagem.
   useEffect(() => {
@@ -616,7 +621,7 @@ export default function BriefingEditor({
     savingRef.current = true; setSaving(true);
     try {
       if (isNew) { await api.createBriefing(briefing, finalStatus); onSaved(); return; }
-      await api.updateBriefing(number!, briefing, finalStatus, { editorNotes: notes });
+      await api.updateBriefing(number!, briefing, finalStatus, { editorNotes: notes, editorDone: [...doneSet] });
       if (publish && status !== "published") setStatus("published");
       setLastSavedAt(Date.now());
       setDirty(false);
@@ -629,8 +634,8 @@ export default function BriefingEditor({
 
   // Derivados do apoio (navegação/progresso). Continuações colapsam no "run" pai.
   const navList = (briefing?.sections ?? []).map((s, i) => ({ s, i })).filter(({ i }) => !contInfo[i]?.isCont);
-  // Progresso = seções que JÁ têm perguntas (o "formulário" do ambiente foi criado).
-  const doneCount = navList.filter(({ s }) => (s.questions?.length ?? 0) > 0).length;
+  // Progresso = seções MARCADAS como concluídas (checkbox manual no rail).
+  const doneCount = navList.filter(({ s }) => doneSet.has(s.id)).length;
   const pct = navList.length ? Math.round((doneCount / navList.length) * 100) : 0;
 
   // ── "Checklist de ambientes" = espelho editável das seções (não-continuação) ──
@@ -844,17 +849,21 @@ export default function BriefingEditor({
             <div className={styles.railTitle}>Seções</div>
             {navList.map(({ s }) => {
               const active = s.id === activeRunId;
+              const done = doneSet.has(s.id);
               const name = s.title || (s.kind === "ambiente" ? "Ambiente" : "Informações");
               return (
-                <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={name}>
-                  <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                </button>
+                <div key={s.id} className={`${styles.navRow} ${active ? styles.navRowActive : ""} ${done ? styles.navRowDone : ""}`}>
+                  <input type="checkbox" className={styles.navCheck} checked={done} onChange={() => toggleDone(s.id)} title={done ? "Concluído — clique para desmarcar" : "Marcar como concluído"} aria-label="Concluído" />
+                  <button type="button" className={styles.navRowJump} onClick={() => jumpTo(s.id)} title={name}>
+                    <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                    <span className={styles.navLabel}>{name}</span>
+                  </button>
+                </div>
               );
             })}
             {navList.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Com perguntas · {doneCount}/{navList.length} · {pct}%</div>
+                <div className={styles.railTitle} style={{ marginBottom: 6 }}>Concluídas · {doneCount}/{navList.length} · {pct}%</div>
                 <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
               </div>
             )}
