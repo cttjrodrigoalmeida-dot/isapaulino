@@ -702,10 +702,11 @@ export default function ProposalEditor({
                 <div className={styles.railTitle} style={{ marginBottom: 6 }}>Seções da proposta</div>
                 {PROPOSAL_SECTIONS.map((s) => {
                   const active = s.id === activeSectionId;
+                  const done = doneSet.has(s.id);
                   return (
-                    <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
-                      <span className={`${styles.statusDot} ${active ? styles.statusDotActive : ""}`} />
-                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                    <button key={s.id} type="button" className={`${styles.navRow} ${active ? styles.navRowActive : ""} ${done ? styles.navRowDone : ""}`} onClick={() => jumpTo(s.id)} title={s.label}>
+                      <span className={`${styles.statusDot} ${done ? styles.statusDotDone : active ? styles.statusDotActive : ""}`} />
+                      <span className={styles.navLabel}>{s.label}</span>
                     </button>
                   );
                 })}
