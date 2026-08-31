@@ -1,6 +1,6 @@
 // GET /api/client/magic?token=...  (público)
 // Verifica o magic link, confirma que o acesso está liberado, seta o cookie de
-// sessão do cliente e redireciona para /area. Erros → /area?erro=link|acesso.
+// sessão do cliente e redireciona para /cliente. Erros → /cliente?erro=link|acesso.
 import type { Env } from "../_lib/types";
 import { toErrorResponse } from "../_lib/http";
 import { verifyMagicToken, createClientSessionToken, clientSessionCookie } from "../_lib/client-auth";
@@ -8,7 +8,7 @@ import { verifyMagicToken, createClientSessionToken, clientSessionCookie } from 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const url = new URL(request.url);
-    const dest = new URL("/area", url.origin);
+    const dest = new URL("/cliente", url.origin);
     const token = url.searchParams.get("token") || "";
 
     const magic = await verifyMagicToken(token, env.SESSION_SECRET);

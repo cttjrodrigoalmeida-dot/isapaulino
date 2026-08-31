@@ -196,7 +196,7 @@ function ContractLockGate({ slug, onUnlocked }: { slug: string; onUnlocked: () =
         <div style={{ marginTop: 18, fontSize: 12.5, color: "#8a8a8a", lineHeight: 1.5 }}>
           Já é cliente do estúdio?{" "}
           <a
-            href={`/area?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+            href={`/cliente?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
             style={{ color: "#f0506e", textDecoration: "none", fontWeight: 500 }}
           >
             Entrar na Área do Cliente

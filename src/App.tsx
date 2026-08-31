@@ -43,6 +43,8 @@ function App() {
         <Route path="/proposta/:number" element={<Proposta />} />
         <Route path="/briefing/:number" element={<Briefing />} />
         <Route path="/contrato/:slug" element={<Contrato />} />
+        <Route path="/cliente" element={<AreaCliente />} />
+        {/* Atalho legado: /area continua funcionando (magic links/favoritos antigos). */}
         <Route path="/area" element={<AreaCliente />} />
         <Route
           path="/cms"
