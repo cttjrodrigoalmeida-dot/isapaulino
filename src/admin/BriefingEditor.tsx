@@ -9,6 +9,7 @@ import BriefingView from "../components/briefing/BriefingView";
 import RelatedDocs from "./RelatedDocs";
 import { useAutosavePref, AutosaveToggle } from "./autosave";
 import { usePreviewFollowPref, PreviewFollowToggle } from "./previewFollow";
+import { toast } from "./toast";
 import styles from "./Admin.module.css";
 
 // Pergunta reutilizável (clipboard/biblioteca): sem id/pin (posição é do ambiente).
@@ -664,25 +665,33 @@ export default function BriefingEditor({
 
   // ── "Checklist de ambientes" = espelho editável das seções (não-continuação) ──
   // Cada item controla a seção (renomear/mover/duplicar/excluir) direto no briefing.
-  // Alcance do "run" (seção + suas continuações) a partir do índice da cabeça.
-  const runEnd = (secs: BriefingSection[], head: number) => {
+  // Título da cópia (aparece como um NOVO ambiente separado — senão o contInfo
+  // agrupa pela igualdade de título e a cópia fica "invisível" junto da original).
+  const copyTitle = (t: string) => `${(t || "Ambiente").replace(/\s*\(cópia( \d+)?\)$/i, "")} (cópia)`;
+  // Alcance do "run" a partir da cabeça — usa contInfo (o MESMO agrupamento que a
+  // lista mostra: por continuation OU por título igual). Sem isso, as ações
+  // batiam num "head" diferente do que aparece e pareciam não fazer nada.
+  const runEndByCont = (head: number, len: number) => {
     let end = head + 1;
-    while (end < secs.length && secs[end].continuation) end++;
+    while (end < len && contInfo[end]?.isCont) end++;
     return end;
   };
   const chkRename = (headIdx: number, title: string) => {
     const s = briefing?.sections[headIdx]; if (s) setSection(headIdx, { ...s, title });
   };
   const chkAdd = () => { addSection("ambiente"); if (!apoioOpen) setApoioOpen(true); };
-  const chkDeleteRun = (headId: string) =>
+  const chkDeleteRun = (headId: string) => {
     setBriefing((prev) => {
       if (!prev) return prev;
       const out: BriefingSection[] = []; let skip = false;
-      prev.sections.forEach((s) => { if (!s.continuation) skip = s.id === headId; if (!skip) out.push(s); });
+      prev.sections.forEach((s, i) => { if (!contInfo[i]?.isCont) skip = s.id === headId; if (!skip) out.push(s); });
       return { ...prev, sections: out };
     });
+    setSelChk((prev) => { const n = new Set(prev); n.delete(headId); return n; });
+    toast("Ambiente excluído.", { type: "success" });
+  };
   // Duplica o run inteiro (cabeça + continuações) como um NOVO ambiente independente.
-  const chkDuplicateRun = (headId: string) =>
+  const chkDuplicateRun = (headId: string) => {
     setBriefing((prev) => {
       if (!prev) return prev;
       const out: BriefingSection[] = [];
@@ -692,16 +701,19 @@ export default function BriefingEditor({
         if (bufHead === headId) {
           buf.forEach((s, k) => out.push({
             ...structuredClone(s), id: newSectionId(),
+            title: k === 0 ? copyTitle(s.title) : s.title,
             continuation: k === 0 ? false : true,
             questions: (s.questions ?? []).map((q) => ({ ...q, id: newQuestionId() })),
           }));
         }
         buf = [];
       };
-      prev.sections.forEach((s) => { if (!s.continuation) { flush(); bufHead = s.id; } buf.push(s); });
+      prev.sections.forEach((s, i) => { if (!contInfo[i]?.isCont) { flush(); bufHead = s.id; } buf.push(s); });
       flush();
       return { ...prev, sections: out };
     });
+    toast("Ambiente duplicado.", { type: "success" });
+  };
   // Arrastar: move o run (cabeça + continuações) para antes do run alvo.
   const chkMoveRun = (fromId: string, toId: string) =>
     setBriefing((prev) => {
@@ -709,44 +721,50 @@ export default function BriefingEditor({
       const secs = prev.sections;
       const fh = secs.findIndex((s) => s.id === fromId), th = secs.findIndex((s) => s.id === toId);
       if (fh < 0 || th < 0) return prev;
-      const block = secs.slice(fh, runEnd(secs, fh));
-      const rest = [...secs.slice(0, fh), ...secs.slice(runEnd(secs, fh))];
+      const fe = runEndByCont(fh, secs.length);
+      const block = secs.slice(fh, fe);
+      const rest = [...secs.slice(0, fh), ...secs.slice(fe)];
       const insAt = rest.findIndex((s) => s.id === toId);
       const at = insAt < 0 ? rest.length : insAt;
       return { ...prev, sections: [...rest.slice(0, at), ...block, ...rest.slice(at)] };
     });
   const chkDeleteSel = () => {
     if (!selChk.size) return;
+    const n = selChk.size;
     setBriefing((prev) => {
       if (!prev) return prev;
       const out: BriefingSection[] = []; let skip = false;
-      prev.sections.forEach((s) => { if (!s.continuation) skip = selChk.has(s.id); if (!skip) out.push(s); });
+      prev.sections.forEach((s, i) => { if (!contInfo[i]?.isCont) skip = selChk.has(s.id); if (!skip) out.push(s); });
       return { ...prev, sections: out };
     });
     setSelChk(new Set());
+    toast(`${n} ambiente${n === 1 ? "" : "s"} excluído${n === 1 ? "" : "s"}.`, { type: "success" });
   };
   const chkDuplicateSel = () => {
     if (!selChk.size) return;
+    const n = selChk.size;
     setBriefing((prev) => {
       if (!prev) return prev;
       const out: BriefingSection[] = [];
       let buf: BriefingSection[] = []; let bufHead = "";
       const flush = () => {
         out.push(...buf);
-        if (selChk.has(bufHead)) {
+        if (bufHead && selChk.has(bufHead)) {
           buf.forEach((s, k) => out.push({
             ...structuredClone(s), id: newSectionId(),
+            title: k === 0 ? copyTitle(s.title) : s.title,
             continuation: k === 0 ? false : true,
             questions: (s.questions ?? []).map((q) => ({ ...q, id: newQuestionId() })),
           }));
         }
         buf = [];
       };
-      prev.sections.forEach((s) => { if (!s.continuation) { flush(); bufHead = s.id; } buf.push(s); });
+      prev.sections.forEach((s, i) => { if (!contInfo[i]?.isCont) { flush(); bufHead = s.id; } buf.push(s); });
       flush();
       return { ...prev, sections: out };
     });
     setSelChk(new Set());
+    toast(`${n} ambiente${n === 1 ? "" : "s"} duplicado${n === 1 ? "" : "s"}.`, { type: "success" });
   };
   const allChkSelected = navList.length > 0 && navList.every(({ s }) => selChk.has(s.id));
   const toggleSelAllChk = () => setSelChk(allChkSelected ? new Set() : new Set(navList.map(({ s }) => s.id)));
