@@ -18,12 +18,40 @@ function stripQuestion(q: BriefingQuestion): BriefingQuestion {
   const { id: _id, pin: _pin, ...rest } = q;
   return rest as BriefingQuestion;
 }
+// Gera ids ÚNICOS (contador + tempo + aleatório). Date.now() sozinho colide
+// quando duas seções nascem no mesmo milissegundo — o que quebrava a seleção
+// múltipla e as ações em massa (dois ambientes com o mesmo id).
+let __idCounter = 0;
+const uid = () => `${Date.now().toString(36)}${(__idCounter++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const newSectionId = () => `sec-${uid()}`;
+const newQuestionId = () => `q-${uid()}`;
+
+// Sana ids duplicados de seções/perguntas ao carregar (briefings antigos podem
+// ter colisões salvas do bug do Date.now()). Mantém o 1º id; reatribui os
+// repetidos. Sem isso, a seleção múltipla e as ações em massa erram o alvo.
+function dedupeIds(sections: BriefingSection[]): BriefingSection[] {
+  const seenS = new Set<string>();
+  const seenQ = new Set<string>();
+  return sections.map((s) => {
+    let id = s.id;
+    if (!id || seenS.has(id)) id = newSectionId();
+    seenS.add(id);
+    let qChanged = false;
+    const questions = (s.questions ?? []).map((q) => {
+      let qid = q.id;
+      if (!qid || seenQ.has(qid)) { qid = newQuestionId(); qChanged = true; }
+      seenQ.add(qid);
+      return qid === q.id ? q : { ...q, id: qid };
+    });
+    return id === s.id && !qChanged ? s : { ...s, id, questions };
+  });
+}
+
 // Clona uma seção com ids novos (seção + perguntas) — para colar/substituir.
 function freshSection(sec: BriefingSection): BriefingSection {
   const c = structuredClone(sec);
-  const stamp = Date.now();
-  c.id = `sec-${stamp}-${Math.random().toString(36).slice(2, 6)}`;
-  c.questions = (c.questions ?? []).map((q, qi) => ({ ...q, id: `q-${stamp}-${qi}` }));
+  c.id = newSectionId();
+  c.questions = (c.questions ?? []).map((q) => ({ ...q, id: newQuestionId() }));
   return c;
 }
 
@@ -104,11 +132,11 @@ export default function BriefingEditor({
     if (!selectedQ.size) return;
     setBriefing((prev) => {
       if (!prev) return prev;
-      const sections = prev.sections.map((s, si) => {
+      const sections = prev.sections.map((s) => {
         const out: BriefingQuestion[] = [];
-        s.questions.forEach((q, qi) => {
+        s.questions.forEach((q) => {
           out.push(q);
-          if (selectedQ.has(q.id)) out.push({ ...structuredClone(q), id: `q-${Date.now()}-${si}-${qi}` });
+          if (selectedQ.has(q.id)) out.push({ ...structuredClone(q), id: newQuestionId() });
         });
         return { ...s, questions: out };
       });
@@ -149,7 +177,7 @@ export default function BriefingEditor({
         } else {
           const { briefing: b, status: s, editorNotes, editorDone } = await api.getBriefing(number!);
           if (!alive) return;
-          setBriefing(b);
+          setBriefing({ ...b, sections: dedupeIds(b.sections) });
           setStatus(s);
           setNotes(editorNotes ?? "");
           setDoneSet(new Set(editorDone ?? []));
@@ -218,7 +246,7 @@ export default function BriefingEditor({
             sections: [
               ...prev.sections,
               {
-                id: `sec-${Date.now()}`,
+                id: newSectionId(),
                 kind,
                 title: kind === "ambiente" ? "NOVO AMBIENTE" : "NOVA SEÇÃO",
                 questions: [],
@@ -233,7 +261,7 @@ export default function BriefingEditor({
   // "+ Continuação": nova seção do MESMO ambiente (herda o título do último
   // ambiente), mas começa EM BRANCO — sem repetir as perguntas anteriores.
   const addContinuacao = () => {
-    const newId = `sec-${Date.now()}`;
+    const newId = newSectionId();
     setBriefing((prev) => {
       if (!prev) return prev;
       const lastAmbiente = [...prev.sections].reverse().find((s) => s.kind === "ambiente");
@@ -250,7 +278,7 @@ export default function BriefingEditor({
   // "+ Continuação" por seção: nova seção do MESMO ambiente da seção `i`
   // (herda o título dela), inserida logo abaixo e começando EM BRANCO.
   const continuarSection = (i: number) => {
-    const newId = `sec-${Date.now()}`;
+    const newId = newSectionId();
     setBriefing((prev) => {
       if (!prev) return prev;
       const base = prev.sections[i];
@@ -266,8 +294,8 @@ export default function BriefingEditor({
     setBriefing((prev) => {
       if (!prev) return prev;
       const copy = structuredClone(prev.sections[i]);
-      copy.id = `sec-${Date.now()}`;
-      copy.questions = (copy.questions ?? []).map((q, qi) => ({ ...q, id: `q-${Date.now()}-${qi}` }));
+      copy.id = newSectionId();
+      copy.questions = (copy.questions ?? []).map((q) => ({ ...q, id: newQuestionId() }));
       const list = prev.sections.slice();
       list.splice(i + 1, 0, copy);
       return { ...prev, sections: list };
@@ -352,8 +380,7 @@ export default function BriefingEditor({
   const pasteQuestion = (si: number, at?: number) => {
     const items = readClip();
     if (!items.length) return;
-    const stamp = Date.now();
-    const withIds = items.map((q, k) => ({ ...q, id: `q-${stamp}-${k}` }));
+    const withIds = items.map((q) => ({ ...q, id: newQuestionId() }));
     setBriefing((prev) => {
       if (!prev) return prev;
       const sections = prev.sections.map((s, idx) => {
@@ -371,8 +398,7 @@ export default function BriefingEditor({
   const replaceQuestion = (si: number, qi: number) => {
     const items = readClip();
     if (!items.length) return;
-    const stamp = Date.now();
-    const withIds = items.map((q, k) => ({ ...q, id: `q-${stamp}-${k}` }));
+    const withIds = items.map((q) => ({ ...q, id: newQuestionId() }));
     setBriefing((prev) => {
       if (!prev) return prev;
       const sections = prev.sections.map((s, idx) => {
@@ -391,15 +417,13 @@ export default function BriefingEditor({
   const replaceSelectedQ = () => {
     const items = readClip();
     if (!items.length || !selectedQ.size) return;
-    const stamp = Date.now();
-    let counter = 0;
     setBriefing((prev) => {
       if (!prev) return prev;
       const sections = prev.sections.map((s) => {
         const out: BriefingQuestion[] = [];
         s.questions.forEach((q) => {
           if (selectedQ.has(q.id)) {
-            items.forEach((it) => out.push({ ...structuredClone(it), id: `q-${stamp}-${counter++}` }));
+            items.forEach((it) => out.push({ ...structuredClone(it), id: newQuestionId() }));
           } else out.push(q);
         });
         return { ...s, questions: out };
@@ -464,7 +488,7 @@ export default function BriefingEditor({
     }
   };
   const insertFromLibrary = (si: number, q: BriefingQuestion) => {
-    const newId = `q-${Date.now()}`;
+    const newId = newQuestionId();
     let targetSecId: string | undefined;
     setBriefing((prev) => {
       if (!prev) return prev;
@@ -661,16 +685,15 @@ export default function BriefingEditor({
   const chkDuplicateRun = (headId: string) =>
     setBriefing((prev) => {
       if (!prev) return prev;
-      const stamp = Date.now(); let c = 0;
       const out: BriefingSection[] = [];
       let buf: BriefingSection[] = []; let bufHead = "";
       const flush = () => {
         out.push(...buf);
         if (bufHead === headId) {
           buf.forEach((s, k) => out.push({
-            ...structuredClone(s), id: `sec-${stamp}-${c++}`,
+            ...structuredClone(s), id: newSectionId(),
             continuation: k === 0 ? false : true,
-            questions: (s.questions ?? []).map((q, qi) => ({ ...q, id: `q-${stamp}-${c}-${qi}` })),
+            questions: (s.questions ?? []).map((q) => ({ ...q, id: newQuestionId() })),
           }));
         }
         buf = [];
@@ -706,16 +729,15 @@ export default function BriefingEditor({
     if (!selChk.size) return;
     setBriefing((prev) => {
       if (!prev) return prev;
-      const stamp = Date.now(); let c = 0;
       const out: BriefingSection[] = [];
       let buf: BriefingSection[] = []; let bufHead = "";
       const flush = () => {
         out.push(...buf);
         if (selChk.has(bufHead)) {
           buf.forEach((s, k) => out.push({
-            ...structuredClone(s), id: `sec-${stamp}-${c++}`,
+            ...structuredClone(s), id: newSectionId(),
             continuation: k === 0 ? false : true,
-            questions: (s.questions ?? []).map((q, qi) => ({ ...q, id: `q-${stamp}-${c}-${qi}` })),
+            questions: (s.questions ?? []).map((q) => ({ ...q, id: newQuestionId() })),
           }));
         }
         buf = [];
