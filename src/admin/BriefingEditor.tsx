@@ -1087,14 +1087,20 @@ export default function BriefingEditor({
                     {navList.map(({ s, i }) => (
                       <div
                         key={s.id}
-                        draggable
-                        onDragStart={() => (chkDrag.current = s.id)}
-                        onDragEnd={() => (chkDrag.current = null)}
+                        // Só o container é ALVO de drop; arrastar parte apenas do ⠿
+                        // (draggable no ROW inteiro impede o clique no checkbox/inputs no Chrome).
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => { e.preventDefault(); if (chkDrag.current) chkMoveRun(chkDrag.current, s.id); chkDrag.current = null; }}
                         style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 2px", fontSize: 12.5 }}
                       >
-                        <span className={styles.dragHandle} title="Arraste para reordenar (move a seção no briefing)" style={{ cursor: "grab" }}>⠿</span>
+                        <span
+                          className={styles.dragHandle}
+                          draggable
+                          onDragStart={() => (chkDrag.current = s.id)}
+                          onDragEnd={() => (chkDrag.current = null)}
+                          title="Arraste para reordenar (move a seção no briefing)"
+                          style={{ cursor: "grab" }}
+                        >⠿</span>
                         <input type="checkbox" checked={selChk.has(s.id)} onChange={() => toggleSelChk(s.id)} aria-label="Selecionar" />
                         <input
                           className={styles.input}
