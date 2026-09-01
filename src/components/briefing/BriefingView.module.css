@@ -1930,3 +1930,19 @@
 @page {
   margin: 12mm;
 }
+
+/* ── Modo exportação PDF ──
+   Na tela, o conteúdo é uma coluna de 980px centralizada numa página larga —
+   ao rasterizar, isso virava muita margem lateral e texto pequeno na folha.
+   No PDF, estreitamos a página para a largura do conteúdo (ele preenche o A4). */
+.pdfMode {
+  width: 1040px !important;
+  max-width: 1040px !important;
+  margin: 0 auto !important;
+  min-height: 0 !important;
+}
+.pdfMode .container {
+  max-width: 100% !important;
+  padding-left: 26px !important;
+  padding-right: 26px !important;
+}

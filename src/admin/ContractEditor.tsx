@@ -1487,6 +1487,7 @@ export default function ContractEditor({
           </div>{/* fim da coluna principal (editorGrid) */}
 
           {/* RAIL DIREITO — Meu apoio (espelho editável das cláusulas + notas) */}
+          {!showPreview && (
           <aside className={styles.editorRail}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div className={styles.railTitle} style={{ margin: 0 }}>📌 Meu apoio</div>
@@ -1544,6 +1545,7 @@ export default function ContractEditor({
               </>
             )}
           </aside>
+          )}
         </div>{/* fim do editorWorkspace */}
        </>
       )}
@@ -1601,8 +1603,8 @@ export default function ContractEditor({
       {showPreview && (
         <div
           style={{
-            position: "fixed", top: 132, right: 324, zIndex: 55,
-            width: "min(40vw, 600px)", height: "calc(100vh - 148px)",
+            position: "fixed", top: 132, right: 16, zIndex: 55,
+            width: "min(44vw, 680px)", height: "calc(100vh - 148px)",
             background: "#ffffff", border: "1px solid var(--color-border)",
             borderRadius: 12,
             boxShadow: "0 20px 60px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column",

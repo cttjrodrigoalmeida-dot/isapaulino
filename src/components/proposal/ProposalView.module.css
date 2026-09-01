@@ -2016,3 +2016,16 @@
 @page {
   margin: 12mm;
 }
+
+/* ── Modo exportação PDF ── (ver nota no BriefingView.module.css) */
+.pdfMode {
+  width: 1040px !important;
+  max-width: 1040px !important;
+  margin: 0 auto !important;
+  min-height: 0 !important;
+}
+.pdfMode .container {
+  max-width: 100% !important;
+  padding-left: 26px !important;
+  padding-right: 26px !important;
+}

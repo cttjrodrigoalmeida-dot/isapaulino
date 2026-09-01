@@ -567,3 +567,16 @@
   .digitalBoxSide { align-items: flex-start; text-align: left; }
   .payCardDivider { width: auto; height: 1px; }
 }
+
+/* ── Modo exportação PDF ── (ver nota no BriefingView.module.css) */
+.pdfMode {
+  width: 1040px !important;
+  max-width: 1040px !important;
+  margin: 0 auto !important;
+  min-height: 0 !important;
+}
+.pdfMode .sheet {
+  max-width: 100% !important;
+  padding-left: 26px !important;
+  padding-right: 26px !important;
+}

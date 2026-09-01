@@ -371,7 +371,7 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
 
   return (
     <PrintContext.Provider value={printing || preview}>
-    <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} ref={pageRef}>
+    <div className={`${styles.page} ${preview ? styles.pagePreview : ""} ${exporting ? styles.pdfMode : ""}`} ref={pageRef}>
       {!printing && !preview && <CustomCursor />}
       {/* fundo ambiente sutil (fixo) + glows de destaque */}
       <div className={styles.ambient} aria-hidden />

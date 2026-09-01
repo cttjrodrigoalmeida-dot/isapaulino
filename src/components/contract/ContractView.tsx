@@ -1039,7 +1039,7 @@ export default function ContractView({ doc, pdfMode = false, preview = false }: 
 
   return (
     <PrintContext.Provider value={printing || preview}>
-      <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} ref={pageRef}>
+      <div className={`${styles.page} ${preview ? styles.pagePreview : ""} ${exporting ? styles.pdfMode : ""}`} ref={pageRef}>
         {!printing && !preview && <CustomCursor />}
         <div className={styles.sheet}>
           {/* ── Cabeçalho ── */}

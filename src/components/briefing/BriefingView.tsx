@@ -1202,7 +1202,8 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
     await waitForRenderReady();
     try {
       if (pageRef.current) {
-        const bg = theme === "light" ? "#f3f4f6" : "#0a0a0a";
+        // PDF SEMPRE no tema claro (fundo de papel) — no escuro saía tudo preto.
+        const bg = "#f3f4f6";
         try {
           await exportElementToPdf(pageRef.current, `Briefing-${b.number}`, { background: bg });
         } catch {
@@ -1374,7 +1375,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
     // real (printing) usa o modo impressão enxuto.
     <PrintContext.Provider value={printing}>
      <FrozenContext.Provider value={frozen}>
-      <div className={`${styles.page} ${preview ? styles.pagePreview : ""}`} data-theme={theme} ref={pageRef}>
+      <div className={`${styles.page} ${preview ? styles.pagePreview : ""} ${exporting ? styles.pdfMode : ""}`} data-theme={exporting ? "light" : theme} ref={pageRef}>
         {!printing && !preview && theme === "dark" && <CustomCursor />}
         <div className={styles.ambient} aria-hidden />
 
