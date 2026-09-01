@@ -712,6 +712,10 @@ export const api = {
     }),
   cancelProposal: (number: string) =>
     req<{ ok: true }>(`/api/proposals/${encodeURIComponent(number)}/cancel`, { method: "POST" }),
+  // Reverter cancelamento: o documento nunca é apagado, só volta ao status
+  // anterior (em cascata, o projeto inteiro) — dá para continuar de onde parou.
+  uncancelProposal: (number: string) =>
+    req<{ ok: true }>(`/api/proposals/${encodeURIComponent(number)}/uncancel`, { method: "POST" }),
 
   // ── documentos vinculados (proposta ↔ contrato ↔ briefing) ──
   documentLinks: (proposal: string) =>
@@ -760,6 +764,8 @@ export const api = {
     }),
   cancelBriefing: (number: string) =>
     req<{ ok: true }>(`/api/briefings/${encodeURIComponent(number)}/cancel`, { method: "POST" }),
+  uncancelBriefing: (number: string) =>
+    req<{ ok: true }>(`/api/briefings/${encodeURIComponent(number)}/uncancel`, { method: "POST" }),
   listBriefingResponses: (number: string) =>
     req<{ responses: BriefingResponse[] }>(
       `/api/briefings/${encodeURIComponent(number)}/responses`
@@ -962,6 +968,8 @@ export const api = {
     req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}`, { method: "DELETE" }),
   cancelContract: (id: string) =>
     req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
+  uncancelContract: (id: string) =>
+    req<{ ok: true }>(`/api/contracts/${encodeURIComponent(id)}/uncancel`, { method: "POST" }),
 
   // ── histórico do projeto (timeline) ──
   listProjectHistory: (contractId: string) =>

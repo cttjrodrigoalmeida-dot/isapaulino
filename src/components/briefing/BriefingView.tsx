@@ -28,6 +28,7 @@ import CustomCursor from "../CustomCursor";
 import FadeIn from "../FadeIn";
 import SectionFigure from "./SectionFigure";
 import { exportElementToPdf, waitForRenderReady } from "../../lib/pdfExport";
+import SystemUploadCard from "./SystemUploadCard";
 import styles from "./BriefingView.module.css";
 
 // Modo impressão: desliga zoom/animações e troca controles por texto fixo.
@@ -242,6 +243,7 @@ function QuestionItem({
   onAnswer,
   refItems,
   onPickFiles,
+  onUploaded,
   onPickLink,
   onRemoveRef,
   pending,
@@ -262,6 +264,8 @@ function QuestionItem({
   onAnswer: (value: string) => void;
   refItems: RefItem[];
   onPickFiles: (files: File[]) => void;
+  /** arquivo JÁ enviado ao servidor (card "no sistema") → vira anexo da pergunta */
+  onUploaded: (url: string, name: string) => void;
   onPickLink: (url: string) => void;
   onRemoveRef: (index: number) => void;
   pending: boolean;
@@ -753,6 +757,14 @@ function QuestionItem({
                 </div>
               </div>
             </div>
+            {/* 3ª opção: mandar o arquivo direto pelo sistema (até 1 GB no total). */}
+            {!printing && (
+              <SystemUploadCard
+                briefingNumber={briefingNumber}
+                disabled={readOnly || locked}
+                onUploaded={onUploaded}
+              />
+            )}
             <div className={styles.options}>
               {(question.options ?? []).map((opt) => {
                 const attach = opt.startsWith("Anexar");
@@ -1059,6 +1071,19 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
     }));
     setRefs((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), ...items] }));
   };
+  // Arquivo que JÁ subiu (card "no sistema"): entra como anexo da pergunta —
+  // sem `file`, porque a URL do R2 já existe. Vai junto nas respostas e aparece
+  // em Arquivos, na pasta do cliente.
+  const addUploadedRef = (qid: string, url: string, name: string) => {
+    const item: RefItem = {
+      url,
+      name,
+      isImage: IMG_EXT_RE.test(url) || IMG_EXT_RE.test(name),
+      isVideo: VIDEO_EXT_RE.test(url) || VIDEO_EXT_RE.test(name),
+      isLink: false,
+    };
+    setRefs((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), item] }));
+  };
   const pickLink = (qid: string, link: string) => {
     const item: RefItem = { url: link, name: link.replace(/^https?:\/\//, ""), isImage: false, isLink: true };
     setRefs((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), item] }));
@@ -1355,6 +1380,7 @@ export default function BriefingView({ briefing: b, preview = false, forceTheme,
         onAnswer={(v) => setAnswer(q.id, v)}
         refItems={refs[q.id] ?? EMPTY_REFS}
         onPickFiles={(files) => pickFiles(q.id, files)}
+        onUploaded={(url, name) => addUploadedRef(q.id, url, name)}
         onPickLink={(url) => pickLink(q.id, url)}
         onRemoveRef={(idx) => removeRef(q.id, idx)}
         pending={pending.has(q.id)}

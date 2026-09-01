@@ -25,7 +25,9 @@ CREATE TABLE IF NOT EXISTS proposals (
   client        TEXT,                       -- para a listagem
   service_title TEXT,                       -- para a listagem
   date          TEXT,                       -- para a listagem
-  status        TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published' (visibilidade)
+  status        TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published' | 'cancelled' (visibilidade)
+  -- Status de ANTES do cancelamento (permite 'Reverter cancelamento'). Migração 017.
+  prev_status   TEXT,
   -- Resultado comercial (definido manualmente): 'aprovada' | 'nao-aprovada'.
   -- Só 'aprovada' entra no faturamento/indicadores. Nova proposta nasce 'nao-aprovada'.
   outcome       TEXT NOT NULL DEFAULT 'nao-aprovada',
@@ -61,7 +63,8 @@ CREATE TABLE IF NOT EXISTS briefings (
   number          TEXT PRIMARY KEY,
   proposal_number TEXT,
   title           TEXT,
-  status          TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published'
+  status          TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published' | 'cancelled'
+  prev_status     TEXT,                          -- status de antes do cancelamento (reverter). Migração 017.
   data            TEXT NOT NULL,                 -- JSON do tipo Briefing
   -- Apoio PESSOAL do admin ao preencher (não vai para o cliente):
   editor_notes    TEXT,                          -- bloco de notas do editor
@@ -197,6 +200,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   value          REAL,                          -- valor total (para listagem/financeiro)
   deadline       TEXT,                          -- prazo (texto livre, legado)
   status         TEXT NOT NULL DEFAULT 'draft', -- draft|published|signed|cancelled
+  prev_status    TEXT,                          -- status de antes do cancelamento (reverter). Migração 017.
   slug           TEXT UNIQUE,                   -- link público (definível no editor: número + complemento). Migração: ALTER TABLE contracts ADD COLUMN access_password TEXT;
   access_password TEXT,                          -- senha opcional (NULL/vazio = link público). Cliente novo abre o contrato por senha.
   autentique_url TEXT,                          -- link de assinatura (Autentique)

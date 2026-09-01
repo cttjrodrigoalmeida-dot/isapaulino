@@ -27,15 +27,41 @@ export async function approveProposalForSignedContract(env: Env, contractId: str
 export async function cancelProject(env: Env, proposalNumber: string): Promise<void> {
   const n = (proposalNumber || "").trim();
   if (!n) return;
+  // `prev_status` guarda de onde o documento veio — é o que permite REVERTER o
+  // cancelamento devolvendo cada documento ao ponto exato onde parou.
   await env.DB.batch([
     env.DB.prepare(
-      "UPDATE proposals SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled' AND deleted_at IS NULL"
+      "UPDATE proposals SET prev_status = status, status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled' AND deleted_at IS NULL"
     ).bind(n),
     env.DB.prepare(
-      "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled' AND deleted_at IS NULL"
+      "UPDATE briefings SET prev_status = status, status = 'cancelled', updated_at = datetime('now') WHERE proposal_number = ? AND status != 'cancelled' AND deleted_at IS NULL"
     ).bind(n),
     env.DB.prepare(
-      "UPDATE contracts SET status = 'cancelled', updated_at = datetime('now') WHERE json_extract(data, '$.proposalNumber') = ? AND status != 'cancelled' AND deleted_at IS NULL"
+      "UPDATE contracts SET prev_status = status, status = 'cancelled', updated_at = datetime('now') WHERE json_extract(data, '$.proposalNumber') = ? AND status != 'cancelled' AND deleted_at IS NULL"
+    ).bind(n),
+  ]);
+}
+
+/** Desfaz o cancelamento de TODOS os documentos do projeto (mesma numeração).
+ *  Cada documento volta ao `prev_status` que tinha antes de ser cancelado; para
+ *  os cancelados antes desta funcionalidade (prev_status NULL) usamos um padrão
+ *  sensato: contrato com assinatura volta 'signed', o resto volta 'published'
+ *  (o link que o cliente já tem volta a abrir). Idempotente. */
+export async function restoreProject(env: Env, proposalNumber: string): Promise<void> {
+  const n = (proposalNumber || "").trim();
+  if (!n) return;
+  await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE proposals SET status = COALESCE(NULLIF(prev_status, ''), 'published'), prev_status = NULL, updated_at = datetime('now')
+       WHERE number = ? AND status = 'cancelled' AND deleted_at IS NULL`
+    ).bind(n),
+    env.DB.prepare(
+      `UPDATE briefings SET status = COALESCE(NULLIF(prev_status, ''), 'published'), prev_status = NULL, updated_at = datetime('now')
+       WHERE proposal_number = ? AND status = 'cancelled' AND deleted_at IS NULL`
+    ).bind(n),
+    env.DB.prepare(
+      `UPDATE contracts SET status = COALESCE(NULLIF(prev_status, ''), CASE WHEN signed_at IS NOT NULL THEN 'signed' ELSE 'published' END), prev_status = NULL, updated_at = datetime('now')
+       WHERE json_extract(data, '$.proposalNumber') = ? AND status = 'cancelled' AND deleted_at IS NULL`
     ).bind(n),
   ]);
 }
@@ -59,4 +85,10 @@ export async function proposalNumberOfContract(env: Env, contractId: string): Pr
 export async function cancelLinkedForContract(env: Env, contractId: string): Promise<void> {
   const proposalNumber = await proposalNumberOfContract(env, contractId);
   if (proposalNumber) await cancelProject(env, proposalNumber);
+}
+
+/** Cancelamento REVERTIDO no contrato → reativa em cascata o projeto inteiro. */
+export async function restoreLinkedForContract(env: Env, contractId: string): Promise<void> {
+  const proposalNumber = await proposalNumberOfContract(env, contractId);
+  if (proposalNumber) await restoreProject(env, proposalNumber);
 }

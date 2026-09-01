@@ -6,7 +6,13 @@ import { getSession } from "./_lib/auth";
 import { maybeAutoBackup } from "./_lib/backup";
 
 // Caminhos que NÃO viram log (ruído / não são ação de admin).
-const SKIP = [/^\/api\/webhooks\//, /^\/api\/client\//, /^\/api\/notifications$/];
+const SKIP = [
+  /^\/api\/webhooks\//,
+  /^\/api\/client\//,
+  /^\/api\/notifications$/,
+  // Envio de arquivo grande: são dezenas de partes por arquivo — não vira log.
+  /^\/api\/briefings\/[^/]+\/upload-part$/,
+];
 
 // Rótulo legível a partir de método + caminho.
 function describe(method: string, path: string): string {

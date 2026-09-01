@@ -140,6 +140,25 @@ export default function BriefingsList({
     } catch (err) { toast(err instanceof ApiError ? err.message : "Erro ao cancelar."); }
     finally { setBusy(null); }
   };
+  // Reverter: o briefing nunca sai do sistema — volta ao status de antes e o
+  // projeto inteiro (proposta + contrato) volta junto.
+  const uncancelB = async (b: BriefingSummary) => {
+    if (getStatus(b) !== "cancelled") return;
+    if (!(await confirmDialog({
+      title: "Reverter cancelamento",
+      message: `Reativar o briefing Nº ${b.number}? A proposta e o contrato do mesmo projeto também voltam ao status anterior.`,
+      confirmLabel: "Reverter",
+      cancelLabel: "Voltar",
+      danger: false,
+    }))) return;
+    setBusy(b.number);
+    try {
+      await api.uncancelBriefing(b.number);
+      await load();
+      toast("Cancelamento revertido — o projeto voltou de onde parou.", { type: "success" });
+    } catch (err) { toast(err instanceof ApiError ? err.message : "Erro ao reverter."); }
+    finally { setBusy(null); }
+  };
   const copyLink = async (url: string) => {
     try { await navigator.clipboard.writeText(url); toast("Link copiado!", { type: "success" }); }
     catch { window.prompt("Copie o link:", url); }
@@ -296,6 +315,7 @@ export default function BriefingsList({
                             { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
                             { label: "Baixar PDF", href: pub ? `/briefing/${b.number}?pdf=1` : undefined, hidden: !pub },
                             { label: "Cancelar", onSelect: () => cancelB(b), disabled: busy === b.number, hidden: s === "cancelled" },
+                            { label: "↩ Reverter cancelamento", onSelect: () => uncancelB(b), disabled: busy === b.number, hidden: s !== "cancelled" },
                             { label: "Excluir", onSelect: () => remove(b.number), danger: true, disabled: busy === b.number },
                           ];
                           return (

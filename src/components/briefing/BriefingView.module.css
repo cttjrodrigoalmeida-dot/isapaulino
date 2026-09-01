@@ -1946,3 +1946,128 @@
   padding-left: 26px !important;
   padding-right: 26px !important;
 }
+
+/* ── "NO SISTEMA": envio de arquivos direto no briefing (pergunta de maquete) ── */
+.sysCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 22px;
+  background: var(--srf);
+  border: 1px solid var(--srf-line);
+  border-radius: 0 14px 0 14px;
+}
+.sysHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sysIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--color-accent);
+  border: 1px solid var(--ov-30);
+  border-radius: var(--border-radius-sm);
+}
+.sysBadge {
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.16em;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+.sysDrop {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 18px;
+  margin-top: 4px;
+  background: transparent;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--border-radius-btn);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.sysDrop:hover:not(:disabled),
+.sysDropOver {
+  border-color: var(--color-accent);
+  background: var(--ov-06);
+}
+.sysDrop:disabled { cursor: default; opacity: 0.6; }
+.sysDropIcon { color: var(--color-accent); display: flex; }
+.sysDropText {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.86rem;
+  color: var(--color-text-secondary);
+}
+.sysDropHint {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted, var(--color-text-secondary));
+}
+.sysList {
+  width: 100%;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sysItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  text-align: left;
+}
+.sysItemName {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sysItemMeta {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.sysBar {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.sysBarFill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.2s ease;
+}
+.sysBarError { background: #f0506e; }
+.sysNote {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted, var(--color-text-secondary));
+  margin-top: 2px;
+}
+@media (max-width: 720px) {
+  .sysCard { padding: 18px 14px; }
+}

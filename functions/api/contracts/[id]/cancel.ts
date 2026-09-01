@@ -11,7 +11,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     await requireAuth(request, env);
     const id = String(params.id || "");
     await env.DB.prepare(
-      "UPDATE contracts SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND status != 'cancelled'"
+      "UPDATE contracts SET prev_status = status, status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND status != 'cancelled'"
     ).bind(id).run();
     await cancelLinkedForContract(env, id);
     return json({ ok: true });

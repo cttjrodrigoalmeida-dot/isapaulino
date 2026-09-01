@@ -112,6 +112,26 @@ export default function ProposalsList({
       toast(err instanceof ApiError ? err.message : "Erro ao cancelar.");
     } finally { setBusy(null); }
   };
+  // Reverter: a proposta continua salva — volta ao status anterior e reativa
+  // o briefing e o contrato do mesmo projeto.
+  const uncancelP = async (p: ProposalSummary) => {
+    if (p.status !== "cancelled") return;
+    if (!(await confirmDialog({
+      title: "Reverter cancelamento",
+      message: `Reativar a proposta Nº ${p.number}? O briefing e o contrato do mesmo projeto também voltam ao status anterior.`,
+      confirmLabel: "Reverter",
+      cancelLabel: "Voltar",
+      danger: false,
+    }))) return;
+    setBusy(p.number);
+    try {
+      await api.uncancelProposal(p.number);
+      await load();
+      toast("Cancelamento revertido — o projeto voltou de onde parou.", { type: "success" });
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Erro ao reverter.");
+    } finally { setBusy(null); }
+  };
   const copyLink = async (url: string) => {
     try { await navigator.clipboard.writeText(url); toast("Link copiado!", { type: "success" }); }
     catch { window.prompt("Copie o link:", url); }
@@ -305,6 +325,7 @@ export default function ProposalsList({
                           { label: "Copiar link", onSelect: () => copyLink(publicUrl), hidden: !pub },
                           { label: "Baixar PDF", href: pub ? `/proposta/${p.number}?pdf=1` : undefined, hidden: !pub },
                           { label: "Cancelar", onSelect: () => cancelP(p), hidden: p.status === "cancelled" },
+                          { label: "↩ Reverter cancelamento", onSelect: () => uncancelP(p), hidden: p.status !== "cancelled" },
                           { label: "Excluir", onSelect: () => remove(p.number), danger: true },
                         ];
                         return <ActionMenu actions={acts} />;

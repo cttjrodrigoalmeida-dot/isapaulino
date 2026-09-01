@@ -164,6 +164,26 @@ export default function ContractsList({
       toast(err instanceof ApiError ? err.message : "Erro ao cancelar.");
     } finally { setBusy(null); }
   };
+  // Reverter: o contrato continua salvo — volta ao status anterior (assinado
+  // volta assinado) e reativa proposta e briefing do mesmo projeto.
+  const uncancelC = async (c: ContractSummary) => {
+    if (c.status !== "cancelled") return;
+    if (!(await confirmDialog({
+      title: "Reverter cancelamento",
+      message: `Reativar o contrato Nº ${c.contractNumber || "—"}? A proposta e o briefing do mesmo projeto também voltam ao status anterior.`,
+      confirmLabel: "Reverter",
+      cancelLabel: "Voltar",
+      danger: false,
+    }))) return;
+    setBusy(c.id);
+    try {
+      await api.uncancelContract(c.id);
+      await load();
+      toast("Cancelamento revertido — o projeto voltou de onde parou.", { type: "success" });
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Erro ao reverter.");
+    } finally { setBusy(null); }
+  };
   const copyLink = async (url: string) => {
     try { await navigator.clipboard.writeText(url); toast("Link copiado!", { type: "success" }); }
     catch { window.prompt("Copie o link:", url); }
@@ -280,6 +300,7 @@ export default function ContractsList({
                             { label: "Baixar PDF", href: isPublic ? `/contrato/${c.slug}` : undefined, hidden: !isPublic },
                             { label: "Gerar contrato aditivo", onSelect: () => onNewAditivo(c.id), hidden: c.kind === "aditivo" },
                             { label: "Cancelar", onSelect: () => cancelC(c), disabled: busy === c.id, hidden: c.status === "cancelled" },
+                            { label: "↩ Reverter cancelamento", onSelect: () => uncancelC(c), disabled: busy === c.id, hidden: c.status !== "cancelled" },
                             { label: "Excluir", onSelect: () => remove(c), danger: true, disabled: busy === c.id },
                           ];
                           return <ActionMenu actions={acts} />;

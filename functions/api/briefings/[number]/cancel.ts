@@ -10,7 +10,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const number = String(params.number || "");
     // Cancela sempre este briefing (mesmo sem proposta vinculada)…
     await env.DB.prepare(
-      "UPDATE briefings SET status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
+      "UPDATE briefings SET prev_status = status, status = 'cancelled', updated_at = datetime('now') WHERE number = ? AND status != 'cancelled'"
     ).bind(number).run();
     // …e, em cascata, todos os documentos da mesma numeração (proposta e
     // contrato/aditivos). O elo é o nº da proposta vinculada; sem ela, o próprio nº.
