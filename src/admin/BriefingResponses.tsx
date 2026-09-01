@@ -200,6 +200,42 @@ export default function BriefingResponses({
   };
 
   const isImgUrl = (url: string) => /\.(jpe?g|png|webp|avif|gif)$/i.test(url);
+  const isExternal = (url: string) => /^https?:\/\//i.test(url);
+
+  // Converte uma imagem em data: URL ANTES de gerar o PDF.
+  // Sem isso, o rasterizador tenta buscar a imagem na hora e:
+  //   • imagem de fora (Pinterest, loja…) não manda cabeçalho CORS → entra vazia;
+  //   • imagem nossa às vezes chega tarde demais e some.
+  // Link externo passa pelo /api/proxy-image (vira mesma-origem). Se ainda assim
+  // não der, devolve null — e o PDF mostra o LINK no lugar (nada se perde).
+  const toDataUrl = async (url: string): Promise<string | null> => {
+    const src = isExternal(url) ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
+    try {
+      const res = await fetch(src, { credentials: "include" });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      if (!blob.type.startsWith("image/") || blob.size > 12 * 1024 * 1024) return null;
+      return await new Promise<string | null>((resolve) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(typeof fr.result === "string" ? fr.result : null);
+        fr.onerror = () => resolve(null);
+        fr.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+  // Resolve várias de uma vez (de 6 em 6, p/ não abrir 50 conexões juntas).
+  const resolveImages = async (urls: string[]): Promise<Map<string, string>> => {
+    const out = new Map<string, string>();
+    const list = [...new Set(urls.filter(Boolean))];
+    for (let i = 0; i < list.length; i += 6) {
+      const lote = list.slice(i, i + 6);
+      const done = await Promise.all(lote.map((u) => toDataUrl(u)));
+      lote.forEach((u, k) => { const d = done[k]; if (d) out.set(u, d); });
+    }
+    return out;
+  };
   const isVideoUrl = (url: string) => /\.(mp4|webm|ogg|ogv|mov|m4v)$/i.test(url);
 
   // PDF no formato do template: imagem do ambiente com pinos numerados,
@@ -212,6 +248,27 @@ export default function BriefingResponses({
     setPdfId(r.id);
     setError(null);
     const esc = (s: string) => (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // Todas as imagens do documento (ambientes + anexos/links do cliente) já
+    // embutidas como data: URL — assim nenhuma some na hora de rasterizar.
+    const wanted: string[] = [];
+    for (const section of sections) {
+      if (section.kind === "ambiente" && section.image) wanted.push(section.image);
+      for (const q of section.questions) for (const a of refList(r, q.id)) if (isImgUrl(a)) wanted.push(a);
+    }
+    for (const qid of Object.keys(r.refImages)) for (const a of refList(r, qid)) if (isImgUrl(a)) wanted.push(a);
+    const imgs = await resolveImages(wanted);
+
+    // Um anexo no PDF: a imagem quando dá, e SEMPRE o link/identificação —
+    // o que o cliente mandou nunca fica invisível no papel.
+    const attHtml = (att: string): string => {
+      const data = imgs.get(att);
+      let out = data ? `<img class="att" src="${data}" alt="Anexo">` : "";
+      if (isExternal(att)) out += `<div class="attLink">🔗 ${esc(att)}</div>`;
+      else if (!data) out += `<div class="attLink">📎 Anexo${/\.pdf$/i.test(att) ? " (PDF)" : ""} — ${esc(window.location.origin + att)}</div>`;
+      return out;
+    };
+
     let body = "";
     for (let si = 0; si < sections.length; si++) {
       const section = sections[si];
@@ -227,17 +284,14 @@ export default function BriefingResponses({
               : ""
           )
           .join("");
-        body += `<div class="fig"><div class="figIn"><img src="${esc(section.image)}" alt="" crossorigin="anonymous">${pins}</div></div>`;
+        const figSrc = imgs.get(section.image) || section.image;
+        body += `<div class="fig"><div class="figIn"><img src="${figSrc.startsWith("data:") ? figSrc : esc(figSrc)}" alt="">${pins}</div></div>`;
       }
       section.questions.forEach((q, i) => {
         const val = (r.answers[q.id] ?? "").trim();
         body += `<div class="q"><span class="qn">${String(i + 1).padStart(2, "0")}</span> ${esc(q.text)}</div>`;
         body += `<div class="a${val ? "" : " empty"}">${val ? esc(val) : "— sem resposta"}</div>`;
-        for (const att of refList(r, q.id)) {
-          body += isImgUrl(att)
-            ? `<img class="att" src="${esc(att)}" alt="Anexo" crossorigin="anonymous">`
-            : `<div class="a">📎 ${esc(att)}</div>`;
-        }
+        for (const att of refList(r, q.id)) body += attHtml(att);
       });
     }
     const orphans = [...new Set([...Object.keys(r.answers), ...Object.keys(r.refImages)])].filter(
@@ -247,9 +301,7 @@ export default function BriefingResponses({
       body += `<h2>Outras respostas</h2>`;
       for (const qid of orphans) {
         body += `<div class="q">${esc(qid)}</div><div class="a">${esc(r.answers[qid] ?? "")}</div>`;
-        for (const att of refList(r, qid)) {
-          body += isImgUrl(att) ? `<img class="att" src="${esc(att)}" alt="Anexo" crossorigin="anonymous">` : `<div class="a">📎 ${esc(att)}</div>`;
-        }
+        for (const att of refList(r, qid)) body += attHtml(att);
       }
     }
     // Estilos ESCOPADOS na raiz (.ipsPdfRoot) — não vazam para o painel.
@@ -269,7 +321,8 @@ ${P} .q{font-weight:600;font-size:13px;margin-top:12px}
 ${P} .qn{font:700 10px/1 monospace;color:#a08d6a;margin-right:4px}
 ${P} .a{font-size:13px;white-space:pre-wrap;margin-top:2px;color:#333}
 ${P} .a.empty{color:#b3aca0;font-style:italic}
-${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;border:1px solid #e2ddd4;margin:6px 0 2px}`;
+${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;border:1px solid #e2ddd4;margin:6px 0 2px}
+${P} .attLink{font-size:11px;color:#6b6357;margin:2px 0 6px;word-break:break-all;line-height:1.45}`;
 
     // Container fora da tela, MAS renderizado (html2canvas precisa de layout).
     // Mesmo caminho da página do cliente: elemento no documento principal.
@@ -287,9 +340,9 @@ ${P} .att{display:block;max-width:320px;max-height:260px;border-radius:8px;borde
     document.body.appendChild(root);
     try {
       // espera imagens (anexos/ambiente) carregarem, com teto de 6s
-      const imgs = Array.from(root.querySelectorAll("img"));
+      const imgEls = Array.from(root.querySelectorAll("img"));
       await Promise.race([
-        Promise.all(imgs.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); })))),
+        Promise.all(imgEls.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); })))),
         new Promise<void>((res) => setTimeout(res, 6000)),
       ]);
       await waitForRenderReady();

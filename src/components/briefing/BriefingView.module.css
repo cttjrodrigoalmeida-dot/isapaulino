@@ -2071,3 +2071,17 @@
 @media (max-width: 720px) {
   .sysCard { padding: 18px 14px; }
 }
+
+/* Endereço do link embaixo da miniatura (só em leitura/PDF): o site de origem
+   não deixa a imagem ser desenhada no papel, então o link precisa aparecer. */
+.refUnderLink {
+  display: block;
+  max-width: 240px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}

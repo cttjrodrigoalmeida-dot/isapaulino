@@ -344,6 +344,7 @@ function QuestionItem({
                 ×
               </button>
             )}
+            {readOnly && it.isLink && <span className={styles.refUnderLink}>🔗 {it.url}</span>}
           </span>
         ) : it.isVideo ? (
           <span key={i} className={styles.refPreview}>
