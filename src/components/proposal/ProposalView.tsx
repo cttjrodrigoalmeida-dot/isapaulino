@@ -766,11 +766,13 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
                     {(() => {
                       // Vários rodapés (como no Card 02). Proposta antiga só tem
                       // o `footnote` de texto único — segue funcionando igual.
-                      const foots = p.pixPlan.footnotes?.length
-                        ? p.pixPlan.footnotes
-                        : p.pixPlan.footnote
-                          ? [p.pixPlan.footnote]
-                          : [];
+                      const foots = (
+                        p.pixPlan.footnotes
+                          ? p.pixPlan.footnotes
+                          : p.pixPlan.footnote
+                            ? [p.pixPlan.footnote]
+                            : []
+                      ).filter((f) => (f ?? "").trim() !== "");
                       return foots.length > 0 ? (
                         <div className={styles.payPlanFoots}>
                           {foots.map((foot, i) => (

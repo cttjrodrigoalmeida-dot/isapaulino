@@ -44,12 +44,18 @@ export function recomputePayment(
   const payValue = base * (1 - pixDiscount / 100);
   const save = base * (pixDiscount / 100);
 
-  const pixPlan = {
+  // Rodapés do Card 01: quando a LISTA existe ela manda — inclusive vazia (a
+  // Isabela apagou todas). Sem lista, é proposta antiga: mantém o texto único.
+  // Antes só o `footnote` era carregado e a lista sumia a cada recálculo.
+  const pixFoots = p.pixPlan?.footnotes;
+  const pixPlan: Proposal["pixPlan"] = {
     discountLabel: `${pixDiscount}% OFF`,
     saveAmount: formatBRL(save),
     fromValue: formatBRL(base),
     payValue: formatBRL(payValue),
-    footnote: p.pixPlan?.footnote ?? "Pagamento após assinatura do contrato",
+    ...(pixFoots
+      ? { footnotes: pixFoots }
+      : { footnote: p.pixPlan?.footnote ?? "Pagamento após assinatura do contrato" }),
   };
 
   const rows: PriceLine[] = [{ label: "À vista", value: formatBRL(payValue) }];
