@@ -20,6 +20,7 @@ import UploadHint from "./UploadHint";
 import styles from "./Admin.module.css";
 
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
+  { value: "none", label: "Nenhum (só os botões rápidos)" },
   { value: "text", label: "Texto curto" },
   { value: "longtext", label: "Texto longo" },
   { value: "radio", label: "Escolha única (botões)" },
@@ -43,6 +44,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 // ── Resumos curtos p/ preview (mesma lógica dos pickers) ──
 const Q_TYPE_LABEL: Record<string, string> = {
+  none: "Nenhum (só botões)",
   longtext: "Texto longo", text: "Texto curto", number: "Número", date: "Data",
   yesno: "Sim/Não", radio: "Escolha única", checklist: "Lista selecionável",
   multicheck: "Múltipla escolha", select: "Seleção", maquete: "Maquete", arquivo: "Arquivo",

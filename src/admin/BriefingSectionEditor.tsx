@@ -12,6 +12,7 @@ import styles from "./Admin.module.css";
 const ICON_BTN = { padding: "5px 8px", fontSize: 13, lineHeight: 1.1, minWidth: 30 } as const;
 
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
+  { value: "none", label: "Nenhum (só os botões rápidos)" },
   { value: "text", label: "Texto curto" },
   { value: "longtext", label: "Texto longo" },
   { value: "number", label: "Número" },
@@ -160,6 +161,13 @@ function QuestionEditor({
       {type === "arquivo" && (
         <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 12 }}>
           A resposta é <strong>só anexo</strong>: o cliente insere imagem(ns) e/ou PDF, sem caixa de texto.
+        </p>
+      )}
+
+      {type === "none" && (
+        <p className={styles.pageHint} style={{ marginTop: 0, marginBottom: 12 }}>
+          Sem campo de resposta: a pergunta mostra <strong>só os botões rápidos</strong> abaixo
+          (À DEFINIR / NÃO SE APLICA e os que você adicionar). Bom quando digitar não faz sentido.
         </p>
       )}
 

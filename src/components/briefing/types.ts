@@ -21,6 +21,10 @@ import type { ContactInfo } from "../proposal/types";
 export const DEFAULT_QUICKFILLS = ["À DEFINIR", "NÃO SE APLICA"];
 
 export type QuestionType =
+  /** Sem campo de resposta: a pergunta mostra SÓ os botões rápidos
+   *  ("À DEFINIR" / "NÃO SE APLICA" / extras). Para quando digitar não faz
+   *  sentido e a escolha rápida já basta. */
+  | "none"
   | "text"
   | "longtext"
   | "number"

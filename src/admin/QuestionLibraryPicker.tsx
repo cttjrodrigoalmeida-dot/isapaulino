@@ -10,11 +10,13 @@ import styles from "./Admin.module.css";
 //  • criar uma pergunta NOVA do zero ("+ Nova pergunta");
 //  • renomear (✎) / excluir (✕).
 const TYPE_LABEL: Record<string, string> = {
+  none: "Nenhum (só botões)",
   text: "Texto curto", longtext: "Texto longo", radio: "Escolha única",
   checklist: "Lista selecionável", select: "Seleção", maquete: "Maquete",
   arquivo: "Inserir arquivo",
 };
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
+  { value: "none", label: "Nenhum (só os botões rápidos)" },
   { value: "text", label: "Texto curto" },
   { value: "longtext", label: "Texto longo" },
   { value: "radio", label: "Escolha única (botões)" },

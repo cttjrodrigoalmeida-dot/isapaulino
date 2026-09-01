@@ -391,6 +391,9 @@ function QuestionItem({
         </p>
       );
     }
+    // "none": pergunta sem campo de resposta — ficam só os botões rápidos
+    // (À DEFINIR / NÃO SE APLICA / extras), renderizados logo abaixo.
+    if (type === "none") return null;
     switch (type) {
       case "text":
         return (
