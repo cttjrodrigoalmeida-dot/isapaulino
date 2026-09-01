@@ -61,11 +61,16 @@ type Status = "draft" | "published";
 export default function BriefingEditor({
   number,
   duplicateFrom = null,
+  templateMode = false,
   onBack,
   onSaved,
 }: {
   number: string | null;
   duplicateFrom?: string | null;
+  /** Modo MODELO (Biblioteca → Modelos): edita o PADRÃO de todo briefing novo,
+   *  não um documento real. Some tudo que é "por briefing" (proposta vinculada,
+   *  status, publicação) e o Salvar grava o modelo. */
+  templateMode?: boolean;
   onBack: () => void;
   onSaved: () => void;
 }) {
@@ -77,6 +82,8 @@ export default function BriefingEditor({
   // Números em uso no sistema (com cliente dono) — o número identifica o projeto.
   const [usedNumbers, setUsedNumbers] = useState<NumberUse[]>([]);
   const [status, setStatus] = useState<Status>("draft");
+  // Briefing novo nasceu do MODELO da Biblioteca? (só muda o texto de ajuda)
+  const [fromTemplate, setFromTemplate] = useState(false);
   const [tab, setTab] = useState<"campos" | "json">("campos");
   const [showPreview, setShowPreview] = useState(false);
   const [jsonText, setJsonText] = useState("");
@@ -156,16 +163,41 @@ export default function BriefingEditor({
     let alive = true;
     (async () => {
       try {
-        if (isNew) {
+        if (templateMode) {
+          // Biblioteca → Modelo de briefing. Carrega o modelo salvo; se ainda não
+          // existe, começa do briefing mais recente (ou do exemplo do sistema).
+          const saved = await api.getDocTemplates().then((r) => r.templates.briefing?.doc ?? null).catch(() => null);
+          let base: Briefing | null = saved;
+          if (!base) {
+            const { briefings } = await api.listBriefings();
+            base =
+              briefings.length > 0
+                ? (await api.getBriefing([...briefings].sort((a, b) => Number(b.number) - Number(a.number))[0].number)).briefing
+                : SAMPLE_BRIEFING;
+          }
+          const draft = structuredClone(base);
+          draft.number = "";
+          draft.proposalNumber = "";
+          if (!alive) return;
+          setBriefing({ ...draft, sections: dedupeIds(draft.sections) });
+          setStatus("draft");
+        } else if (isNew) {
           const { briefings } = await api.listBriefings();
           if (alive) setExistingNumbers(briefings.map((b) => b.number));
           let template: Briefing = SAMPLE_BRIEFING;
           if (duplicateFrom) {
             // Cópia: parte do briefing original (mantém as perguntas/ambientes).
             template = (await api.getBriefing(duplicateFrom)).briefing;
-          } else if (briefings.length > 0) {
-            const latest = [...briefings].sort((a, b) => Number(b.number) - Number(a.number))[0];
-            template = (await api.getBriefing(latest.number)).briefing;
+          } else {
+            // MODELO da Biblioteca (se configurado) é a base de todo briefing novo.
+            const tpl = await api.getDocTemplates().then((r) => r.templates.briefing?.doc ?? null).catch(() => null);
+            if (tpl) {
+              template = tpl;
+              if (alive) setFromTemplate(true);
+            } else if (briefings.length > 0) {
+              const latest = [...briefings].sort((a, b) => Number(b.number) - Number(a.number))[0];
+              template = (await api.getBriefing(latest.number)).briefing;
+            }
           }
           const draft = structuredClone(template);
           // Novo/cópia começa sem vínculo: a proposta é escolhida no seletor
@@ -173,7 +205,7 @@ export default function BriefingEditor({
           draft.number = "";
           draft.proposalNumber = "";
           if (!alive) return;
-          setBriefing(draft);
+          setBriefing({ ...draft, sections: dedupeIds(draft.sections) });
           setStatus("draft");
         } else {
           const { briefing: b, status: s, editorNotes, editorDone } = await api.getBriefing(number!);
@@ -192,7 +224,7 @@ export default function BriefingEditor({
     return () => {
       alive = false;
     };
-  }, [isNew, number, duplicateFrom]);
+  }, [isNew, number, duplicateFrom, templateMode]);
 
   // Lista de propostas (para o seletor "Proposta vinculada").
   useEffect(() => {
@@ -590,20 +622,21 @@ export default function BriefingEditor({
   const latestRef = useRef({ briefing, status, notes, doneSet });
   latestRef.current = { briefing, status, notes, doneSet };
   useEffect(() => {
-    if (!dirty || isNew || !autosaveOn) return;
+    if (!dirty || !autosaveOn || (isNew && !templateMode)) return;
     const t = window.setTimeout(async () => {
       if (savingRef.current) return;
       const cur = latestRef.current;
       if (!cur.briefing) return;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes, editorDone: [...cur.doneSet] });
+        if (templateMode) await api.saveDocTemplate("briefing", { ...cur.briefing, number: "", proposalNumber: "" });
+        else await api.updateBriefing(number!, cur.briefing, cur.status, { editorNotes: cur.notes, editorDone: [...cur.doneSet] });
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
-  }, [dirty, briefing, status, notes, doneSet, isNew, number, autosaveOn]);
+  }, [dirty, briefing, status, notes, doneSet, isNew, templateMode, number, autosaveOn]);
 
   // Scroll-spy: acende a seção visível durante a rolagem.
   useEffect(() => {
@@ -626,6 +659,21 @@ export default function BriefingEditor({
     if (!briefing) return;
     setError(null);
     setNotice(null);
+    // Modo MODELO: grava o padrão na Biblioteca (não cria briefing, não publica).
+    if (templateMode) {
+      savingRef.current = true; setSaving(true);
+      try {
+        await api.saveDocTemplate("briefing", { ...briefing, number: "", proposalNumber: "" });
+        setLastSavedAt(Date.now());
+        setDirty(false);
+        setNotice("Modelo salvo. Todo briefing novo vai nascer com estas perguntas.");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Erro ao salvar o modelo.");
+      } finally {
+        savingRef.current = false; setSaving(false);
+      }
+      return;
+    }
     const finalStatus: Status = publish ? "published" : status;
     if (!briefing.number.trim()) {
       setError("Informe o número da proposta vinculada.");
@@ -662,6 +710,11 @@ export default function BriefingEditor({
   // Progresso = seções MARCADAS como concluídas (checkbox manual no rail).
   const doneCount = navList.filter(({ s }) => doneSet.has(s.id)).length;
   const pct = navList.length ? Math.round((doneCount / navList.length) * 100) : 0;
+  // "Selecionar tudo": marca (ou desmarca) TODAS as seções como concluídas.
+  const toggleAllDone = () => {
+    const ids = navList.map(({ s }) => s.id);
+    setDoneSet((prev) => (ids.length > 0 && ids.every((id) => prev.has(id)) ? new Set() : new Set(ids)));
+  };
 
   // ── "Checklist de ambientes" = espelho editável das seções (não-continuação) ──
   // Cada item controla a seção (renomear/mover/duplicar/excluir) direto no briefing.
@@ -816,10 +869,14 @@ export default function BriefingEditor({
       <div className={styles.pageHead}>
         <div>
           <div className={styles.pageTitle}>
-            {isNew ? "Novo briefing" : `Editar briefing Nº ${number}`}
+            {templateMode ? "Modelo de briefing" : isNew ? "Novo briefing" : `Editar briefing Nº ${number}`}
           </div>
           <div className={styles.pageHint}>
-            Cada briefing é vinculado a uma proposta (mesmo número). Link público: /briefing/{briefing.number || "Nº"}
+            {templateMode
+              ? "Padrão da Biblioteca: todo briefing novo nasce exatamente com estes ambientes e perguntas. Ajuste aqui uma única vez."
+              : isNew && fromTemplate
+                ? "Criado a partir do MODELO da Biblioteca — ajuste o que mudar. Vincule a proposta ao lado."
+                : `Cada briefing é vinculado a uma proposta (mesmo número). Link público: /briefing/${briefing.number || "Nº"}`}
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
@@ -830,7 +887,7 @@ export default function BriefingEditor({
         </div>
       </div>
 
-      <RelatedDocs proposalNumber={briefing?.proposalNumber} current="briefing" />
+      {!templateMode && <RelatedDocs proposalNumber={briefing?.proposalNumber} current="briefing" />}
 
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}
@@ -854,20 +911,26 @@ export default function BriefingEditor({
               <AutosaveToggle enabled={autosaveOn} onChange={setAutosaveOn} />
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 150 }}>
-                <option value="draft">Rascunho (oculto)</option>
-                <option value="published">Publicado</option>
-              </select>
+              {!templateMode && (
+                <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as Status)} style={{ width: 150 }}>
+                  <option value="draft">Rascunho (oculto)</option>
+                  <option value="published">Publicado</option>
+                </select>
+              )}
               <button className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} onClick={() => setShowPreview((v) => !v)}>
                 {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
               </button>
-              <button className={styles.btn} onClick={() => save(false)} disabled={saving}>💾 Salvar</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>Salvar e publicar</button>
+              <button className={`${styles.btn} ${templateMode ? styles.btnPrimary : ""}`} onClick={() => save(false)} disabled={saving}>
+                {templateMode ? "💾 Salvar modelo" : "💾 Salvar"}
+              </button>
+              {!templateMode && (
+                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>Salvar e publicar</button>
+              )}
             </div>
           </div>
           {/* Nº + nome do projeto — sutil, na última linha (não some sob o cabeçalho fixo). */}
-          <span className={styles.editorDocId} style={{ marginLeft: 0, maxWidth: "100%" }} title="Briefing que você está editando agora">
-            ✎ Nº&nbsp;{(briefing.number || "").trim() || "—"}{briefing.title?.trim() ? ` · ${briefing.title.trim()}` : (briefing.serviceTitle?.trim() ? ` · ${briefing.serviceTitle.trim()}` : "")}
+          <span className={styles.editorDocId} style={{ marginLeft: 0, maxWidth: "100%" }} title={templateMode ? "Modelo padrão de briefing (Biblioteca)" : "Briefing que você está editando agora"}>
+            {templateMode ? "★ Modelo de briefing" : <>✎ Nº&nbsp;{(briefing.number || "").trim() || "—"}{briefing.title?.trim() ? ` · ${briefing.title.trim()}` : (briefing.serviceTitle?.trim() ? ` · ${briefing.serviceTitle.trim()}` : "")}</>}
           </span>
         </div>
 
@@ -887,6 +950,19 @@ export default function BriefingEditor({
           {/* RAIL ESQUERDO — seções (scroll-spy) + progresso */}
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
+            {navList.length > 0 && (
+              <label className={styles.navRow} style={{ cursor: "pointer" }} title="Marcar (ou desmarcar) todas as seções como concluídas">
+                <input
+                  type="checkbox"
+                  className={styles.navCheck}
+                  checked={doneCount === navList.length}
+                  ref={(el) => { if (el) el.indeterminate = doneCount > 0 && doneCount < navList.length; }}
+                  onChange={toggleAllDone}
+                  aria-label="Selecionar tudo"
+                />
+                <span className={styles.navLabel} style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Selecionar tudo</span>
+              </label>
+            )}
             {navList.map(({ s }) => {
               const active = s.id === activeRunId;
               const done = doneSet.has(s.id);
@@ -914,7 +990,13 @@ export default function BriefingEditor({
           <div className={styles.editorGrid}>
           <div className={styles.card}>
             <div className={styles.cardTitle}>Dados do briefing</div>
+            {templateMode && (
+              <div className={styles.pageHint} style={{ marginTop: 0 }}>
+                A proposta vinculada não faz parte do modelo — é escolhida em cada briefing.
+              </div>
+            )}
             <div className={styles.row2}>
+              {!templateMode && (
               <div className={styles.field}>
                 <label className={styles.label}>Proposta vinculada</label>
                 {isNew ? (
@@ -956,13 +1038,14 @@ export default function BriefingEditor({
                   ) : null;
                 })()}
               </div>
+              )}
               <div className={styles.field}>
                 <label className={styles.label}>Título</label>
                 <input className={styles.input} value={briefing.title} onChange={(e) => set("title", e.target.value)} />
               </div>
             </div>
 
-            {(briefing.client || briefing.serviceTitle) && (
+            {!templateMode && (briefing.client || briefing.serviceTitle) && (
               <p className={styles.pageHint}>
                 Vinculado a: <strong>{briefing.client || "—"}</strong>
                 {briefing.serviceTitle ? ` · ${briefing.serviceTitle}` : ""}

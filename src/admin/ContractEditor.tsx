@@ -763,6 +763,13 @@ export default function ContractEditor({
   const expandAll = () => setCollapsed(new Set());
   const ctrDoneCount = sectionsMeta.filter((s) => doneSet.has(s.id)).length;
   const ctrPct = sectionsMeta.length ? Math.round((ctrDoneCount / sectionsMeta.length) * 100) : 0;
+  // "Selecionar tudo": marca (ou desmarca) TODAS as seções como concluídas.
+  const toggleAllDone = () =>
+    setDoneSet((prev) =>
+      sectionsMeta.length > 0 && sectionsMeta.every((s) => prev.has(s.id))
+        ? new Set()
+        : new Set(sectionsMeta.map((s) => s.id))
+    );
   const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   // ── Espelho editável das CLÁUSULAS (📌 Meu apoio) ──
@@ -976,6 +983,19 @@ export default function ContractEditor({
           {/* RAIL ESQUERDO — seções (scroll-spy) + concluir + progresso */}
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
+            {sectionsMeta.length > 0 && (
+              <label className={styles.navRow} style={{ cursor: "pointer" }} title="Marcar (ou desmarcar) todas as seções como concluídas">
+                <input
+                  type="checkbox"
+                  className={styles.navCheck}
+                  checked={ctrDoneCount === sectionsMeta.length}
+                  ref={(el) => { if (el) el.indeterminate = ctrDoneCount > 0 && ctrDoneCount < sectionsMeta.length; }}
+                  onChange={toggleAllDone}
+                  aria-label="Selecionar tudo"
+                />
+                <span className={styles.navLabel} style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Selecionar tudo</span>
+              </label>
+            )}
             {sectionsMeta.map((s) => {
               const active = s.id === activeSectionId;
               const done = doneSet.has(s.id);

@@ -7,12 +7,15 @@ import {
   type LibraryPortfolioItem,
   type LibraryNote,
   type ContractSummary,
+  type DocTemplateKind,
 } from "./api";
 import type { BriefingQuestion, QuestionType } from "../components/briefing/types";
 import type { InvestmentBlock } from "../components/proposal/types";
 import { toast } from "./toast";
 import { confirmDialog } from "./confirmDialog";
 import ListEditor from "./ListEditor";
+import ProposalEditor from "./ProposalEditor";
+import BriefingEditor from "./BriefingEditor";
 import UploadHint from "./UploadHint";
 import styles from "./Admin.module.css";
 
@@ -29,8 +32,9 @@ const HAS_OPTIONS: QuestionType[] = ["radio", "checklist", "select"];
 // (imagens de portfólio, perguntas de briefing, blocos de proposta e notas). O
 // conteúdo é salvo uma única vez aqui e reutilizado em qualquer documento.
 
-type Tab = "imagens" | "perguntas" | "blocos" | "notas";
+type Tab = "modelos" | "imagens" | "perguntas" | "blocos" | "notas";
 const TABS: { id: Tab; label: string }[] = [
+  { id: "modelos", label: "Modelos" },
   { id: "imagens", label: "Imagens" },
   { id: "perguntas", label: "Perguntas" },
   { id: "blocos", label: "Blocos" },
@@ -58,7 +62,17 @@ function blockSummary(b: InvestmentBlock): string {
 }
 
 export default function Biblioteca() {
-  const [tab, setTab] = useState<Tab>("imagens");
+  const [tab, setTab] = useState<Tab>("modelos");
+  // Modelo aberto para edição — ocupa a tela inteira (reusa o editor de verdade).
+  const [editingTemplate, setEditingTemplate] = useState<DocTemplateKind | null>(null);
+
+  if (editingTemplate === "proposal") {
+    return <ProposalEditor number={null} templateMode onBack={() => setEditingTemplate(null)} />;
+  }
+  if (editingTemplate === "briefing") {
+    return <BriefingEditor number={null} templateMode onBack={() => setEditingTemplate(null)} onSaved={() => setEditingTemplate(null)} />;
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.pageHead}>
@@ -78,11 +92,122 @@ export default function Biblioteca() {
         ))}
       </div>
 
+      {tab === "modelos" && <ModelosTab onEdit={setEditingTemplate} />}
       {tab === "imagens" && <ImagensTab />}
       {tab === "perguntas" && <PerguntasTab />}
       {tab === "blocos" && <BlocosTab />}
       {tab === "notas" && <NotasTab />}
     </div>
+  );
+}
+
+/* ════════════════════ MODELOS (documento padrão) ════════════════════ */
+// O modelo é a base de TODO documento novo. Sem modelo, o sistema clonava o
+// documento mais recente — e por isso portfólio/valores vinham do último cliente.
+// Contrato não tem modelo (a Isabela só padroniza proposta e briefing).
+const MODELOS: { kind: DocTemplateKind; title: string; hint: string; icon: string }[] = [
+  {
+    kind: "proposal",
+    title: "Modelo de proposta",
+    icon: "📄",
+    hint: "Portfólio, processo, blocos de investimento, formas de pagamento, prazos e condições. Toda proposta nova nasce assim — só o número, o cliente e os valores mudam.",
+  },
+  {
+    kind: "briefing",
+    title: "Modelo de briefing",
+    icon: "📝",
+    hint: "Ambientes e perguntas padrão. Todo briefing novo nasce com esta estrutura — é só vincular a proposta e ajustar os ambientes daquele projeto.",
+  },
+];
+
+function ModelosTab({ onEdit }: { onEdit: (kind: DocTemplateKind) => void }) {
+  const [updated, setUpdated] = useState<Record<string, string | null>>({});
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { templates } = await api.getDocTemplates();
+      setUpdated({
+        proposal: templates.proposal?.updatedAt ?? null,
+        briefing: templates.briefing?.updatedAt ?? null,
+      });
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Erro ao carregar os modelos.", { type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const remove = async (kind: DocTemplateKind, title: string) => {
+    const ok = await confirmDialog({
+      title: "Remover modelo",
+      message: `Remover o ${title.toLowerCase()}? Os documentos já criados não mudam — só volta a valer o padrão antigo (copiar o documento mais recente).`,
+      confirmLabel: "Remover",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.deleteDocTemplate(kind);
+      toast("Modelo removido.", { type: "success" });
+      void load();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Erro ao remover.", { type: "error" });
+    }
+  };
+
+  const fmt = (iso: string) => {
+    const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  return (
+    <>
+      <p className={styles.pageHint} style={{ marginTop: 0 }}>
+        Configure aqui, <strong>uma única vez</strong>, como nasce cada documento novo. Sem modelo, o sistema copia o documento
+        mais recente — é o que fazia informações (portfólio, valores) virem do último cliente atendido.
+      </p>
+
+      <div className={styles.row2}>
+        {MODELOS.map((m) => {
+          const at = updated[m.kind];
+          return (
+            <div key={m.kind} className={styles.card}>
+              <div className={styles.cardTitle}>{m.icon} {m.title}</div>
+              <p className={styles.pageHint} style={{ marginTop: 0 }}>{m.hint}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 14px" }}>
+                <span
+                  className={styles.statusDot}
+                  style={{ background: loading ? "#9aa6b8" : at ? "#4ade80" : "#d9a531" }}
+                />
+                <span className={styles.pageHint} style={{ margin: 0 }}>
+                  {loading
+                    ? "Verificando…"
+                    : at
+                      ? `Configurado · atualizado em ${fmt(at)}`
+                      : "Ainda não configurado — hoje o documento novo copia o mais recente."}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onEdit(m.kind)}>
+                  {at ? "✎ Editar modelo" : "＋ Criar modelo"}
+                </button>
+                {at && (
+                  <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => remove(m.kind, m.title)}>
+                    Remover
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className={styles.pageHint}>
+        O <strong>contrato</strong> não tem modelo — ele continua sendo montado a partir do contrato anterior, como sempre.
+      </p>
+    </>
   );
 }
 

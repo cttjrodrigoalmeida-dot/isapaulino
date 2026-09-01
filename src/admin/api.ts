@@ -5,6 +5,15 @@ import type { Briefing, BriefingQuestion } from "../components/briefing/types";
 
 export type ProposalOutcome = "aprovada" | "nao-aprovada";
 
+// ── Modelos de documento (Biblioteca → Modelos) ──
+// "proposal" e "briefing" só: contrato não tem modelo (pedido da Isabela).
+export type DocTemplateKind = "proposal" | "briefing";
+export interface DocTemplate<T> {
+  /** Documento completo que serve de base para todo documento novo. */
+  doc: T;
+  updatedAt: string;
+}
+
 // Pergunta salva na biblioteca (reutilizável entre briefings).
 export interface LibraryQuestion {
   id: string;
@@ -588,6 +597,16 @@ export const api = {
     })();
     return req<DashboardOverview>(`/api/dashboard/overview?today=${today}`);
   },
+
+  // ── modelos de documento (Biblioteca → aba Modelos) ──
+  // O modelo é a base de TODO documento novo: em vez de clonar o mais recente
+  // (que trazia portfólio/valores de outro cliente), a proposta/briefing novo
+  // nasce exatamente do que estiver configurado aqui.
+  getDocTemplates: () => req<{ templates: { proposal: DocTemplate<Proposal> | null; briefing: DocTemplate<Briefing> | null } }>("/api/doc-templates"),
+  saveDocTemplate: (kind: DocTemplateKind, doc: Proposal | Briefing) =>
+    req<{ ok: true }>("/api/doc-templates", { method: "PUT", body: JSON.stringify({ kind, doc }) }),
+  deleteDocTemplate: (kind: DocTemplateKind) =>
+    req<{ ok: true }>(`/api/doc-templates?kind=${kind}`, { method: "DELETE" }),
 
   // ── configurações (meta anual, etc.) ──
   setSetting: (key: string, value: string) =>

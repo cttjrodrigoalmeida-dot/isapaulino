@@ -89,15 +89,20 @@ function slugFromSuffix(suffix: string, num: string): string {
 export default function ProposalEditor({
   number,
   duplicateFrom = null,
+  templateMode = false,
   onBack,
   onCreated,
 }: {
   number: string | null;
   duplicateFrom?: string | null;
+  /** Modo MODELO (Biblioteca → Modelos): edita o PADRÃO de toda proposta nova,
+   *  não um documento real. Some tudo que é "por proposta" (número, cliente,
+   *  senha, URL, publicação) e o Salvar grava o modelo. */
+  templateMode?: boolean;
   onBack: () => void;
   /** Chamado após CRIAR uma proposta nova — o pai reabre o editor no modo edição
    *  (mesmo número), mantendo a Isabela na mesma página em vez de voltar à lista. */
-  onCreated: (number: string) => void;
+  onCreated?: (number: string) => void;
 }) {
   const isNew = number === null;
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -107,6 +112,8 @@ export default function ProposalEditor({
   // do projeto e não pode pertencer a outro cliente.
   const [usedNumbers, setUsedNumbers] = useState<NumberUse[]>([]);
   const [status, setStatus] = useState<Status>("draft");
+  // Proposta nova nasceu do MODELO da Biblioteca? (só muda o texto de ajuda)
+  const [fromTemplate, setFromTemplate] = useState(false);
   // Senha de acesso da proposta (vazio = link público). Fica fora do JSON da
   // proposta (nunca vai para a página pública) — é uma coluna própria no banco.
   const [accessPassword, setAccessPassword] = useState("");
@@ -133,6 +140,9 @@ export default function ProposalEditor({
   // Marca/desmarca uma seção como concluída (reflete no ponto verde + progresso).
   const toggleDone = (id: string) => setDoneSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const propDoneCount = PROPOSAL_SECTIONS.filter((s) => doneSet.has(s.id)).length;
+  // "Selecionar tudo": marca (ou desmarca) TODAS as seções como concluídas.
+  const toggleAllDone = () =>
+    setDoneSet((prev) => (PROPOSAL_SECTIONS.every((s) => prev.has(s.id)) ? new Set() : new Set(PROPOSAL_SECTIONS.map((s) => s.id))));
   const propPct = PROPOSAL_SECTIONS.length ? Math.round((propDoneCount / PROPOSAL_SECTIONS.length) * 100) : 0;
   const previewScrollRef = useRef<HTMLDivElement>(null); // container rolável da prévia
   const [followOn, setFollowOn] = usePreviewFollowPref();
@@ -186,18 +196,54 @@ export default function ProposalEditor({
     let alive = true;
     (async () => {
       try {
-        if (isNew) {
+        if (templateMode) {
+          // Biblioteca → Modelo de proposta. Carrega o modelo salvo; se ainda não
+          // existe, começa da proposta mais recente (ou do exemplo do sistema),
+          // para haver algo real para ajustar.
+          const saved = await api.getDocTemplates().then((r) => r.templates.proposal?.doc ?? null).catch(() => null);
+          let base: Proposal | null = saved;
+          if (!base) {
+            const { proposals } = await api.listProposals();
+            base =
+              proposals.length > 0
+                ? (await api.getProposal([...proposals].sort((a, b) => Number(b.number) - Number(a.number))[0].number)).proposal
+                : SAMPLE_PROPOSAL;
+          }
+          const draft = structuredClone(base);
+          // O modelo não guarda identificação — isso é de cada proposta.
+          draft.number = "";
+          draft.client = "";
+          draft.clientFirstName = "";
+          const combo = readComboFromNote(draft.comboNote);
+          const pixD = readPixDiscount(draft.pixPlan?.discountLabel);
+          const maxN = readMaxInstallments(draft.installmentPlan?.rows);
+          if (!alive) return;
+          setComboEnabled(combo.enabled);
+          setComboPercent(combo.percent);
+          setPixDiscount(pixD);
+          setMaxInstallments(maxN);
+          setProposal(recomputePayment(recomputeInvestment(draft, combo.enabled, combo.percent), pixD, maxN));
+          setStatus("draft");
+        } else if (isNew) {
           const { proposals } = await api.listProposals();
           const existing = proposals.map((p) => p.number);
           if (alive) setExistingNumbers(existing);
+          // O MODELO da Biblioteca (se configurado) é a base de toda proposta nova.
+          // Antes clonávamos a mais recente — por isso portfólio/valores vinham
+          // "aleatórios" (do último cliente atendido).
+          const tpl = duplicateFrom
+            ? null
+            : await api.getDocTemplates().then((r) => r.templates.proposal?.doc ?? null).catch(() => null);
+          if (alive) setFromTemplate(!!tpl);
           const draft = structuredClone(
             duplicateFrom
               ? (await api.getProposal(duplicateFrom)).proposal   // cópia: parte do original
-              : proposals.length > 0
-                ? (await api.getProposal(
-                    [...proposals].sort((a, b) => Number(b.number) - Number(a.number))[0].number
-                  )).proposal                                     // nova: parte da mais recente
-                : SAMPLE_PROPOSAL
+              : tpl                                              // nova: parte do MODELO…
+                ?? (proposals.length > 0
+                  ? (await api.getProposal(
+                      [...proposals].sort((a, b) => Number(b.number) - Number(a.number))[0].number
+                    )).proposal                                   // …senão, da mais recente
+                  : SAMPLE_PROPOSAL)
           );
           if (duplicateFrom) {
             // Cópia: mantém cliente/dados; só sugere um número novo estilo "2624-1".
@@ -245,7 +291,7 @@ export default function ProposalEditor({
     return () => {
       alive = false;
     };
-  }, [isNew, number, duplicateFrom]);
+  }, [isNew, number, duplicateFrom, templateMode]);
 
   // Campo simples (não financeiro): apenas substitui o valor.
   const set = useCallback(<K extends keyof Proposal>(key: K, value: Proposal[K]) => {
@@ -306,6 +352,23 @@ export default function ProposalEditor({
     if (!proposal) return;
     setError(null);
     setNotice(null);
+    // Modo MODELO: grava o padrão na Biblioteca (não cria proposta, não publica).
+    if (templateMode) {
+      savingRef.current = true;
+      setSaving(true);
+      try {
+        await api.saveDocTemplate("proposal", buildClean(proposal));
+        setLastSavedAt(Date.now());
+        setDirty(false);
+        setNotice("Modelo salvo. Toda proposta nova vai nascer com esta configuração.");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Erro ao salvar o modelo.");
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
+      }
+      return;
+    }
     const finalStatus: Status = publish ? "published" : status;
     if (!proposal.number.trim()) {
       setError("Informe o número da proposta.");
@@ -345,7 +408,7 @@ export default function ProposalEditor({
       // Publicou → leva a aba já aberta para o link público (usa o slug se houver).
       if (pubWin) pubWin.location.href = `/proposta/${encodeURIComponent(slug || num)}`;
       // Criou uma nova → o pai reabre no modo edição (fica na mesma página).
-      if (isNew) onCreated(num);
+      if (isNew) onCreated?.(num);
     } catch (err) {
       pubWin?.close();
       setError(err instanceof ApiError ? err.message : "Erro ao salvar.");
@@ -364,9 +427,9 @@ export default function ProposalEditor({
   const latestRef = useRef({ proposal, status, accessPassword, slugSuffix, notes, doneSet });
   latestRef.current = { proposal, status, accessPassword, slugSuffix, notes, doneSet };
   useEffect(() => {
-    if (!dirty || isNew || !autosaveOn) return;
+    if (!dirty || !autosaveOn || (isNew && !templateMode)) return;
     const cur = latestRef.current;
-    if (!cur.proposal?.number?.trim()) return;
+    if (!templateMode && !cur.proposal?.number?.trim()) return;
     const t = window.setTimeout(async () => {
       if (savingRef.current) return;
       const c = latestRef.current;
@@ -377,14 +440,15 @@ export default function ProposalEditor({
       const slugArg = suf === "" ? "" : /^[A-Za-z0-9_-]+$/.test(suf) ? slugFromSuffix(suf, c.proposal.number.trim()) : undefined;
       savingRef.current = true; setSaving(true);
       try {
-        await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword, slugArg, { editorNotes: c.notes, editorDone: [...c.doneSet] });
+        if (templateMode) await api.saveDocTemplate("proposal", buildClean(c.proposal));
+        else await api.updateProposal(number!, buildClean(c.proposal), c.status, c.accessPassword, slugArg, { editorNotes: c.notes, editorDone: [...c.doneSet] });
         setLastSavedAt(Date.now()); setDirty(false);
       } catch { /* mantém dirty; tenta na próxima */ }
       finally { savingRef.current = false; setSaving(false); }
     }, 2500);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, isNew, autosaveOn, proposal, status, accessPassword, slugSuffix, notes, doneSet]);
+  }, [dirty, isNew, templateMode, autosaveOn, proposal, status, accessPassword, slugSuffix, notes, doneSet]);
 
   // Scroll-spy: acende a seção visível durante a rolagem (alimenta rail + prévia).
   useEffect(() => {
@@ -455,12 +519,16 @@ export default function ProposalEditor({
       <div className={styles.pageHead}>
         <div>
           <div className={styles.pageTitle}>
-            {isNew ? `Nova proposta Nº ${proposal.number}` : `Editar proposta Nº ${number}`}
+            {templateMode ? "Modelo de proposta" : isNew ? `Nova proposta Nº ${proposal.number}` : `Editar proposta Nº ${number}`}
           </div>
           <div className={styles.pageHint}>
-            {isNew
-              ? "Criada a partir da proposta mais recente — ajuste o que mudar."
-              : "Valores (subtotais, total, PIX e parcelas) são calculados automaticamente."}
+            {templateMode
+              ? "Padrão da Biblioteca: toda proposta nova nasce exatamente assim. Ajuste aqui uma única vez (portfólio, processo, investimento, condições) em vez de arrumar proposta por proposta."
+              : isNew
+                ? fromTemplate
+                  ? "Criada a partir do MODELO da Biblioteca — ajuste o que mudar."
+                  : "Criada a partir da proposta mais recente — ajuste o que mudar. (Dica: configure um modelo na Biblioteca para padronizar.)"
+                : "Valores (subtotais, total, PIX e parcelas) são calculados automaticamente."}
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
@@ -470,7 +538,7 @@ export default function ProposalEditor({
         </div>
       </div>
 
-      <RelatedDocs proposalNumber={number} current="proposal" />
+      {!templateMode && <RelatedDocs proposalNumber={number} current="proposal" />}
 
       {error && <div className={styles.error}>{error}</div>}
       {notice && <div className={styles.notice}>{notice}</div>}
@@ -502,12 +570,12 @@ export default function ProposalEditor({
           <button type="button" className={`${styles.btn} ${showPreview ? styles.btnPrimary : ""}`} style={{ fontSize: 11 }} onClick={() => setShowPreview((v) => !v)}>
             {showPreview ? "Ocultar prévia" : "👁 Pré-visualizar"}
           </button>
-          {isNew && <span className={styles.pageHint} style={{ margin: 0 }}>O automático começa após o 1º “Salvar”.</span>}
+          {isNew && !templateMode && <span className={styles.pageHint} style={{ margin: 0 }}>O automático começa após o 1º “Salvar”.</span>}
         </div>
         {/* Identificador da proposta em edição — fica fixo na rolagem, para não
             confundir quando há várias janelas de propostas abertas. */}
-        <span className={styles.editorDocId} title="Proposta que você está editando agora">
-          ✎ Nº&nbsp;{(number ?? proposal.number) || "—"}{proposal.client ? ` · ${proposal.client}` : ""}
+        <span className={styles.editorDocId} title={templateMode ? "Modelo padrão de proposta (Biblioteca)" : "Proposta que você está editando agora"}>
+          {templateMode ? "★ Modelo de proposta" : <>✎ Nº&nbsp;{(number ?? proposal.number) || "—"}{proposal.client ? ` · ${proposal.client}` : ""}</>}
         </span>
       </div>
 
@@ -516,6 +584,17 @@ export default function ProposalEditor({
           {/* RAIL ESQUERDO — seções (scroll-spy) + concluir + progresso */}
           <aside className={styles.editorRail}>
             <div className={styles.railTitle}>Seções</div>
+            <label className={styles.navRow} style={{ cursor: "pointer" }} title="Marcar (ou desmarcar) todas as seções como concluídas">
+              <input
+                type="checkbox"
+                className={styles.navCheck}
+                checked={propDoneCount === PROPOSAL_SECTIONS.length}
+                ref={(el) => { if (el) el.indeterminate = propDoneCount > 0 && propDoneCount < PROPOSAL_SECTIONS.length; }}
+                onChange={toggleAllDone}
+                aria-label="Selecionar tudo"
+              />
+              <span className={styles.navLabel} style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Selecionar tudo</span>
+            </label>
             {PROPOSAL_SECTIONS.map((s) => {
               const active = s.id === activeSectionId;
               const done = doneSet.has(s.id);
@@ -539,6 +618,12 @@ export default function ProposalEditor({
           {/* MAIN — cards do editor */}
           <div className={styles.editorGrid}>
           <Section id="identificacao" label="Identificação" collapsed={collapsed.has("identificacao")} onToggle={() => toggleCollapse("identificacao")}>
+            {templateMode && (
+              <div className={styles.pageHint} style={{ marginTop: 0 }}>
+                Número, data e cliente não fazem parte do modelo — são preenchidos em cada proposta.
+              </div>
+            )}
+            {!templateMode && (<>
             <div className={styles.row2}>
               <div className={styles.field}>
                 <label className={styles.label}>Número {isNew ? "(sugerido — edite se quiser)" : "(fixo)"}</label>
@@ -613,6 +698,7 @@ export default function ProposalEditor({
                 <input className={styles.input} value={proposal.clientFirstName} onChange={(e) => set("clientFirstName", e.target.value)} />
               </div>
             </div>
+            </>)}
             <div className={styles.field}>
               <label className={styles.label}>Validade (texto exibido)</label>
               <input
@@ -785,6 +871,7 @@ export default function ProposalEditor({
       )}
 
       <div className={styles.editorBar}>
+        {!templateMode && (<>
         <div className={styles.field} style={{ margin: 0 }}>
           <label className={styles.label} style={{ marginBottom: 4 }}>Status</label>
           <select
@@ -845,13 +932,16 @@ export default function ProposalEditor({
             return <span className={styles.pageHint} style={{ margin: "4px 0 0", fontSize: 11 }}>Link: isabelapaulino.com.br/proposta/{suf ? `${num}-${suf}` : num} · o número {num} sempre funciona</span>;
           })()}
         </div>
+        </>)}
         <div className={styles.editorBarRight}>
-          <button className={styles.btn} onClick={() => save(false)} disabled={saving}>
-            {saving ? "Salvando…" : "Salvar"}
+          <button className={`${styles.btn} ${templateMode ? styles.btnPrimary : ""}`} onClick={() => save(false)} disabled={saving}>
+            {saving ? "Salvando…" : templateMode ? "💾 Salvar modelo" : "Salvar"}
           </button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>
-            Salvar e publicar
-          </button>
+          {!templateMode && (
+            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => save(true)} disabled={saving}>
+              Salvar e publicar
+            </button>
+          )}
         </div>
       </div>
 
@@ -872,7 +962,7 @@ export default function ProposalEditor({
             padding: "10px 14px", borderBottom: "1px solid var(--color-border)",
             background: "var(--color-surface)", color: "var(--color-text-primary)",
           }}>
-            <strong style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Prévia ao vivo · Nº {proposal.number}</strong>
+            <strong style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{templateMode ? "Prévia do modelo" : `Prévia ao vivo · Nº ${proposal.number}`}</strong>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               <PreviewFollowToggle enabled={followOn} onChange={setFollowOn} />
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setShowPreview(false)}>Fechar</button>

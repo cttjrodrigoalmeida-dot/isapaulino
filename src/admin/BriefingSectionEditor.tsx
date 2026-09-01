@@ -7,6 +7,10 @@ import PinCanvas from "./PinCanvas";
 import UploadHint from "./UploadHint";
 import styles from "./Admin.module.css";
 
+// Ações do cabeçalho da seção: botões só de ÍCONE (com dica no hover). Com
+// texto, a linha estourava e cobria o título/contagem de perguntas do card.
+const ICON_BTN = { padding: "5px 8px", fontSize: 13, lineHeight: 1.1, minWidth: 30 } as const;
+
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "text", label: "Texto curto" },
   { value: "longtext", label: "Texto longo" },
@@ -480,21 +484,21 @@ export default function BriefingSectionEditor({
             · {section.questions.length} pergunta{section.questions.length === 1 ? "" : "s"}
           </span>
         </button>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button type="button" className={styles.btn} onClick={() => onMove(-1)} disabled={isFirst}>↑</button>
-          <button type="button" className={styles.btn} onClick={() => onMove(1)} disabled={isLast}>↓</button>
-          <button type="button" className={styles.btn} onClick={onDuplicate} title="Cria uma cópia desta seção logo abaixo (imagem + perguntas) — é só trocar a imagem.">⧉ Duplicar seção</button>
-          <button type="button" className={styles.btn} onClick={onCopySection} title="Copiar este bloco (seção) inteiro — para colar/substituir em outra seção (ou outro briefing).">⧉ Copiar</button>
+        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+          <button type="button" className={styles.btn} style={ICON_BTN} onClick={() => onMove(-1)} disabled={isFirst} title="Mover esta seção para cima" aria-label="Mover para cima">↑</button>
+          <button type="button" className={styles.btn} style={ICON_BTN} onClick={() => onMove(1)} disabled={isLast} title="Mover esta seção para baixo" aria-label="Mover para baixo">↓</button>
+          <button type="button" className={styles.btn} style={ICON_BTN} onClick={onDuplicate} title="Duplicar seção — cria uma cópia logo abaixo (imagem + perguntas); é só trocar a imagem." aria-label="Duplicar seção">⧉</button>
+          <button type="button" className={styles.btn} style={ICON_BTN} onClick={onCopySection} title="Copiar este bloco (seção) inteiro — para colar/substituir em outra seção (ou em outro briefing)." aria-label="Copiar seção">⎘</button>
           {hasSectionClip && (
-            <button type="button" className={styles.btn} onClick={onPasteSection} title="Colar o bloco copiado logo abaixo deste.">⤵ Colar</button>
+            <button type="button" className={styles.btn} style={ICON_BTN} onClick={onPasteSection} title="Colar o bloco copiado logo abaixo deste." aria-label="Colar bloco">⤵</button>
           )}
           {hasSectionClip && (
-            <button type="button" className={styles.btn} onClick={onReplaceSection} title="Substituir ESTE bloco pelo copiado (ocupa o lugar dele).">⇄ Substituir</button>
+            <button type="button" className={styles.btn} style={ICON_BTN} onClick={onReplaceSection} title="Substituir ESTE bloco pelo copiado (ocupa o lugar dele)." aria-label="Substituir bloco">⇄</button>
           )}
           {isAmbiente && (
-            <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={onContinuar} title="Nova seção do mesmo ambiente logo abaixo, começando em branco (sem repetir as perguntas).">+ Continuação</button>
+            <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} style={ICON_BTN} onClick={onContinuar} title="+ Continuação — nova seção do mesmo ambiente logo abaixo, começando em branco (sem repetir as perguntas)." aria-label="Adicionar continuação">↳</button>
           )}
-          <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={onRemove}>Remover seção</button>
+          <button type="button" className={`${styles.btn} ${styles.btnDanger}`} style={ICON_BTN} onClick={onRemove} title="Remover esta seção" aria-label="Remover seção">✕</button>
         </div>
       </div>
 
