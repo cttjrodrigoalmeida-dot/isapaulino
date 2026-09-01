@@ -763,13 +763,24 @@ export default function ProposalView({ proposal: p, preview = false }: Props) {
                         <span className={styles.pixPay}>{p.pixPlan.payValue}</span>
                       </div>
                     </div>
-                    {p.pixPlan.footnote && (
-                      <div className={styles.payPlanFoots}>
-                        <span className={styles.payPlanFoot}>
-                          <IconCheck /> {p.pixPlan.footnote}
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      // Vários rodapés (como no Card 02). Proposta antiga só tem
+                      // o `footnote` de texto único — segue funcionando igual.
+                      const foots = p.pixPlan.footnotes?.length
+                        ? p.pixPlan.footnotes
+                        : p.pixPlan.footnote
+                          ? [p.pixPlan.footnote]
+                          : [];
+                      return foots.length > 0 ? (
+                        <div className={styles.payPlanFoots}>
+                          {foots.map((foot, i) => (
+                            <span key={`${foot}-${i}`} className={styles.payPlanFoot}>
+                              <IconCheck /> {foot}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
 
                   {/* Card 02 — Parcelado */}

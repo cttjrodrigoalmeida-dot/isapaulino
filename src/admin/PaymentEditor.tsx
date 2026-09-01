@@ -27,6 +27,8 @@ export default function PaymentEditor({
 }) {
   const pix = proposal.pixPlan;
   const inst = proposal.installmentPlan;
+  // Rodapés do Card 01: a lista nova; proposta antiga tem só o texto único.
+  const pixFoots = pix?.footnotes?.length ? pix.footnotes : pix?.footnote ? [pix.footnote] : [];
 
   return (
     <EditorSection id={sectionId} label="Forma de pagamento" collapsed={collapsed} onToggle={onToggle}>
@@ -54,11 +56,15 @@ export default function PaymentEditor({
           <span className={styles.badgeDraft} style={{ alignSelf: "center" }}>{pix?.discountLabel}</span>
         </div>
         <div className={styles.field} style={{ marginTop: 12 }}>
-          <label className={styles.label}>Rodapé do card (opcional)</label>
-          <input
-            className={styles.input}
-            value={pix?.footnote ?? ""}
-            onChange={(e) => onChange({ ...proposal, pixPlan: { ...pix!, footnote: e.target.value } })}
+          <label className={styles.label}>Rodapés do card (um por linha)</label>
+          <ListEditor
+            items={pixFoots}
+            onChange={(footnotes) =>
+              // Ao editar, o texto antigo migra para a lista (some o `footnote`
+              // solto) — senão o rodapé apareceria duas vezes na proposta.
+              onChange({ ...proposal, pixPlan: { ...pix!, footnote: undefined, footnotes } })
+            }
+            placeholder="ex.: Pagamento após assinatura do contrato"
           />
         </div>
       </div>

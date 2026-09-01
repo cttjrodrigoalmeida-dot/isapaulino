@@ -67,8 +67,12 @@ export interface PixPlan {
   fromValue: string;
   /** Valor final à vista, ex.: "R$ 1.900,00" */
   payValue: string;
-  /** Rodapé com check, ex.: "Pagamento após assinatura do contrato" */
+  /** Rodapé com check, ex.: "Pagamento após assinatura do contrato".
+   *  LEGADO: usado só quando `footnotes` está vazio (propostas antigas). */
   footnote?: string;
+  /** Rodapés com check — vários, iguais aos do Card 02.
+   *  Ex.: ["Pagamento após assinatura do contrato", "Sem taxas adicionais"] */
+  footnotes?: string[];
 }
 
 /** Card 02 — parcelamento. */
