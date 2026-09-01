@@ -105,7 +105,7 @@ Webhooks a cadastrar em cada serviço (apontando para o site em produção):
 > **gerenciador de senhas**; a Cloudflare guarda criptografado e não deixa lê-los de volta, então o
 > backup pessoal é o que evita perdê-los. Trocar um secret exige um novo deploy para valer.
 > - Webhook ASAAS: **cadastrado** (`/api/webhooks/asaas`, token = `WEBHOOK_SECRET`).
-> - Webhook Autentique: cadastrar no painel → `https://isabelapaulino.com.br/api/webhooks/autentique?secret=<AUTENTIQUE_WEBHOOK_SECRET>`, evento `document.finished`.
+> - Webhook Autentique: cadastrar no painel → `https://isabelapaulino.com/api/webhooks/autentique?secret=<AUTENTIQUE_WEBHOOK_SECRET>`, evento `document.finished`.
 
 ---
 

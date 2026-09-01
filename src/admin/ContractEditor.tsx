@@ -875,7 +875,7 @@ export default function ContractEditor({
             const suf = slugSuffix.trim();
             const invalid = suf !== "" && !/^[A-Za-z0-9_-]+$/.test(suf);
             if (invalid) return <span className={styles.fieldWarn}>⚠ Use só letras, números, hífen (-) e underscore (_), sem espaços.</span>;
-            return <span className={styles.pageHint} style={{ margin: "4px 0 0", fontSize: 11 }}>Link ao publicar: isabelapaulino.com.br/contrato/{suf ? `${slugBase}-${suf}` : slugBase}</span>;
+            return <span className={styles.pageHint} style={{ margin: "4px 0 0", fontSize: 11 }}>Link ao publicar: isabelapaulino.com/contrato/{suf ? `${slugBase}-${suf}` : slugBase}</span>;
           })()}
         </div>
       </div>

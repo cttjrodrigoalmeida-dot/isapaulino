@@ -89,7 +89,7 @@ export interface ContactInfo {
   whatsapp: string;   // ex.: "5562991942598"
   whatsappLabel: string; // ex.: "+55 (62) 9 9194-2598"
   instagram: string;  // ex.: "isapaulinostudio"
-  website: string;    // ex.: "isabelapaulino.com.br"
+  website: string;    // ex.: "isabelapaulino.com"
   tiktok?: string;
   threads?: string;
   pinterest?: string;

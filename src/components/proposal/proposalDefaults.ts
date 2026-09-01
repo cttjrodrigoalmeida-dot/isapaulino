@@ -11,7 +11,7 @@ export const DEFAULT_CONTACT: ContactInfo = {
   whatsapp: "5562991942598",
   whatsappLabel: "+55 (62) 9 9194-2598",
   instagram: "isapaulinostudio",
-  website: "isabelapaulino.com.br",
+  website: "isabelapaulino.com",
   tiktok: "isapaulinostudio",
   threads: "isapaulinostudio",
   pinterest: "isapaulinostudio",

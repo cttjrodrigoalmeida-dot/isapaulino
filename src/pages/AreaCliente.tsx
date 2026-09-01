@@ -53,7 +53,7 @@ const IconChat = () => (
 
 // Contato da Isabela (mesmo WhatsApp do site) e endereço do site oficial.
 const ISABELA_WHATSAPP = "https://wa.me/556291942598";
-const SITE_OFICIAL = "https://isabelapaulino.com.br";
+const SITE_OFICIAL = "https://isabelapaulino.com";
 
 // Abertura de marca ao entrar: a logo aparece em tela cheia e revela a área.
 // Some sozinha (~2s) ou ao toque; respeita "reduzir movimento".

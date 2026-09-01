@@ -145,7 +145,7 @@ database_name = "sistema-contratos"
 database_id = "COLE-SEU-DATABASE-ID-AQUI"
 
 [vars]
-SITE_URL = "https://isabelapaulino.com.br"
+SITE_URL = "https://isabelapaulino.com"
 ENCRYPTION_KEY = "gere-uma-string-aleatoria-de-32-caracteres"
 
 [[d1_databases]]
@@ -288,7 +288,7 @@ wrangler d1 execute sistema-contratos --local --command "INSERT INTO users (id, 
 
 1. Acesse: https://dash.cloudflare.com
 2. Vá em: **Workers & Pages**
-3. Clique no seu projeto (isabelapaulino.com.br)
+3. Clique no seu projeto (isabelapaulino.com)
 4. Vá em: **Settings → Functions → D1 database bindings**
 5. Clique em **Add binding**
 6. Variable name: `DB`
@@ -306,7 +306,7 @@ CONTEXTO DO PROJETO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Projeto: Sistema Web de Gestão de Contratos
-Site: isabelapaulino.com.br
+Site: isabelapaulino.com
 Infraestrutura: Cloudflare Pages + Functions + D1 + R2
 Frontend: React/Next.js (mesmo padrão do CMS existente)
 
@@ -771,7 +771,7 @@ wrangler d1 execute sistema-contratos --remote --file=./schema-fase2.sql
 
 ```toml
 [vars]
-SITE_URL = "https://isabelapaulino.com.br"
+SITE_URL = "https://isabelapaulino.com"
 ENCRYPTION_KEY = "sua-chave-aqui"
 ASAAS_API_URL = "https://api.asaas.com/v3"
 ASAAS_API_KEY = "sua-api-key-asaas"
@@ -809,7 +809,7 @@ Após o deploy:
 2. Vá em: **Configurações → Integrações → Webhooks**
 3. Clique em **Adicionar Webhook**
 4. Preencha:
-   - **URL:** `https://isabelapaulino.com.br/api/webhooks/asaas`
+   - **URL:** `https://isabelapaulino.com/api/webhooks/asaas`
    - **Token de autenticação:** cole o valor do seu `WEBHOOK_SECRET`
 5. Ative os eventos:
    - ✅ PAYMENT_CONFIRMED
@@ -1010,7 +1010,7 @@ git push origin main
 ```
 
 Após o deploy, volte ao ASAAS e atualize a URL do webhook para produção:
-`https://isabelapaulino.com.br/api/webhooks/asaas`
+`https://isabelapaulino.com/api/webhooks/asaas`
 
 ---
 
@@ -1181,7 +1181,7 @@ bucket_name = "sistema-contratos-files"
 ```json
 [
   {
-    "AllowedOrigins": ["https://isabelapaulino.com.br"],
+    "AllowedOrigins": ["https://isabelapaulino.com"],
     "AllowedMethods": ["GET"],
     "AllowedHeaders": ["*"],
     "MaxAgeSeconds": 3000
@@ -1447,12 +1447,12 @@ git push origin main
 
 ### Passo 2: Verificar domínio de envio
 
-Para enviar emails com seu domínio (@isabelapaulino.com.br):
+Para enviar emails com seu domínio (@isabelapaulino.com):
 
 1. No menu: **Settings → Sender Authentication**
 2. Clique em **Authenticate Your Domain**
 3. Escolha seu provedor DNS (Cloudflare)
-4. Preencha o domínio: `isabelapaulino.com.br`
+4. Preencha o domínio: `isabelapaulino.com`
 5. O SendGrid vai gerar registros DNS para adicionar
 6. Adicione esses registros no Cloudflare:
    - Acesse: https://dash.cloudflare.com
@@ -1475,13 +1475,13 @@ Para enviar emails com seu domínio (@isabelapaulino.com.br):
 ```toml
 [vars]
 SENDGRID_API_KEY = "sua-chave-sendgrid"
-FROM_EMAIL = "noreply@isabelapaulino.com.br"
+FROM_EMAIL = "noreply@isabelapaulino.com"
 FROM_NAME = "Isabela Paulino"
 ```
 
 E no Cloudflare Dashboard (Settings → Environment Variables):
 - `SENDGRID_API_KEY` → sua chave
-- `FROM_EMAIL` → noreply@isabelapaulino.com.br
+- `FROM_EMAIL` → noreply@isabelapaulino.com
 - `FROM_NAME` → Isabela Paulino
 
 ---
@@ -1862,7 +1862,7 @@ git push origin main
    - `ASAAS_API_URL` = `https://api.asaas.com/v3`
    - `ASAAS_API_KEY` = nova chave de produção
 4. Atualize a URL do webhook no ASAAS produção:
-   `https://isabelapaulino.com.br/api/webhooks/asaas`
+   `https://isabelapaulino.com/api/webhooks/asaas`
 
 ### 2. Verificar Domínio no SendGrid
 
@@ -1873,8 +1873,8 @@ git push origin main
 ### 3. Configurar Custom Domain nas Variáveis
 
 ```
-SITE_URL = "https://isabelapaulino.com.br"
-FROM_EMAIL = "noreply@isabelapaulino.com.br"
+SITE_URL = "https://isabelapaulino.com"
+FROM_EMAIL = "noreply@isabelapaulino.com"
 ```
 
 ### 4. Monitoramento
