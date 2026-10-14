@@ -16,7 +16,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "isapaulino-db"
-database_id = "514cf658-a613-4898-8af9-bd2f7d432ead"
+database_id = "e92a02ab-eecf-4849-9dbd-608425765463"
 
 # Armazenamento de arquivos R2 — binding `env.R2` (imagens dos ambientes).
 # Local: simulado pelo `wrangler pages dev`. Produção: exige habilitar o R2 no
@@ -35,4 +35,4 @@ binding = "AI"
 SITE_URL = "https://isabelapaulino.com"
 # ID da conta Cloudflare — usado na API REST do Browser Rendering (gerar PDF do
 # contrato). Não é segredo. O token (BROWSER_RENDER_TOKEN) vai como Secret.
-CF_ACCOUNT_ID = "afe5d99710157516701d97f69e73a094"
+CF_ACCOUNT_ID = "6d4f17ef11e7b8b13b35afb6e335d67f"
